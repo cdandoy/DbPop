@@ -50,7 +50,7 @@ public class DbPop implements Callable<Integer> {
             if (!directory.isDirectory()) throw new RuntimeException("Invalid dataset directory: " + directory);
 
             try (Connection connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
-                try (Database database = Database.createDatabase(connection)) {
+                try (Database database = Database.createDatabase(connection).setVerbose(verbose)) {
                     List<Dataset> datasets = getDatasets(directory);
                     Set<String> catalogs = getCatalogs(datasets);
                     Collection<Table> tables = database.getTables(catalogs);

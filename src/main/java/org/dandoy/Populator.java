@@ -8,10 +8,7 @@ import org.dandoy.Database.DatabaseInserter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -41,17 +38,20 @@ public class Populator implements AutoCloseable {
 
         try {
             int rowCount = 0;
-            for (String datasetName : datasets) {
-                Dataset dataset = datasetsByName.get(datasetName);
-                rowCount += loadDataset(dataset);
+            database.connection.setAutoCommit(false);
+            try {
+                for (String datasetName : datasets) {
+                    Dataset dataset = datasetsByName.get(datasetName);
+                    rowCount += loadDataset(dataset);
+                }
+            } finally {
+                database.connection.setAutoCommit(true);
             }
-            return rowCount;
-        } catch (Exception e) {
-            truncateTables(loadedTables);
-            throw e;
-        } finally {
             createIndexes(affectedIndexes);
             createForeignKeys(affectedForeignKeys);
+            return rowCount;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -62,12 +62,15 @@ public class Populator implements AutoCloseable {
                 .map(Dataset::getDataFiles)
                 .flatMap(Collection::stream)
                 .map(it -> tablesByName.get(it.getTableName()))
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
     }
 
     private Set<ForeignKey> getAffectedForeignKeys(Set<Table> tables) {
-        // TODO: Limit to affected FKs only.
-        return tablesByName.values().stream()
+        return tables.stream()
+                .map(Table::getTableName)
+                .map(tablesByName::get)
+                .filter(Objects::nonNull)
                 .flatMap(table -> table.getForeignKeys().stream())
                 .collect(Collectors.toSet());
     }
@@ -119,6 +122,7 @@ public class Populator implements AutoCloseable {
             CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
                     .setHeader()
                     .setSkipHeaderRecord(true)
+                    .setNullString("")
                     .build();
             try (CSVParser csvParser = csvFormat.parse(Files.newBufferedReader(dataFile.getFile().toPath(), StandardCharsets.UTF_8))) {
                 return insertRows(table, csvParser);

@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 public abstract class Database implements AutoCloseable {
     protected final Connection connection;
     private final Statement statement;
+    private boolean verbose;
 
     protected Database(Connection connection) throws SQLException {
         this.connection = connection;
@@ -21,18 +22,17 @@ public abstract class Database implements AutoCloseable {
     }
 
     public static Database createDatabase(Connection connection) throws SQLException {
-        connection.setAutoCommit(false);
         return new SqlServerDatabase(connection);
     }
 
     @Override
     public void close() throws SQLException {
-        connection.commit();
         statement.close();
     }
 
     protected void executeSql(String sql, Object... args) {
         String s = String.format(sql, args);
+        if (verbose) System.out.println("SQL: " + s);
         try {
             statement.execute(s);
         } catch (SQLException e) {
@@ -55,20 +55,24 @@ public abstract class Database implements AutoCloseable {
 
     public void dropIndex(Index index) {
         TableName tableName = index.getTableName();
-        if (index.isPrimaryKey() || index.isUnique()) {
-            dropConstraint(tableName, index.getName());
-        } else {
-            executeSql(
-                    "DROP INDEX %s ON %s",
-                    quote(index.getName()),
-                    quote(tableName)
-            );
+        try {
+            if (index.isPrimaryKey()) {
+                dropConstraint(tableName, index.getName());
+            } else {
+                executeSql(
+                        "DROP INDEX %s ON %s",
+                        quote(index.getName()),
+                        quote(tableName)
+                );
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Failed to drop the index %s.%s", tableName.toQualifiedName(), index.getName()), e);
         }
     }
 
     public void createIndex(Index index) {
         TableName tableName = index.getTableName();
-        if (index.isPrimaryKey() || index.isUnique()) {
+        if (index.isPrimaryKey()) {
             executeSql(
                     "ALTER TABLE %s ADD CONSTRAINT %s %s (%s)",
                     quote(tableName),
@@ -88,14 +92,18 @@ public abstract class Database implements AutoCloseable {
     }
 
     public void createForeignKey(ForeignKey foreignKey) {
-        executeSql(
-                "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)",
-                quote(foreignKey.getFkTableName()),
-                quote(foreignKey.getName()),
-                quote(foreignKey.getFkColumns()),
-                quote(foreignKey.getPkTableName()),
-                quote(foreignKey.getPkColumns())
-        );
+        try {
+            executeSql(
+                    "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)",
+                    quote(foreignKey.getFkTableName()),
+                    quote(foreignKey.getName()),
+                    quote(foreignKey.getFkColumns()),
+                    quote(foreignKey.getPkTableName()),
+                    quote(foreignKey.getPkColumns())
+            );
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Failed to create the foreign key %s.%s", foreignKey.getFkTableName().toQualifiedName(), foreignKey.getName()), e);
+        }
     }
 
     public void truncateTable(Table table) {
@@ -136,6 +144,11 @@ public abstract class Database implements AutoCloseable {
     }
 
     protected abstract String quote(String s);
+
+    public Database setVerbose(boolean verbose) {
+        this.verbose = verbose;
+        return this;
+    }
 
     public class DatabaseInserter implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;
