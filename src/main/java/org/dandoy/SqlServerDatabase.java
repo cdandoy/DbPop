@@ -158,6 +158,23 @@ public class SqlServerDatabase extends Database {
         return "[" + s + "]";
     }
 
+    public void disableForeignKey(ForeignKey foreignKey) {
+        executeSql(
+                "ALTER TABLE %s NOCHECK CONSTRAINT %s",
+                quote(foreignKey.getFkTableName()),
+                foreignKey.getName()
+        );
+    }
+
+    public void enableForeignKey(ForeignKey foreignKey) {
+        executeSql(
+                "ALTER TABLE %s WITH %s CHECK CONSTRAINT %s",
+                quote(foreignKey.getFkTableName()),
+                Settings.CHECK_CONTRAINTS ? "CHECK" : "NOCHECK",
+                foreignKey.getName()
+        );
+    }
+
     static class TableCollector implements AutoCloseable {
         final TableConsumer tableConsumer;
         private String lastSchema;

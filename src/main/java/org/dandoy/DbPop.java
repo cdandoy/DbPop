@@ -54,7 +54,7 @@ public class DbPop implements Callable<Integer> {
                     List<Dataset> datasets = getDatasets(directory);
                     Set<String> catalogs = getCatalogs(datasets);
                     Collection<Table> tables = database.getTables(catalogs);
-                    try (Populator populator = new Populator(database, datasets, tables)) {
+                    try (Populator populator = new Populator(database, datasets, tables).setVerbose(verbose)) {
                         rowCount = populator.load(this.datasets);
                     }
                 }

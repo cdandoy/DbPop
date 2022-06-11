@@ -16,6 +16,7 @@ public class Populator implements AutoCloseable {
     private final Database database;
     private final Map<String, Dataset> datasetsByName;
     private final Map<TableName, Table> tablesByName;
+    private boolean verbose;
 
     public Populator(Database database, List<Dataset> datasets, Collection<Table> tables) {
         this.database = database;
@@ -28,31 +29,24 @@ public class Populator implements AutoCloseable {
     }
 
     public int load(List<String> datasets) {
+        int rowCount = 0;
         Set<Table> loadedTables = getLoadedTables(datasets);
-        Set<ForeignKey> affectedForeignKeys = getAffectedForeignKeys(loadedTables);
-        Set<Index> affectedIndexes = getAffectedIndexes(loadedTables);
-        dropForeignKeys(affectedForeignKeys);
-        dropIndexes(affectedIndexes);
-
-        truncateTables(loadedTables);
-
-        try {
-            int rowCount = 0;
-            database.connection.setAutoCommit(false);
+        try (DatabasePreparationStrategy ignored = DatabasePreparationStrategy.createDatabasePreparationStrategy(database, tablesByName, loadedTables)) {
             try {
-                for (String datasetName : datasets) {
-                    Dataset dataset = datasetsByName.get(datasetName);
-                    rowCount += loadDataset(dataset);
+                database.connection.setAutoCommit(false);
+                try {
+                    for (String datasetName : datasets) {
+                        Dataset dataset = datasetsByName.get(datasetName);
+                        rowCount += loadDataset(dataset);
+                    }
+                } finally {
+                    database.connection.setAutoCommit(true);
                 }
-            } finally {
-                database.connection.setAutoCommit(true);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-            createIndexes(affectedIndexes);
-            createForeignKeys(affectedForeignKeys);
-            return rowCount;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
+        return rowCount;
     }
 
     private Set<Table> getLoadedTables(List<String> datasets) {
@@ -64,42 +58,6 @@ public class Populator implements AutoCloseable {
                 .map(it -> tablesByName.get(it.getTableName()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-    }
-
-    private Set<ForeignKey> getAffectedForeignKeys(Set<Table> tables) {
-        return tables.stream()
-                .map(Table::getTableName)
-                .map(tablesByName::get)
-                .filter(Objects::nonNull)
-                .flatMap(table -> table.getForeignKeys().stream())
-                .collect(Collectors.toSet());
-    }
-
-    private Set<Index> getAffectedIndexes(Set<Table> tables) {
-        return tables.stream()
-                .map(Table::getIndexes)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toSet());
-    }
-
-    private void dropForeignKeys(Set<ForeignKey> foreignKeys) {
-        foreignKeys.forEach(database::dropForeignKey);
-    }
-
-    private void dropIndexes(Set<Index> indexes) {
-        indexes.forEach(database::dropIndex);
-    }
-
-    private void createIndexes(Set<Index> indexes) {
-        indexes.forEach(database::createIndex);
-    }
-
-    private void createForeignKeys(Set<ForeignKey> foreignKeys) {
-        foreignKeys.forEach(database::createForeignKey);
-    }
-
-    private void truncateTables(Set<Table> tables) {
-        tables.forEach(database::truncateTable);
     }
 
     private int loadDataset(Dataset dataset) {
@@ -116,7 +74,9 @@ public class Populator implements AutoCloseable {
 
     private int loadDataFile(DataFile dataFile) {
         TableName tableName = dataFile.getTableName();
-        System.out.printf("Loading %s%n", tableName.toQualifiedName());
+        if (verbose) {
+            System.out.printf("Loading %s%n", tableName.toQualifiedName());
+        }
         try {
             Table table = tablesByName.get(tableName);
             CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
@@ -144,5 +104,10 @@ public class Populator implements AutoCloseable {
             throw new RuntimeException(e);
         }
         return count;
+    }
+
+    public Populator setVerbose(boolean verbose) {
+        this.verbose = verbose;
+        return this;
     }
 }

@@ -107,8 +107,7 @@ public abstract class Database implements AutoCloseable {
     }
 
     public void truncateTable(Table table) {
-        TableName tableName = table.getTableName();
-        executeSql("TRUNCATE TABLE %s", quote(tableName));
+        executeSql("TRUNCATE TABLE %s", quote(table.getTableName()));
     }
 
     public abstract void identityInsert(TableName tableName, boolean enable);
@@ -144,6 +143,10 @@ public abstract class Database implements AutoCloseable {
     }
 
     protected abstract String quote(String s);
+
+    public void deleteTable(Table table) {
+        executeSql("DELETE FROM %s", quote(table.getTableName()));
+    }
 
     public Database setVerbose(boolean verbose) {
         this.verbose = verbose;
