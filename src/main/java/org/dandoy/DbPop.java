@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
-@SuppressWarnings({"FieldMayBeFinal", "MismatchedQueryAndUpdateOfCollection"})
 @Command(name = "DbPop", version = "DbPop 0.1", mixinStandardHelpOptions = true)
 public class DbPop implements Callable<Integer> {
     @Option(names = {"-j", "--jdbcurl"}, description = "Database URL")
@@ -34,7 +33,7 @@ public class DbPop implements Callable<Integer> {
     private boolean verbose;
 
     @Parameters(paramLabel = "<dataset>", description = "Datasets", arity = "1..*")
-    private List<String> datasets = new ArrayList<>();
+    private final List<String> datasets = new ArrayList<>();
 
     public static void main(String[] args) {
         int exitCode = new CommandLine(new DbPop()).execute(args);
