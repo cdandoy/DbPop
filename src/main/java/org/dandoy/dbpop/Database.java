@@ -1,4 +1,4 @@
-package org.dandoy;
+package org.dandoy.dbpop;
 
 import org.apache.commons.csv.CSVRecord;
 

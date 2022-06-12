@@ -1,4 +1,4 @@
-package org.dandoy;
+package org.dandoy.dbpop;
 
 import java.util.List;
 import java.util.Objects;

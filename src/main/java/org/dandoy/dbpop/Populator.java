@@ -1,9 +1,9 @@
-package org.dandoy;
+package org.dandoy.dbpop;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.dandoy.Database.DatabaseInserter;
+import org.dandoy.dbpop.Database.DatabaseInserter;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

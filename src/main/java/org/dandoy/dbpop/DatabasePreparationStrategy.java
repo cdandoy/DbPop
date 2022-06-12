@@ -1,4 +1,4 @@
-package org.dandoy;
+package org.dandoy.dbpop;
 
 import java.util.Map;
 import java.util.Set;

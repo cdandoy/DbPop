@@ -1,4 +1,4 @@
-package org.dandoy;
+package org.dandoy.dbpop;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;

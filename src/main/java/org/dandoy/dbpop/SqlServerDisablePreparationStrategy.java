@@ -1,6 +1,5 @@
-package org.dandoy;
+package org.dandoy.dbpop;
 
-import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -38,13 +37,6 @@ public class SqlServerDisablePreparationStrategy extends DatabasePreparationStra
                 .map(tablesByName::get)
                 .filter(Objects::nonNull)
                 .flatMap(table -> table.getForeignKeys().stream())
-                .collect(Collectors.toSet());
-    }
-
-    private static Set<Index> getAffectedIndexes(Set<Table> tables) {
-        return tables.stream()
-                .map(Table::getIndexes)
-                .flatMap(Collection::stream)
                 .collect(Collectors.toSet());
     }
 }
