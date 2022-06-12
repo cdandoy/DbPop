@@ -9,11 +9,8 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
 
 @Command(name = "DbPop", version = "DbPop 0.1", mixinStandardHelpOptions = true)
 public class DbPop implements Callable<Integer> {
@@ -45,17 +42,13 @@ public class DbPop implements Callable<Integer> {
         try {
             long t0 = System.currentTimeMillis();
             int rowCount;
-            directory = directory.getAbsoluteFile().getCanonicalFile();
-            if (!directory.isDirectory()) throw new RuntimeException("Invalid dataset directory: " + directory);
-
             try (Connection connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
-                try (Database database = Database.createDatabase(connection).setVerbose(verbose)) {
-                    List<Dataset> datasets = getDatasets(directory);
-                    Set<String> catalogs = getCatalogs(datasets);
-                    Collection<Table> tables = database.getTables(catalogs);
-                    try (Populator populator = new Populator(database, datasets, tables).setVerbose(verbose)) {
-                        rowCount = populator.load(this.datasets);
-                    }
+                try (Populator populator = Populator.builder()
+                        .setConnection(connection)
+                        .setDirectory(directory)
+                        .setVerbose(verbose)
+                        .build()) {
+                    rowCount = populator.load(this.datasets);
                 }
             }
             long t1 = System.currentTimeMillis();
@@ -80,56 +73,5 @@ public class DbPop implements Callable<Integer> {
             }
             t = t.getCause();
         }
-    }
-
-    private List<Dataset> getDatasets(File directory) {
-        List<Dataset> datasets = new ArrayList<>();
-        File[] datasetFiles = directory.listFiles();
-        if (datasetFiles == null) throw new RuntimeException("Invalid directory " + directory);
-        for (File datasetFile : datasetFiles) {
-            File[] catalogFiles = datasetFile.listFiles();
-            if (catalogFiles != null) {
-                Collection<DataFile> dataFiles = new ArrayList<>();
-                for (File catalogFile : catalogFiles) {
-                    String catalog = catalogFile.getName();
-                    File[] schemaFiles = catalogFile.listFiles();
-                    if (schemaFiles != null) {
-                        for (File schemaFile : schemaFiles) {
-                            String schema = schemaFile.getName();
-                            File[] tableFiles = schemaFile.listFiles();
-                            if (tableFiles != null) {
-                                for (File tableFile : tableFiles) {
-                                    String tableFileName = tableFile.getName();
-                                    if (tableFileName.endsWith(".csv")) {
-                                        String table = tableFileName.substring(0, tableFileName.length() - 4);
-                                        dataFiles.add(
-                                                new DataFile(
-                                                        tableFile,
-                                                        new TableName(catalog, schema, table)
-                                                )
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                datasets.add(
-                        new Dataset(
-                                datasetFile.getName(),
-                                dataFiles
-                        )
-                );
-            }
-        }
-        return datasets;
-    }
-
-    private Set<String> getCatalogs(List<Dataset> datasets) {
-        return datasets.stream()
-                .map(Dataset::getDataFiles)
-                .flatMap(Collection::stream)
-                .map(it -> it.getTableName().getCatalog())
-                .collect(Collectors.toSet());
     }
 }

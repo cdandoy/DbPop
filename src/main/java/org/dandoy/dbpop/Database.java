@@ -14,25 +14,31 @@ import java.util.stream.Collectors;
 public abstract class Database implements AutoCloseable {
     protected final Connection connection;
     private final Statement statement;
-    private boolean verbose;
 
-    protected Database(Connection connection) throws SQLException {
-        this.connection = connection;
-        statement = connection.createStatement();
+    protected Database(Connection connection) {
+        try {
+            this.connection = connection;
+            statement = connection.createStatement();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public static Database createDatabase(Connection connection) throws SQLException {
+    public static Database createDatabase(Connection connection) {
         return new SqlServerDatabase(connection);
     }
 
     @Override
-    public void close() throws SQLException {
-        statement.close();
+    public void close() {
+        try {
+            statement.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     protected void executeSql(String sql, Object... args) {
         String s = String.format(sql, args);
-        if (verbose) System.out.println("SQL: " + s);
         try {
             statement.execute(s);
         } catch (SQLException e) {
@@ -40,7 +46,7 @@ public abstract class Database implements AutoCloseable {
         }
     }
 
-    public abstract Collection<Table> getTables(Set<String> catalogs) throws SQLException;
+    public abstract Collection<Table> getTables(Set<String> catalogs);
 
     public void dropForeignKey(ForeignKey foreignKey) {
         dropConstraint(foreignKey.getFkTableName(), foreignKey.getName());
@@ -146,11 +152,6 @@ public abstract class Database implements AutoCloseable {
 
     public void deleteTable(Table table) {
         executeSql("DELETE FROM %s", quote(table.getTableName()));
-    }
-
-    public Database setVerbose(boolean verbose) {
-        this.verbose = verbose;
-        return this;
     }
 
     public class DatabaseInserter implements AutoCloseable {

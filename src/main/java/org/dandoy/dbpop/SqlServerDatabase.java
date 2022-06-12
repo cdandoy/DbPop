@@ -6,12 +6,12 @@ import java.util.stream.Collectors;
 
 public class SqlServerDatabase extends Database {
 
-    public SqlServerDatabase(Connection connection) throws SQLException {
+    public SqlServerDatabase(Connection connection) {
         super(connection);
     }
 
     @Override
-    public Collection<Table> getTables(Set<String> catalogs) throws SQLException {
+    public Collection<Table> getTables(Set<String> catalogs) {
         Map<TableName, List<Column>> tableColumns = new HashMap<>();
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
         Map<TableName, List<Index>> indexes = new HashMap<>();
@@ -128,6 +128,8 @@ public class SqlServerDatabase extends Database {
                     }
                 }
             }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
         return tableColumns.entrySet().stream()
                 .map(entry -> new Table(

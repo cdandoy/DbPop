@@ -5,8 +5,11 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.Database.DatabaseInserter;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Function;
@@ -16,16 +19,36 @@ public class Populator implements AutoCloseable {
     private final Database database;
     private final Map<String, Dataset> datasetsByName;
     private final Map<TableName, Table> tablesByName;
-    private boolean verbose;
+    private final boolean verbose;
 
-    public Populator(Database database, List<Dataset> datasets, Collection<Table> tables) {
+    private Populator(Database database, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, boolean verbose) {
         this.database = database;
-        this.datasetsByName = datasets.stream().collect(Collectors.toMap(Dataset::getName, Function.identity()));
-        this.tablesByName = tables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
+        this.datasetsByName = datasetsByName;
+        this.tablesByName = tablesByName;
+        this.verbose = verbose;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    private static Populator build(Builder builder) {
+        Database database = Database.createDatabase(builder.connection);
+        List<Dataset> allDatasets = getDatasets(builder.directory);
+        Set<String> allCatalogs = getCatalogs(allDatasets);
+        Collection<Table> allTables = database.getTables(allCatalogs);
+        Map<String, Dataset> datasetsByName = allDatasets.stream().collect(Collectors.toMap(Dataset::getName, Function.identity()));
+        Map<TableName, Table> tablesByName = allTables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
+        return new Populator(database, datasetsByName, tablesByName, builder.verbose);
     }
 
     @Override
     public void close() {
+        database.close();
+    }
+
+    public int load(String... datasets) {
+        return load(Arrays.asList(datasets));
     }
 
     public int load(List<String> datasets) {
@@ -74,8 +97,10 @@ public class Populator implements AutoCloseable {
 
     private int loadDataFile(DataFile dataFile) {
         TableName tableName = dataFile.getTableName();
+        long t0 = System.currentTimeMillis();
         if (verbose) {
-            System.out.printf("Loading %s%n", tableName.toQualifiedName());
+            System.out.printf("Loading %-60s", tableName.toQualifiedName());
+            System.out.flush();
         }
         try {
             Table table = tablesByName.get(tableName);
@@ -85,7 +110,12 @@ public class Populator implements AutoCloseable {
                     .setNullString("")
                     .build();
             try (CSVParser csvParser = csvFormat.parse(Files.newBufferedReader(dataFile.getFile().toPath(), StandardCharsets.UTF_8))) {
-                return insertRows(table, csvParser);
+                int rows = insertRows(table, csvParser);
+                if (verbose) {
+                    long t1 = System.currentTimeMillis();
+                    System.out.printf(" %5d rows %4dms%n", rows, t1 - t0);
+                }
+                return rows;
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to load " + tableName.toQualifiedName(), e);
@@ -106,8 +136,92 @@ public class Populator implements AutoCloseable {
         return count;
     }
 
-    public Populator setVerbose(boolean verbose) {
-        this.verbose = verbose;
-        return this;
+    private static List<Dataset> getDatasets(File directory) {
+        List<Dataset> datasets = new ArrayList<>();
+        File[] datasetFiles = directory.listFiles();
+        if (datasetFiles == null) throw new RuntimeException("Invalid directory " + directory);
+        for (File datasetFile : datasetFiles) {
+            File[] catalogFiles = datasetFile.listFiles();
+            if (catalogFiles != null) {
+                Collection<DataFile> dataFiles = new ArrayList<>();
+                for (File catalogFile : catalogFiles) {
+                    String catalog = catalogFile.getName();
+                    File[] schemaFiles = catalogFile.listFiles();
+                    if (schemaFiles != null) {
+                        for (File schemaFile : schemaFiles) {
+                            String schema = schemaFile.getName();
+                            File[] tableFiles = schemaFile.listFiles();
+                            if (tableFiles != null) {
+                                for (File tableFile : tableFiles) {
+                                    String tableFileName = tableFile.getName();
+                                    if (tableFileName.endsWith(".csv")) {
+                                        String table = tableFileName.substring(0, tableFileName.length() - 4);
+                                        dataFiles.add(
+                                                new DataFile(
+                                                        tableFile,
+                                                        new TableName(catalog, schema, table)
+                                                )
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                datasets.add(
+                        new Dataset(
+                                datasetFile.getName(),
+                                dataFiles
+                        )
+                );
+            }
+        }
+        return datasets;
+    }
+
+    private static Set<String> getCatalogs(List<Dataset> datasets) {
+        return datasets.stream()
+                .map(Dataset::getDataFiles)
+                .flatMap(Collection::stream)
+                .map(it -> it.getTableName().getCatalog())
+                .collect(Collectors.toSet());
+    }
+
+    public static class Builder {
+        private Connection connection;
+        private File directory;
+        private boolean verbose;
+
+        public Builder() {
+        }
+
+        public Builder setConnection(Connection connection) {
+            try {
+                connection.getMetaData(); // Just to test the connection
+                this.connection = connection;
+                return this;
+            } catch (SQLException e) {
+                throw new RuntimeException("Failed to connect to the database", e);
+            }
+        }
+
+        public Builder setDirectory(File directory) {
+            try {
+                this.directory = directory.getAbsoluteFile().getCanonicalFile();
+                if (!this.directory.isDirectory()) throw new RuntimeException("Invalid dataset directory: " + this.directory);
+                return this;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public Builder setVerbose(boolean verbose) {
+            this.verbose = verbose;
+            return this;
+        }
+
+        public Populator build() {
+            return Populator.build(this);
+        }
     }
 }
