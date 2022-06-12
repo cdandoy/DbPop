@@ -211,6 +211,14 @@ public class Populator implements AutoCloseable {
             }
         }
 
+        public Builder setConnection(String url, String username, String password) {
+            try {
+                return setConnection(DriverManager.getConnection(url, username, password));
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         public Builder setDirectory(File directory) {
             try {
                 if (directory == null) throw new RuntimeException("Directory cannot be null");
@@ -220,6 +228,10 @@ public class Populator implements AutoCloseable {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        public Builder setDirectory(String path) {
+            return setDirectory(new File(path));
         }
 
         public Builder setVerbose(boolean verbose) {

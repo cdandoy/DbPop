@@ -10,29 +10,16 @@ public class TestUsage {
 
     @BeforeAll
     static void beforeAll() {
-        try {
-            populator = Populator.build();
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
+        populator = Populator.build();
     }
 
     @AfterAll
     static void afterAll() {
-        try {
-            populator.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
+        populator.close();
     }
 
     @Test
     void myTest() {
-        long t0 = System.currentTimeMillis();
-        int rows = populator.load("base");
-        long t1 = System.currentTimeMillis();
-        System.out.printf("%d rows loaded in %dms%n", rows, t1 - t0);
+        populator.load("base");
     }
 }
