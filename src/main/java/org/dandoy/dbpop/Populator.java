@@ -5,11 +5,13 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.Database.DatabaseInserter;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Function;
@@ -30,6 +32,10 @@ public class Populator implements AutoCloseable {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public static Populator build() {
+        return builder().build();
     }
 
     private static Populator build(Builder builder) {
@@ -207,6 +213,7 @@ public class Populator implements AutoCloseable {
 
         public Builder setDirectory(File directory) {
             try {
+                if (directory == null) throw new RuntimeException("Directory cannot be null");
                 this.directory = directory.getAbsoluteFile().getCanonicalFile();
                 if (!this.directory.isDirectory()) throw new RuntimeException("Invalid dataset directory: " + this.directory);
                 return this;
@@ -221,7 +228,65 @@ public class Populator implements AutoCloseable {
         }
 
         public Populator build() {
+            if (directory == null) findDirectory();
+            if (directory == null) throw new RuntimeException("You must specify a dataset directory");
+
+            if (connection == null) setupConnectionFromExternal();
+            if (connection == null) throw new RuntimeException("You must specify the database connection");
+
             return Populator.build(this);
+        }
+
+        /**
+         * Tries to find the dataset directory starting from the current directory.
+         */
+        private void findDirectory() {
+            for (File dir = new File("."); dir != null; dir = dir.getParentFile()) {
+                File datasetsDirectory = new File(dir, "src/test/resources/datasets");
+                if (datasetsDirectory.isDirectory()) {
+                    try {
+                        this.directory = datasetsDirectory.getAbsoluteFile().getCanonicalFile();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+
+        private void setupConnectionFromExternal() {
+            String userHome = System.getProperty("user.home");
+            if (userHome == null) throw new RuntimeException("Cannot find your home directory");
+            File propertyFile = new File(userHome, "dbpop.properties");
+            if (propertyFile.exists()) {
+                Properties properties = new Properties();
+                try (BufferedReader bufferedReader = Files.newBufferedReader(propertyFile.toPath(), StandardCharsets.UTF_8)) {
+                    properties.load(bufferedReader);
+                    setupConnection(
+                            propertyFile,
+                            properties.getProperty("jdbcurl"),
+                            properties.getProperty("username"),
+                            properties.getProperty("password"),
+                            properties.getProperty("verbose", "false")
+                    );
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                throw new RuntimeException("Could not find connection properties");
+            }
+        }
+
+        private void setupConnection(File sourceFile, String jdbcurl, String username, String password, String verbose) {
+            if (jdbcurl == null) throw new RuntimeException("jdbcurl not set in " + sourceFile);
+            if (username == null) throw new RuntimeException("username not set in " + sourceFile);
+            if (password == null) throw new RuntimeException("password not set in " + sourceFile);
+            try {
+                Connection connection = DriverManager.getConnection(jdbcurl, username, password);
+                setConnection(connection);
+                setVerbose(Boolean.parseBoolean(verbose));
+            } catch (SQLException e) {
+                throw new RuntimeException("Cannot connect to the database using " + sourceFile);
+            }
         }
     }
 }

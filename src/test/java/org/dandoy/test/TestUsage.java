@@ -5,36 +5,34 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-
 public class TestUsage {
     private static Populator populator;
 
     @BeforeAll
-    static void beforeAll()  {
+    static void beforeAll() {
         try {
-            Connection connection = DriverManager.getConnection("jdbc:sqlserver://localhost;database=tempdb;trustServerCertificate=true", "sa", "");
-            populator = Populator.builder()
-                    .setDirectory(new File("./src/test/resources/datasets"))
-                    .setConnection(connection)
-                    .setVerbose(true)
-                    .build();
-        } catch (SQLException e) {
+            populator = Populator.build();
+        } catch (Exception e) {
             e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
     @AfterAll
     static void afterAll() {
-        populator.close();
+        try {
+            populator.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
     void myTest() {
+        long t0 = System.currentTimeMillis();
         int rows = populator.load("base");
-        System.out.printf("%d rows loaded%n", rows);
+        long t1 = System.currentTimeMillis();
+        System.out.printf("%d rows loaded in %dms%n", rows, t1 - t0);
     }
 }
