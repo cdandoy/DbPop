@@ -8,10 +8,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public abstract class Database implements AutoCloseable {
+abstract class Database implements AutoCloseable {
     protected final Connection connection;
     private final Statement statement;
 
@@ -46,9 +47,9 @@ public abstract class Database implements AutoCloseable {
         }
     }
 
-    public abstract Collection<Table> getTables(Set<String> catalogs);
+    abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
 
-    public void dropForeignKey(ForeignKey foreignKey) {
+    void dropForeignKey(ForeignKey foreignKey) {
         dropConstraint(foreignKey.getFkTableName(), foreignKey.getName());
     }
 
@@ -59,7 +60,7 @@ public abstract class Database implements AutoCloseable {
         );
     }
 
-    public void dropIndex(Index index) {
+    void dropIndex(Index index) {
         TableName tableName = index.getTableName();
         try {
             if (index.isPrimaryKey()) {
@@ -76,7 +77,7 @@ public abstract class Database implements AutoCloseable {
         }
     }
 
-    public void createIndex(Index index) {
+    void createIndex(Index index) {
         TableName tableName = index.getTableName();
         if (index.isPrimaryKey()) {
             executeSql(
@@ -97,7 +98,7 @@ public abstract class Database implements AutoCloseable {
         }
     }
 
-    public void createForeignKey(ForeignKey foreignKey) {
+    void createForeignKey(ForeignKey foreignKey) {
         try {
             executeSql(
                     "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)",
@@ -112,13 +113,13 @@ public abstract class Database implements AutoCloseable {
         }
     }
 
-    public void truncateTable(Table table) {
+    void truncateTable(Table table) {
         executeSql("TRUNCATE TABLE %s", quote(table.getTableName()));
     }
 
-    public abstract void identityInsert(TableName tableName, boolean enable);
+    abstract void identityInsert(TableName tableName, boolean enable);
 
-    public DatabaseInserter createInserter(Table table, List<String> headerNames) throws SQLException {
+    DatabaseInserter createInserter(Table table, List<String> headerNames) throws SQLException {
         TableName tableName = table.getTableName();
         String sql = String.format(
                 "INSERT INTO %s (%s) VALUES (%s)",
@@ -150,16 +151,18 @@ public abstract class Database implements AutoCloseable {
 
     protected abstract String quote(String s);
 
-    public void deleteTable(Table table) {
+    void deleteTable(Table table) {
         executeSql("DELETE FROM %s", quote(table.getTableName()));
     }
 
-    public class DatabaseInserter implements AutoCloseable {
+    abstract DatabasePreparationStrategy createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables);
+
+    class DatabaseInserter implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;
         protected final PreparedStatement preparedStatement;
         private int batched = 0;
 
-        public DatabaseInserter(String sql) throws SQLException {
+        DatabaseInserter(String sql) throws SQLException {
             preparedStatement = connection.prepareStatement(sql);
         }
 
@@ -175,7 +178,7 @@ public abstract class Database implements AutoCloseable {
             batched = 0;
         }
 
-        public void insert(CSVRecord csvRecord) throws SQLException {
+        void insert(CSVRecord csvRecord) throws SQLException {
             for (int i = 0; i < csvRecord.size(); i++) {
                 preparedStatement.setString(i + 1, csvRecord.get(i));
             }

@@ -1,6 +1,6 @@
 package org.dandoy.dbpop;
 
-public class Column {
+class Column {
     private final String name;
     private final boolean identity;
 

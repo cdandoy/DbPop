@@ -3,7 +3,7 @@ package org.dandoy.dbpop;
 import java.util.List;
 import java.util.Objects;
 
-public class ForeignKey {
+class ForeignKey {
     private final String name;
     private final TableName pkTableName;
     private final List<String> pkColumns;

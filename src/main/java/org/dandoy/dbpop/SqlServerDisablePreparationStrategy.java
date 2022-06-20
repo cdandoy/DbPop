@@ -1,7 +1,7 @@
 package org.dandoy.dbpop;
 
+import java.util.Collection;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
  * This strategy drops and re-creates the indexes and constraints.
  * TODO: the indexes and constraints are not perfectly re-created, they are missing cascade deletes, filters, ...
  */
-public class SqlServerDisablePreparationStrategy extends DatabasePreparationStrategy {
+class SqlServerDisablePreparationStrategy extends DatabasePreparationStrategy {
     private final SqlServerDatabase database;
     private final Set<ForeignKey> foreignKeys;
 
@@ -18,10 +18,14 @@ public class SqlServerDisablePreparationStrategy extends DatabasePreparationStra
         this.foreignKeys = foreignKeys;
     }
 
-    public static SqlServerDisablePreparationStrategy createPreparationStrategy(SqlServerDatabase sqlServerDatabase, Map<TableName, Table> tablesByName, Set<Table> loadedTables) {
-        Set<ForeignKey> foreignKeys = getAffectedForeignKeys(tablesByName, loadedTables);
+    static SqlServerDisablePreparationStrategy createPreparationStrategy(SqlServerDatabase sqlServerDatabase, Map<TableName, Table> tablesByName) {
+        Collection<Table> tables = tablesByName.values();
+        Set<ForeignKey> foreignKeys = tables.stream()
+                .flatMap(table -> table.getForeignKeys().stream())
+                .collect(Collectors.toSet());
+
         foreignKeys.forEach(sqlServerDatabase::disableForeignKey);
-        loadedTables.forEach(sqlServerDatabase::deleteTable);
+        tables.forEach(sqlServerDatabase::deleteTable);
 
         return new SqlServerDisablePreparationStrategy(sqlServerDatabase, foreignKeys);
     }
@@ -29,14 +33,5 @@ public class SqlServerDisablePreparationStrategy extends DatabasePreparationStra
     @Override
     public void close() {
         foreignKeys.forEach(database::enableForeignKey);
-    }
-
-    private static Set<ForeignKey> getAffectedForeignKeys(Map<TableName, Table> tablesByName, Set<Table> tables) {
-        return tables.stream()
-                .map(Table::getTableName)
-                .map(tablesByName::get)
-                .filter(Objects::nonNull)
-                .flatMap(table -> table.getForeignKeys().stream())
-                .collect(Collectors.toSet());
     }
 }

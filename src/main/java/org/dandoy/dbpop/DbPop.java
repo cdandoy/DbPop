@@ -6,8 +6,6 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -33,8 +31,15 @@ public class DbPop implements Callable<Integer> {
     private final List<String> datasets = new ArrayList<>();
 
     public static void main(String[] args) {
-        int exitCode = new CommandLine(new DbPop()).execute(args);
+        int exitCode = likeMain(args);
         System.exit(exitCode);
+    }
+
+    /**
+     * Used for tests only
+     */
+    static int likeMain(String[] args) {
+        return new CommandLine(new DbPop()).execute(args);
     }
 
     @Override
@@ -42,14 +47,12 @@ public class DbPop implements Callable<Integer> {
         try {
             long t0 = System.currentTimeMillis();
             int rowCount;
-            try (Connection connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
-                try (Populator populator = Populator.builder()
-                        .setConnection(connection)
-                        .setDirectory(directory)
-                        .setVerbose(verbose)
-                        .build()) {
-                    rowCount = populator.load(this.datasets);
-                }
+            try (Populator populator = Populator.builder()
+                    .setConnection(dbUrl, dbUser, dbPassword)
+                    .setDirectory(directory)
+                    .setVerbose(verbose)
+                    .build()) {
+                rowCount = populator.load(this.datasets);
             }
             long t1 = System.currentTimeMillis();
             System.out.printf("Loaded %d rows in %dms%n", rowCount, t1 - t0);

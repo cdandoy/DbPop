@@ -2,13 +2,13 @@ package org.dandoy.dbpop;
 
 import java.util.List;
 
-public class Table {
+class Table {
     private final TableName tableName;
     private final List<Column> columns;
     private final List<Index> indexes;
     private final List<ForeignKey> foreignKeys;
 
-    public Table(TableName tableName, List<Column> columns, List<Index> indexes, List<ForeignKey> foreignKeys) {
+    Table(TableName tableName, List<Column> columns, List<Index> indexes, List<ForeignKey> foreignKeys) {
         this.tableName = tableName;
         this.columns = columns;
         this.indexes = indexes;
@@ -22,19 +22,19 @@ public class Table {
                 '}';
     }
 
-    public TableName getTableName() {
+    TableName getTableName() {
         return tableName;
     }
 
-    public List<Column> getColumns() {
+    List<Column> getColumns() {
         return columns;
     }
 
-    public List<Index> getIndexes() {
+    List<Index> getIndexes() {
         return indexes;
     }
 
-    public List<ForeignKey> getForeignKeys() {
+    List<ForeignKey> getForeignKeys() {
         return foreignKeys;
     }
 }

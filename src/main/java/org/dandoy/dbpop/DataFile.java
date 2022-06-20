@@ -2,7 +2,7 @@ package org.dandoy.dbpop;
 
 import java.io.File;
 
-public class DataFile {
+class DataFile {
     private final File file;
     private final TableName tableName;
 

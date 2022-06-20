@@ -4,14 +4,15 @@ import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class SqlServerDatabase extends Database {
+class SqlServerDatabase extends Database {
 
     public SqlServerDatabase(Connection connection) {
         super(connection);
     }
 
     @Override
-    public Collection<Table> getTables(Set<String> catalogs) {
+    Collection<Table> getTables(Set<TableName> datasetTableNames) {
+        Set<String> catalogs = datasetTableNames.stream().map(TableName::getCatalog).collect(Collectors.toSet());
         Map<TableName, List<Column>> tableColumns = new HashMap<>();
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
         Map<TableName, List<Index>> indexes = new HashMap<>();
@@ -30,7 +31,9 @@ public class SqlServerDatabase extends Database {
                                     "ORDER BY s.name, t.name, c.column_id")) {
                                 try (TableCollector tableCollector = new TableCollector((schema, table, columns) -> {
                                     TableName tableName = new TableName(catalog, schema, table);
-                                    tableColumns.put(tableName, columns);
+                                    if (datasetTableNames.contains(tableName)) {
+                                        tableColumns.put(tableName, columns);
+                                    }
                                 })) {
                                     try (ResultSet tablesResultSet = tablesStatement.executeQuery()) {
                                         while (tablesResultSet.next()) {
@@ -49,8 +52,6 @@ public class SqlServerDatabase extends Database {
                                     "       i.name AS i,\n" +
                                     "       i.is_unique,\n" +
                                     "       i.is_primary_key,\n" +
-                                    "       i.has_filter,\n" +
-                                    "       i.filter_definition,\n" +
                                     "       c.name AS c\n" +
                                     "FROM sys.schemas s\n" +
                                     "         JOIN sys.tables t ON t.schema_id = s.schema_id\n" +
@@ -60,10 +61,12 @@ public class SqlServerDatabase extends Database {
                                     "WHERE i.type_desc IN ('NONCLUSTERED')\n" +
                                     "  AND i.is_disabled = 0\n" +
                                     "ORDER BY s.name, t.name, i.index_id, ic.key_ordinal")) {
-                                try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, filter, columns) -> {
+                                try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
                                     TableName tableName = new TableName(catalog, schema, table);
-                                    Index index = new Index(name, tableName, unique, primaryKey, filter, columns);
-                                    indexes.computeIfAbsent(tableName, it -> new ArrayList<>()).add(index);
+                                    if (datasetTableNames.contains(tableName)) {
+                                        Index index = new Index(name, tableName, unique, primaryKey, columns);
+                                        indexes.computeIfAbsent(tableName, it -> new ArrayList<>()).add(index);
+                                    }
                                 })) {
                                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
                                         while (resultSet.next()) {
@@ -73,7 +76,6 @@ public class SqlServerDatabase extends Database {
                                                     resultSet.getString("i"),
                                                     resultSet.getBoolean("is_unique"),
                                                     resultSet.getBoolean("is_primary_key"),
-                                                    resultSet.getBoolean("has_filter") ? resultSet.getString("filter_definition") : null,
                                                     resultSet.getString("c")
                                             );
                                         }
@@ -100,14 +102,16 @@ public class SqlServerDatabase extends Database {
                                 try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
                                     TableName pkTableName = new TableName(catalog, pkSchema, pkTable);
                                     TableName fkTableName = new TableName(catalog, fkSchema, fkTable);
-                                    ForeignKey foreignKey = new ForeignKey(
-                                            constraint,
-                                            pkTableName,
-                                            pkColumns,
-                                            fkTableName,
-                                            fkColumns
-                                    );
-                                    foreignKeys.computeIfAbsent(fkTableName, tableName -> new ArrayList<>()).add(foreignKey);
+                                    if (datasetTableNames.contains(fkTableName)) {
+                                        ForeignKey foreignKey = new ForeignKey(
+                                                constraint,
+                                                pkTableName,
+                                                pkColumns,
+                                                fkTableName,
+                                                fkColumns
+                                        );
+                                        foreignKeys.computeIfAbsent(fkTableName, tableName -> new ArrayList<>()).add(foreignKey);
+                                    }
                                 })) {
                                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
                                         while (resultSet.next()) {
@@ -142,7 +146,7 @@ public class SqlServerDatabase extends Database {
     }
 
     @Override
-    public void identityInsert(TableName tableName, boolean enable) {
+    void identityInsert(TableName tableName, boolean enable) {
         executeSql(
                 "SET IDENTITY_INSERT %s %s",
                 quote(tableName),
@@ -160,7 +164,16 @@ public class SqlServerDatabase extends Database {
         return "[" + s + "]";
     }
 
-    public void disableForeignKey(ForeignKey foreignKey) {
+    @Override
+    DatabasePreparationStrategy createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables) {
+        if (Settings.DISABLE_CONTRAINTS) {
+            return SqlServerDisablePreparationStrategy.createPreparationStrategy(this, tablesByName);
+        } else {
+            return SqlServerDropCreatePreparationStrategy.createPreparationStrategy(this, tablesByName);
+        }
+    }
+
+    void disableForeignKey(ForeignKey foreignKey) {
         executeSql(
                 "ALTER TABLE %s NOCHECK CONSTRAINT %s",
                 quote(foreignKey.getFkTableName()),
@@ -168,7 +181,7 @@ public class SqlServerDatabase extends Database {
         );
     }
 
-    public void enableForeignKey(ForeignKey foreignKey) {
+    void enableForeignKey(ForeignKey foreignKey) {
         executeSql(
                 "ALTER TABLE %s WITH %s CHECK CONSTRAINT %s",
                 quote(foreignKey.getFkTableName()),
@@ -183,7 +196,7 @@ public class SqlServerDatabase extends Database {
         private String lastTable;
         private List<Column> columns;
 
-        public TableCollector(TableConsumer tableConsumer) {
+        TableCollector(TableConsumer tableConsumer) {
             this.tableConsumer = tableConsumer;
         }
 
@@ -220,14 +233,13 @@ public class SqlServerDatabase extends Database {
         private String lastIndex;
         private boolean lastUnique;
         private boolean lastPrimaryKey;
-        private String lastFilter;
         private List<String> columns;
 
         IndexCollector(IndexConsumer indexConsumer) {
             this.indexConsumer = indexConsumer;
         }
 
-        void push(String schema, String table, String index, boolean unique, boolean primaryKey, String filter, String column) {
+        void push(String schema, String table, String index, boolean unique, boolean primaryKey, String column) {
             if (!(index.equals(lastIndex) && table.equals(lastTable) && schema.equals(lastSchema))) {
                 flush();
                 lastSchema = schema;
@@ -235,7 +247,6 @@ public class SqlServerDatabase extends Database {
                 lastIndex = index;
                 lastUnique = unique;
                 lastPrimaryKey = primaryKey;
-                lastFilter = filter;
                 columns = new ArrayList<>();
             }
             columns.add(column);
@@ -248,13 +259,13 @@ public class SqlServerDatabase extends Database {
 
         private void flush() {
             if (columns != null) {
-                indexConsumer.consume(lastSchema, lastTable, lastIndex, lastUnique, lastPrimaryKey, lastFilter, columns);
+                indexConsumer.consume(lastSchema, lastTable, lastIndex, lastUnique, lastPrimaryKey, columns);
             }
         }
     }
 
     interface IndexConsumer {
-        void consume(String schema, String table, String index, boolean unique, boolean primaryKey, String filter, List<String> columns);
+        void consume(String schema, String table, String index, boolean unique, boolean primaryKey, List<String> columns);
     }
 
     static class ForeignKeyCollector implements AutoCloseable {
@@ -306,7 +317,7 @@ public class SqlServerDatabase extends Database {
         private final TableName tableName;
         private final boolean identity;
 
-        public SqlServerDatabaseInserter(Table table, String sql) throws SQLException {
+        SqlServerDatabaseInserter(Table table, String sql) throws SQLException {
             super(sql);
 
             this.tableName = table.getTableName();

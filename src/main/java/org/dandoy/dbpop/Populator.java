@@ -11,41 +11,94 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Populator implements AutoCloseable {
+    private final ConnectionBuilder connectionBuilder;
     private final Database database;
     private final Map<String, Dataset> datasetsByName;
     private final Map<TableName, Table> tablesByName;
     private final boolean verbose;
 
-    private Populator(Database database, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, boolean verbose) {
+    private Populator(ConnectionBuilder connectionBuilder, Database database, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, boolean verbose) {
+        this.connectionBuilder = connectionBuilder;
         this.database = database;
         this.datasetsByName = datasetsByName;
         this.tablesByName = tablesByName;
         this.verbose = verbose;
     }
 
+    /**
+     * Populators are created using a builder pattern.
+     * Example:
+     * <pre>
+     *     Populator.builder()
+     *                 .setDirectory("src/test/resources/tests")
+     *                 .setConnection("jdbc:sqlserver://localhost", "sa", "****")
+     *                 .setVerbose(true)
+     *                 .build()
+     * </pre>
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Creates a default Populator based on the properties found in ~/dbpop.properties
+     */
     public static Populator build() {
         return builder().build();
     }
 
     private static Populator build(Builder builder) {
-        Database database = Database.createDatabase(builder.connection);
-        List<Dataset> allDatasets = getDatasets(builder.directory);
-        Set<String> allCatalogs = getCatalogs(allDatasets);
-        Collection<Table> allTables = database.getTables(allCatalogs);
-        Map<String, Dataset> datasetsByName = allDatasets.stream().collect(Collectors.toMap(Dataset::getName, Function.identity()));
-        Map<TableName, Table> tablesByName = allTables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
-        return new Populator(database, datasetsByName, tablesByName, builder.verbose);
+        try {
+            Database database = Database.createDatabase(builder.connectionBuilder.createConnection());
+            List<Dataset> allDatasets = getDatasets(builder.directory);
+            if (allDatasets.isEmpty()) throw new RuntimeException("No datasets found in " + builder.directory);
+
+            Set<TableName> datasetTableNames = allDatasets.stream()
+                    .flatMap(dataset -> dataset.getDataFiles().stream())
+                    .map(DataFile::getTableName)
+                    .collect(Collectors.toSet());
+
+            Collection<Table> databaseTables = database.getTables(datasetTableNames);
+            validateAllTablesExist(allDatasets, datasetTableNames, databaseTables);
+
+            Map<String, Dataset> datasetsByName = allDatasets.stream().collect(Collectors.toMap(Dataset::getName, Function.identity()));
+            Map<TableName, Table> tablesByName = databaseTables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
+            return new Populator(builder.connectionBuilder, database, datasetsByName, tablesByName, builder.verbose);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Check that we have all the tables that are in the dataset
+     *
+     * @param allDatasets       The datasets
+     * @param datasetTableNames The table names found in the data sets
+     * @param databaseTables    the tables found in the database that are in the data sets
+     */
+    private static void validateAllTablesExist(List<Dataset> allDatasets, Set<TableName> datasetTableNames, Collection<Table> databaseTables) {
+        Set<TableName> databaseTableNames = databaseTables.stream().map(Table::getTableName).collect(Collectors.toSet());
+        List<TableName> missingTables = datasetTableNames.stream()
+                .filter(tableName -> !databaseTableNames.contains(tableName))
+                .collect(Collectors.toList());
+        if (!missingTables.isEmpty()) {
+            DataFile badDataFile = allDatasets.stream()
+                    .flatMap(dataset -> dataset.getDataFiles().stream())
+                    .filter(dataFile -> missingTables.contains(dataFile.getTableName()))
+                    .findFirst()
+                    .orElseThrow(RuntimeException::new);
+            throw new RuntimeException(String.format(
+                    "Table %s does not exist for this data file %s",
+                    badDataFile.getTableName().toQualifiedName(),
+                    badDataFile.getFile()
+            ));
+        }
     }
 
     @Override
@@ -53,19 +106,30 @@ public class Populator implements AutoCloseable {
         database.close();
     }
 
+    /**
+     * Loads those datasets.
+     */
+    @SuppressWarnings("UnusedReturnValue")
     public int load(String... datasets) {
         return load(Arrays.asList(datasets));
     }
 
+    /**
+     * Loads those datasets.
+     */
     public int load(List<String> datasets) {
+        if (verbose) System.out.println("---- Loading " + String.join(", ", datasets));
+
         int rowCount = 0;
         Set<Table> loadedTables = getLoadedTables(datasets);
-        try (DatabasePreparationStrategy ignored = DatabasePreparationStrategy.createDatabasePreparationStrategy(database, tablesByName, loadedTables)) {
+
+        try (DatabasePreparationStrategy ignored = database.createDatabasePreparationStrategy(tablesByName, loadedTables)) {
             try {
                 database.connection.setAutoCommit(false);
                 try {
                     for (String datasetName : datasets) {
                         Dataset dataset = datasetsByName.get(datasetName);
+                        if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
                         rowCount += loadDataset(dataset);
                     }
                 } finally {
@@ -174,51 +238,62 @@ public class Populator implements AutoCloseable {
                         }
                     }
                 }
-                datasets.add(
-                        new Dataset(
-                                datasetFile.getName(),
-                                dataFiles
-                        )
-                );
+                if (!dataFiles.isEmpty()) {
+                    datasets.add(
+                            new Dataset(
+                                    datasetFile.getName(),
+                                    dataFiles
+                            )
+                    );
+                }
             }
         }
         return datasets;
     }
 
-    private static Set<String> getCatalogs(List<Dataset> datasets) {
-        return datasets.stream()
-                .map(Dataset::getDataFiles)
-                .flatMap(Collection::stream)
-                .map(it -> it.getTableName().getCatalog())
-                .collect(Collectors.toSet());
+    /**
+     * Creates a connection to the test database.
+     */
+    public Connection createConnection() throws SQLException {
+        return connectionBuilder.createConnection();
     }
 
+    /**
+     * Populator builder
+     */
     public static class Builder {
-        private Connection connection;
+        private ConnectionBuilder connectionBuilder;
         private File directory;
         private boolean verbose;
 
         public Builder() {
         }
 
-        public Builder setConnection(Connection connection) {
-            try {
-                connection.getMetaData(); // Just to test the connection
-                this.connection = connection;
-                return this;
-            } catch (SQLException e) {
-                throw new RuntimeException("Failed to connect to the database", e);
-            }
+        private Builder setConnectionBuilder(ConnectionBuilder connectionBuilder) {
+            this.connectionBuilder = connectionBuilder;
+            return this;
         }
 
-        public Builder setConnection(String url, String username, String password) {
-            try {
-                return setConnection(DriverManager.getConnection(url, username, password));
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
+        /**
+         * How to connect to the database.
+         */
+        public Builder setConnection(String dbUrl, String dbUser, String dbPassword) {
+            return setConnectionBuilder(new UrlConnectionBuilder(dbUrl, dbUser, dbPassword));
         }
 
+        /**
+         * The directory that holds the datasets.
+         * For example:
+         * <pre>
+         * directory/
+         *   base/
+         *     AdventureWorks/
+         *       HumanResources/
+         *         Department.csv
+         *         Employee.csv
+         *         Shift.csv
+         * </pre>
+         */
         public Builder setDirectory(File directory) {
             try {
                 if (directory == null) throw new RuntimeException("Directory cannot be null");
@@ -230,22 +305,38 @@ public class Populator implements AutoCloseable {
             }
         }
 
+        /**
+         * The directory that holds the datasets.
+         *
+         * @see #setDirectory(File)
+         */
         public Builder setDirectory(String path) {
             return setDirectory(new File(path));
         }
 
+        /**
+         * Enables verbose logging on System.out
+         */
         public Builder setVerbose(boolean verbose) {
             this.verbose = verbose;
             return this;
         }
 
+        /**
+         * Builds the Populator
+         */
         public Populator build() {
             if (directory == null) findDirectory();
             if (directory == null) throw new RuntimeException("You must specify a dataset directory");
+            if (!directory.isDirectory()) throw new RuntimeException("Invalid directory: " + directory);
 
-            if (connection == null) setupConnectionFromExternal();
-            if (connection == null) throw new RuntimeException("You must specify the database connection");
-
+            if (connectionBuilder == null) setupConnectionFromExternal();
+            if (connectionBuilder == null) throw new RuntimeException("You must specify the database connection");
+            try (Connection connection = connectionBuilder.createConnection()) {
+                connection.getMetaData();
+            } catch (SQLException e) {
+                throw new RuntimeException("Invalid database connection " + connectionBuilder);
+            }
             return Populator.build(this);
         }
 
@@ -265,6 +356,9 @@ public class Populator implements AutoCloseable {
             }
         }
 
+        /**
+         * Loads the properties from ~/dbpop.properties
+         */
         private void setupConnectionFromExternal() {
             String userHome = System.getProperty("user.home");
             if (userHome == null) throw new RuntimeException("Cannot find your home directory");
@@ -273,31 +367,24 @@ public class Populator implements AutoCloseable {
                 Properties properties = new Properties();
                 try (BufferedReader bufferedReader = Files.newBufferedReader(propertyFile.toPath(), StandardCharsets.UTF_8)) {
                     properties.load(bufferedReader);
-                    setupConnection(
-                            propertyFile,
-                            properties.getProperty("jdbcurl"),
-                            properties.getProperty("username"),
-                            properties.getProperty("password"),
-                            properties.getProperty("verbose", "false")
-                    );
+                    String jdbcurl = properties.getProperty("jdbcurl");
+                    String username = properties.getProperty("username");
+                    String password = properties.getProperty("password");
+                    if (jdbcurl == null) throw new RuntimeException("jdbcurl not set in " + propertyFile);
+                    if (username == null) throw new RuntimeException("username not set in " + propertyFile);
+                    if (password == null) throw new RuntimeException("password not set in " + propertyFile);
+
+                    setConnectionBuilder(new UrlConnectionBuilder(jdbcurl, username, password));
+
+                    setVerbose(Boolean.parseBoolean(properties.getProperty("verbose", "false")));
+                    if (this.verbose) {
+                        System.out.println("Properties loaded from " + propertyFile);
+                    }
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             } else {
                 throw new RuntimeException("Could not find connection properties");
-            }
-        }
-
-        private void setupConnection(File sourceFile, String jdbcurl, String username, String password, String verbose) {
-            if (jdbcurl == null) throw new RuntimeException("jdbcurl not set in " + sourceFile);
-            if (username == null) throw new RuntimeException("username not set in " + sourceFile);
-            if (password == null) throw new RuntimeException("password not set in " + sourceFile);
-            try {
-                Connection connection = DriverManager.getConnection(jdbcurl, username, password);
-                setConnection(connection);
-                setVerbose(Boolean.parseBoolean(verbose));
-            } catch (SQLException e) {
-                throw new RuntimeException("Cannot connect to the database using " + sourceFile);
             }
         }
     }

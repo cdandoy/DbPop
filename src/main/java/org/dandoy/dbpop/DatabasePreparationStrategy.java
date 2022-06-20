@@ -1,21 +1,11 @@
 package org.dandoy.dbpop;
 
-import java.util.Map;
-import java.util.Set;
-
-public abstract class DatabasePreparationStrategy implements AutoCloseable {
-    public static DatabasePreparationStrategy createDatabasePreparationStrategy(Database database, Map<TableName, Table> tablesByName, Set<Table> loadedTables) {
-        if (database instanceof SqlServerDatabase) {
-            SqlServerDatabase sqlServerDatabase = (SqlServerDatabase) database;
-            if (Settings.DISABLE_CONTRAINTS) {
-                return SqlServerDisablePreparationStrategy.createPreparationStrategy(sqlServerDatabase, tablesByName, loadedTables);
-            } else {
-                return SqlServerDropCreatePreparationStrategy.createPreparationStrategy(sqlServerDatabase, tablesByName, loadedTables);
-            }
-        } else {
-            throw new RuntimeException("Not implemented");
-        }
-    }
+/**
+ * A DatabasePreparationStrategy prepares the tables for deletion and insertion.
+ * The prefered strategy for SQL Server is to just disable and re-enable the foreign keys.
+ * Code to execute before the deletes happens during the construction, code to execute after the inserts are in the {@link #close()} method.
+ */
+abstract class DatabasePreparationStrategy implements AutoCloseable {
 
     @Override
     public abstract void close();

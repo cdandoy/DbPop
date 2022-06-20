@@ -4,12 +4,12 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class TableName {
+class TableName {
     private final String catalog;
     private final String schema;
     private final String table;
 
-    public TableName(String catalog, String schema, String table) {
+    TableName(String catalog, String schema, String table) {
         this.catalog = catalog;
         this.schema = schema;
         this.table = table;
@@ -37,19 +37,19 @@ public class TableName {
         return Objects.hash(table);
     }
 
-    public String getCatalog() {
+    String getCatalog() {
         return catalog;
     }
 
-    public String getSchema() {
+    String getSchema() {
         return schema;
     }
 
-    public String getTable() {
+    String getTable() {
         return table;
     }
 
-    public String toQualifiedName() {
+    String toQualifiedName() {
         return Stream.of(catalog, schema, table).filter(Objects::nonNull).collect(Collectors.joining("."));
     }
 }
