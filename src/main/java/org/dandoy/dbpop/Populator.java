@@ -41,6 +41,8 @@ public class Populator implements AutoCloseable {
      *                 .setVerbose(true)
      *                 .build()
      * </pre>
+     *
+     * @return a Builder
      */
     public static Builder builder() {
         return new Builder();
@@ -48,6 +50,8 @@ public class Populator implements AutoCloseable {
 
     /**
      * Creates a default Populator based on the properties found in ~/dbpop.properties
+     *
+     * @return a default Populator
      */
     public static Populator build() {
         return builder().build();
@@ -107,7 +111,10 @@ public class Populator implements AutoCloseable {
     }
 
     /**
-     * Loads those datasets.
+     * Loads the datasets.
+     *
+     * @param datasets the datasets to load
+     * @return the number of rows loaded
      */
     @SuppressWarnings("UnusedReturnValue")
     public int load(String... datasets) {
@@ -115,7 +122,10 @@ public class Populator implements AutoCloseable {
     }
 
     /**
-     * Loads those datasets.
+     * Loads the datasets.
+     *
+     * @param datasets the datasets to load
+     * @return the number of rows loaded
      */
     public int load(List<String> datasets) {
         if (verbose) System.out.println("---- Loading " + String.join(", ", datasets));
@@ -252,7 +262,8 @@ public class Populator implements AutoCloseable {
     }
 
     /**
-     * Creates a connection to the test database.
+     * @return a connection to the test database.
+     * @exception SQLException An exception that provides information on a database access error or other errors.
      */
     public Connection createConnection() throws SQLException {
         return connectionBuilder.createConnection();
@@ -276,13 +287,17 @@ public class Populator implements AutoCloseable {
 
         /**
          * How to connect to the database.
+         *
+         * @param dbUrl      The JDBC url
+         * @param dbUser     The database username
+         * @param dbPassword The database password
+         * @return this
          */
         public Builder setConnection(String dbUrl, String dbUser, String dbPassword) {
             return setConnectionBuilder(new UrlConnectionBuilder(dbUrl, dbUser, dbPassword));
         }
 
         /**
-         * The directory that holds the datasets.
          * For example:
          * <pre>
          * directory/
@@ -293,6 +308,9 @@ public class Populator implements AutoCloseable {
          *         Employee.csv
          *         Shift.csv
          * </pre>
+         *
+         * @param directory The directory that holds the datasets
+         * @return this
          */
         public Builder setDirectory(File directory) {
             try {
@@ -306,8 +324,8 @@ public class Populator implements AutoCloseable {
         }
 
         /**
-         * The directory that holds the datasets.
-         *
+         * @param path The directory that holds the datasets.
+         * @return this
          * @see #setDirectory(File)
          */
         public Builder setDirectory(String path) {
@@ -316,6 +334,9 @@ public class Populator implements AutoCloseable {
 
         /**
          * Enables verbose logging on System.out
+         *
+         * @param verbose verbose on/off
+         * @return this
          */
         public Builder setVerbose(boolean verbose) {
             this.verbose = verbose;
@@ -324,6 +345,8 @@ public class Populator implements AutoCloseable {
 
         /**
          * Builds the Populator
+         *
+         * @return the Populator
          */
         public Populator build() {
             if (directory == null) findDirectory();

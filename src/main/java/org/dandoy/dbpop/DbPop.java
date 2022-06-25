@@ -10,6 +10,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+/**
+ * CLI main class.
+ * <pre>
+ *   Usage: DbPop [-hvV] [-d=&lt;directory&gt;] [-j=&lt;dbUrl&gt;] -p=&lt;dbPassword&gt; [-u=&lt;dbUser&gt;] &lt;dataset&gt;...
+ *   &lt;dataset&gt;...                   Datasets to load
+ *   -d, --directory=&lt;directory&gt;    Dataset Directory
+ *   -h, --help                     Show this help message and exit.
+ *   -j, --jdbcurl=&lt;dbUrl&gt;          Database URL
+ *   -p, --password=&lt;dbPassword&gt;    Database password
+ *   -u, --username=&lt;dbUser&gt;        Database user
+ *   -v, --verbose                  Verbose
+ *   -V, --version                  Print version information and exit.
+ * </pre>
+ */
 @Command(name = "DbPop", version = "DbPop 0.1", mixinStandardHelpOptions = true)
 public class DbPop implements Callable<Integer> {
     @Option(names = {"-j", "--jdbcurl"}, description = "Database URL")

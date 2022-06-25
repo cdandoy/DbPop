@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
 }
 
-group 'org.dandoy'
+group 'io.github.cdandoy'
 version '1.0-SNAPSHOT'
 
 repositories {
