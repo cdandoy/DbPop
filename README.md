@@ -1,7 +1,7 @@
 # DbPop - Unit test your database
 
 This utility allows you to quickly re-populate a development database to an initial state
-which opens the doors of unit-testing databases.
+which opens the doors of fast and reliable functional tests.
 
 DbPop currently only supports SQL Server but support for other databases will be added.
 
