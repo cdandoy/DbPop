@@ -1,13 +1,9 @@
 package org.dandoy.dbpop;
 
-import org.dandoy.dbpop.DbPop;
+import org.dandoy.TestEnv;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -18,8 +14,9 @@ import java.util.Properties;
 
 import static org.dandoy.test.MainTest.assertCount;
 
+@EnabledIf("org.dandoy.TestEnv#hasDatabaseSetup")
 public class DbPopTests {
-    private static final Properties properties = readDbPop();
+    private static final Properties properties = TestEnv.readDbPop();
     private static final String jdbcurl = properties.getProperty("jdbcurl");
     private static final String username = properties.getProperty("username");
     private static final String password = properties.getProperty("password");
@@ -59,22 +56,4 @@ public class DbPopTests {
         args.addAll(Arrays.asList(datasets));
         DbPop.likeMain(args.toArray(new String[0]));
     }
-
-    private static Properties readDbPop() {
-        String userHome = System.getProperty("user.home");
-        if (userHome == null) throw new RuntimeException("Cannot find your home directory");
-        File propertyFile = new File(userHome, "dbpop.properties");
-        if (propertyFile.exists()) {
-            Properties properties = new Properties();
-            try (BufferedReader bufferedReader = Files.newBufferedReader(propertyFile.toPath(), StandardCharsets.UTF_8)) {
-                properties.load(bufferedReader);
-                return properties;
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } else {
-            throw new RuntimeException("Could not find connection properties");
-        }
-    }
-
 }

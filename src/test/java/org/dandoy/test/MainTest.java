@@ -2,6 +2,7 @@ package org.dandoy.test;
 
 import org.dandoy.dbpop.Populator;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -10,6 +11,7 @@ import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@EnabledIf("org.dandoy.TestEnv#hasDatabaseSetup")
 public class MainTest {
     @Test
     void noCsvFiles() {
