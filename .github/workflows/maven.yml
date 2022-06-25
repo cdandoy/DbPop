@@ -14,6 +14,11 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v2
+      - name: check
+        shell: bash
+        env:
+          HELO: ${{ secrets.HELO }}
+        run: echo "HELO=$HELO"
       - name: Set up Maven Central Repository
         uses: actions/setup-java@v1
         with:
