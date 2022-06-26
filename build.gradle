@@ -1,9 +1,12 @@
 plugins {
+    id 'java'
     id 'java-library'
+    id 'signing'
+    id 'maven-publish'
 }
 
 group 'io.github.cdandoy'
-version '1.0-SNAPSHOT'
+version '1.0.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -20,4 +23,73 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives jar, sourcesJar, javadocJar
+}
+
+publishing {
+    repositories {
+        maven {
+            def releasesRepoUrl = 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2'
+            def snapshotsRepoUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots'
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            credentials {
+                username = ossrhUsername
+                password = ossrhPassword
+            }
+        }
+    }
+
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+//            groupId = 'io.github.cdandoy'
+//            artifactId = 'dbpop'
+
+//            artifact jar
+            artifact sourcesJar
+            artifact javadocJar
+
+            pom {
+                name = 'dbpop'
+                description = 'A utility to load a database from CSV files'
+                url = 'https://github.com/cdandoy/DbPop'
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'cdandoy'
+                        name = 'Cedric Dandoy'
+                        email = 'cedric@dandoy.org'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:git@github.com:cdandoy/DbPop.git'
+                    developerConnection = 'scm:git:ssh://github.com:cdandoy/DbPop.git'
+                    url = 'https://github.com/cdandoy/DbPop'
+                }
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
 }
