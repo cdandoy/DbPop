@@ -1,5 +1,6 @@
 package org.dandoy.test;
 
+import org.dandoy.dbpop.database.ExpressionParser;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -49,6 +50,15 @@ public class MainTest {
     }
 
     @Test
+    void testExpressions() {
+        try (Populator populator = Populator.builder()
+                .setDirectory("src/test/resources/test_expressions")
+                .build()) {
+            populator.load("base");
+        }
+    }
+
+    @Test
     void mainTest() throws SQLException {
         try (Populator populator = Populator.builder()
                 .setDirectory("src/test/resources/tests")
@@ -84,5 +94,23 @@ public class MainTest {
                 assertEquals(expected, actual, String.format("Invalid row count for table %s", table));
             }
         }
+    }
+
+    @Test
+    void testExpressionParser() {
+        ExpressionParser parser = new ExpressionParser();
+        parser.evaluate("{{now}}");
+        parser.evaluate("{{yesterday}}");
+        parser.evaluate("{{tomorrow}}");
+        parser.evaluate("{{now - 1 minute}}");
+        parser.evaluate("{{now - 2 minutes}}");
+        parser.evaluate("{{now - 1 hour}}");
+        parser.evaluate("{{now - 2 hours}}");
+        parser.evaluate("{{now - 1 day}}");
+        parser.evaluate("{{now - 2 days}}");
+        parser.evaluate("{{now - 1 month}}");
+        parser.evaluate("{{now - 2 months}}");
+        parser.evaluate("{{now - 1 year}}");
+        parser.evaluate("{{now - 2 years}}");
     }
 }

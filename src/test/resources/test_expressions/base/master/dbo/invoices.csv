@@ -1,0 +1,6 @@
+invoice_id,customer_id,invoice_date
+1001,101,{{now - 1 day}}
+1002,101,{{now - 2 days}}
+1003,101,{{now - 1 month}}
+1004,101,{{now - 2 years}}
+1005,101,2022-01-01
