@@ -27,8 +27,9 @@ For example:
 ```
 
 ### Invoking DbPop from your unit test:
+
 You first create a `Populator` instance, you then invoke one of the `load()` methods to load a dataset.
-We recommend to create only one `Populator` that you re-use for all unit tests.  
+We recommend to create only one `Populator` that you re-use for all unit tests.
 
 To build a `Populator` you need a JDBC connection and a directory that contains your datasets.
 
@@ -59,9 +60,12 @@ public class TestUsage {
 ```
 
 #### JDBC connection
+
 However, the JDBC connection can be built using a property file in your home directory, so you do not have to store a password in your source code:
+
 * Linux: `~/.dbpop.properties`
 * Windows: `C:\Users\<username>\dbpop.properties`
+
 ```properties
 jdbcurl=jdbc:sqlserver://localhost;database=tempdb;trustServerCertificate=true
 username=sa
@@ -70,9 +74,11 @@ verbose=false
 ```
 
 #### Dataset directory
+
 If you do not specify a dataset directory, DbPop will use `./src/test/resources/datasets`
 
 This simplifies the construction of the `Populator`:
+
 ```java
 public class TestUsage {
     private static Populator populator;
@@ -96,19 +102,28 @@ public class TestUsage {
 ```
 
 ### Invoking DbPop from the command line:
-You can also invoke DbPop from the command line.
+
+DbPop can be invoked from the command line to download data from the database to CSV files or to upload CSV files into the database.
+Both operations require a database connection and a dataset directory.
+
 ```text
-Usage: DbPop [-hvV] [-d=<directory>] [-j=<dbUrl>] -p=<dbPassword> [-u=<dbUser>]
-             <dataset>...
-      <dataset>...          Datasets
-  -d, --directory=<directory>
-                            Dataset Directory
-  -h, --help                Show this help message and exit.
-  -j, --jdbcurl=<dbUrl>     Database URL
-  -p, --password=<dbPassword>
-                            Database password
-  -u, --username=<dbUser>   Database user
-  -v, --verbose             Verbose
-  -V, --version             Print version information and exit.
+  -d, --directory=<directory>   Dataset Directory
+  -j, --jdbcurl=<dbUrl>         Database URL
+  -u, --username=<dbUser>       Database user
+  -p, --password=<dbPassword>   Database password
+  -v, --verbose                 Verbose
 ```
+
+You can download individual tables to CSV files using `download tables <table-names>` or schemas using `download tables <schema-names>`<br/>
+For example:
+
+```text
+download tables \
+  --jdbcurl jdbc:sqlserver://localhost \
+  --username scott \
+  --password tiger \
+  sakila.dbo.actor sakila.dbo.address sakila.dbo.category
+```
+
+
 
