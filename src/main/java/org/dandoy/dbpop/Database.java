@@ -6,13 +6,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
-abstract class Database implements AutoCloseable {
+public abstract class Database implements AutoCloseable {
     protected final Connection connection;
     private final Statement statement;
 
@@ -47,9 +44,11 @@ abstract class Database implements AutoCloseable {
         }
     }
 
+    public abstract Collection<TableName> getTableNames(String catalog, String schema);
+
     abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
 
-    void dropForeignKey(ForeignKey foreignKey) {
+    public void dropForeignKey(ForeignKey foreignKey) {
         dropConstraint(foreignKey.getFkTableName(), foreignKey.getName());
     }
 
@@ -60,7 +59,7 @@ abstract class Database implements AutoCloseable {
         );
     }
 
-    void dropIndex(Index index) {
+    public void dropIndex(Index index) {
         TableName tableName = index.getTableName();
         try {
             if (index.isPrimaryKey()) {
@@ -77,7 +76,7 @@ abstract class Database implements AutoCloseable {
         }
     }
 
-    void createIndex(Index index) {
+    public void createIndex(Index index) {
         TableName tableName = index.getTableName();
         if (index.isPrimaryKey()) {
             executeSql(
@@ -98,7 +97,7 @@ abstract class Database implements AutoCloseable {
         }
     }
 
-    void createForeignKey(ForeignKey foreignKey) {
+    public void createForeignKey(ForeignKey foreignKey) {
         try {
             executeSql(
                     "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)",
@@ -113,11 +112,11 @@ abstract class Database implements AutoCloseable {
         }
     }
 
-    void truncateTable(Table table) {
+    public void truncateTable(Table table) {
         executeSql("TRUNCATE TABLE %s", quote(table.getTableName()));
     }
 
-    abstract void identityInsert(TableName tableName, boolean enable);
+    public abstract void identityInsert(TableName tableName, boolean enable);
 
     DatabaseInserter createInserter(Table table, List<String> headerNames) throws SQLException {
         TableName tableName = table.getTableName();
@@ -130,13 +129,13 @@ abstract class Database implements AutoCloseable {
         return createInserter(table, sql);
     }
 
-    protected String quote(Collection<String> strings) {
+    public String quote(Collection<String> strings) {
         return strings.stream()
                 .map(this::quote)
                 .collect(Collectors.joining(","));
     }
 
-    protected String quote(TableName tableName) {
+    public String quote(TableName tableName) {
         return String.format(
                 "%s.%s.%s",
                 quote(tableName.getCatalog()),
@@ -146,7 +145,7 @@ abstract class Database implements AutoCloseable {
     }
 
     protected DatabaseInserter createInserter(Table table, String sql) throws SQLException {
-        return new DatabaseInserter(sql);
+        return new DatabaseInserter(table, sql);
     }
 
     protected abstract String quote(String s);
@@ -159,11 +158,19 @@ abstract class Database implements AutoCloseable {
 
     class DatabaseInserter implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;
-        protected final PreparedStatement preparedStatement;
+        private final PreparedStatement preparedStatement;
+        private final List<Integer> binaryColumns = new ArrayList<>();
         private int batched = 0;
 
-        DatabaseInserter(String sql) throws SQLException {
+        DatabaseInserter(Table table, String sql) throws SQLException {
             preparedStatement = connection.prepareStatement(sql);
+
+            for (int i = 0; i < table.getColumns().size(); i++) {
+                Column column = table.getColumns().get(i);
+                if (column.isBinary()) {
+                    binaryColumns.add(i);
+                }
+            }
         }
 
         @Override
@@ -180,7 +187,23 @@ abstract class Database implements AutoCloseable {
 
         void insert(CSVRecord csvRecord) throws SQLException {
             for (int i = 0; i < csvRecord.size(); i++) {
-                preparedStatement.setString(i + 1, csvRecord.get(i));
+                String s = csvRecord.get(i);
+                if (binaryColumns.contains(i)) {
+                    if (FeatureFlags.HANDLE_BINARY) {
+                        byte[] bytes;
+                        if (s != null) {
+                            Base64.Decoder decoder = Base64.getDecoder();
+                            bytes = decoder.decode(s);
+                        } else {
+                            bytes = null;
+                        }
+                        preparedStatement.setBytes(i + 1, bytes);
+                    } else {
+                        preparedStatement.setBytes(i + 1, null);
+                    }
+                } else {
+                    preparedStatement.setString(i + 1, s);
+                }
             }
             preparedStatement.addBatch();
             if (batched++ > DatabaseInserter.BATCH_SIZE) {

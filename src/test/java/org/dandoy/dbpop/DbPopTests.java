@@ -21,6 +21,7 @@ public class DbPopTests {
     private static final String username = properties.getProperty("username");
     private static final String password = properties.getProperty("password");
     private static final List<String> args = Arrays.asList(
+            "populate",
             "--jdbcurl", jdbcurl,
             "--username", username,
             "--password", password,

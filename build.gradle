@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'io.github.cdandoy'
-version '1.0.0-SNAPSHOT'
+version '0.0.2-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -17,7 +17,6 @@ dependencies {
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
     implementation 'com.microsoft.sqlserver:mssql-jdbc:10.2.1.jre8'
     implementation 'info.picocli:picocli:4.6.3'
-    implementation 'ch.qos.logback:logback-classic:1.2.11'
     implementation 'org.apache.commons:commons-csv:1.9.0'
 }
 
@@ -55,11 +54,6 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-
-//            groupId = 'io.github.cdandoy'
-//            artifactId = 'dbpop'
-
-//            artifact jar
             artifact sourcesJar
             artifact javadocJar
 

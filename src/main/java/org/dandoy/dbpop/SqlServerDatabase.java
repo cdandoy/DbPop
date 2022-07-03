@@ -5,9 +5,51 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 class SqlServerDatabase extends Database {
+    private static final Collection<String> BLOB_SYSTEM_TYPES = Arrays.asList(
+            "binary",
+            "geography",
+            "geometry",
+            "image",
+            "varbinary"
+    );
 
     public SqlServerDatabase(Connection connection) {
         super(connection);
+    }
+
+    @Override
+    public Collection<TableName> getTableNames(String catalog, String schema) {
+        try {
+            use(catalog);
+            try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT s.name AS schema_name, t.name AS table_name FROM sys.schemas s JOIN sys.tables t ON s.schema_id = t.schema_id WHERE s.name = ?")) {
+                preparedStatement.setString(1, schema);
+                return getTableNames(catalog, preparedStatement);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void use(String catalog) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("USE " + catalog);
+        }
+    }
+
+    private Collection<TableName> getTableNames(String catalog, PreparedStatement preparedStatement) throws SQLException {
+        List<TableName> tableNames = new ArrayList<>();
+        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            while (resultSet.next()) {
+                tableNames.add(
+                        new TableName(
+                                catalog,
+                                resultSet.getString("schema_name"),
+                                resultSet.getString("table_name")
+                        )
+                );
+            }
+        }
+        return tableNames;
     }
 
     @Override
@@ -23,11 +65,13 @@ class SqlServerDatabase extends Database {
                         String catalog = databaseResultSet.getString("name");
                         if (catalogs.contains(catalog)) {
                             statement.execute("USE " + catalog);
+                            // Collects the tables and columns
                             try (PreparedStatement tablesStatement = connection.prepareStatement("\n" +
-                                    "SELECT s.name AS s, t.name AS t, c.name AS c, c.is_identity\n" +
+                                    "SELECT s.name AS s, t.name AS t, c.name AS c, c.is_identity, ty.name AS ty\n" +
                                     "FROM sys.schemas s\n" +
                                     "         JOIN sys.tables t ON t.schema_id = s.schema_id\n" +
                                     "         JOIN sys.columns c ON c.object_id = t.object_id\n" +
+                                    "         LEFT JOIN sys.types ty ON ty.system_type_id = c.system_type_id\n" +
                                     "ORDER BY s.name, t.name, c.column_id")) {
                                 try (TableCollector tableCollector = new TableCollector((schema, table, columns) -> {
                                     TableName tableName = new TableName(catalog, schema, table);
@@ -41,11 +85,15 @@ class SqlServerDatabase extends Database {
                                             String table = tablesResultSet.getString("t");
                                             String column = tablesResultSet.getString("c");
                                             boolean identity = tablesResultSet.getBoolean("is_identity");
-                                            tableCollector.push(schema, table, new Column(column, identity));
+                                            String systemType = tablesResultSet.getString("ty");
+                                            boolean binary = BLOB_SYSTEM_TYPES.contains(systemType);
+
+                                            tableCollector.push(schema, table, new Column(column, identity, binary));
                                         }
                                     }
                                 }
                             }
+                            // Collects the indexes
                             try (PreparedStatement preparedStatement = connection.prepareStatement("\n" +
                                     "SELECT s.name AS s,\n" +
                                     "       t.name AS t,\n" +
@@ -82,6 +130,7 @@ class SqlServerDatabase extends Database {
                                     }
                                 }
                             }
+                            // Collects the foreign keys
                             try (PreparedStatement preparedStatement = connection.prepareStatement("\n" +
                                     "SELECT s.name   AS s,\n" +
                                     "       t.name   AS t,\n" +
@@ -146,7 +195,7 @@ class SqlServerDatabase extends Database {
     }
 
     @Override
-    void identityInsert(TableName tableName, boolean enable) {
+    public void identityInsert(TableName tableName, boolean enable) {
         executeSql(
                 "SET IDENTITY_INSERT %s %s",
                 quote(tableName),
@@ -318,7 +367,7 @@ class SqlServerDatabase extends Database {
         private final boolean identity;
 
         SqlServerDatabaseInserter(Table table, String sql) throws SQLException {
-            super(sql);
+            super(table, sql);
 
             this.tableName = table.getTableName();
             identity = table.getColumns().stream().anyMatch(Column::isIdentity);

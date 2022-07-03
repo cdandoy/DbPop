@@ -3,10 +3,12 @@ package org.dandoy.dbpop;
 class Column {
     private final String name;
     private final boolean identity;
+    private final boolean binary;
 
-    public Column(String name, boolean identity) {
+    public Column(String name, boolean identity, boolean binary) {
         this.name = name;
         this.identity = identity;
+        this.binary = binary;
     }
 
     @Override
@@ -20,5 +22,9 @@ class Column {
 
     public boolean isIdentity() {
         return identity;
+    }
+
+    public boolean isBinary() {
+        return binary;
     }
 }
