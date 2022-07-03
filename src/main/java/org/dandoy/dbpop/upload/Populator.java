@@ -208,6 +208,13 @@ public class Populator implements AutoCloseable {
         List<String> headerNames = csvParser.getHeaderNames();
         List<DataFileHeader> dataFileHeaders = headerNames.stream().map(DataFileHeader::new).collect(Collectors.toList());
         try (DatabaseInserter databaseInserter = database.createInserter(table, dataFileHeaders)) {
+/*
+            Iterator<CSVRecord> csvRecordIterator = csvParser.iterator();
+            while (csvRecordIterator.hasNext()) {
+                CSVRecord csvRecord = csvRecordIterator.next();
+                csvRecord.size()
+            }
+*/
             for (CSVRecord csvRecord : csvParser) {
                 databaseInserter.insert(csvRecord);
                 count++;

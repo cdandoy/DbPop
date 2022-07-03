@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public abstract class Database implements AutoCloseable {
+    private static final ExpressionParser EXPRESSION_PARSER = new ExpressionParser();
     protected final Connection connection;
     private final Statement statement;
 
@@ -213,7 +214,14 @@ public abstract class Database implements AutoCloseable {
                     }
                     preparedStatement.setBytes(i + 1, bytes);
                 } else {
-                    preparedStatement.setString(i + 1, s);
+                    if (s == null) {
+                        preparedStatement.setString(i + 1, null);
+                    } else if (!s.startsWith("{{") || !s.endsWith("}}")) {
+                        preparedStatement.setString(i + 1, s);
+                    } else {
+                        Object value = EXPRESSION_PARSER.evaluate(s);
+                        preparedStatement.setObject(i + 1, value);
+                    }
                 }
             }
             preparedStatement.addBatch();
