@@ -1,4 +1,7 @@
-package org.dandoy.dbpop;
+package org.dandoy.dbpop.upload;
+
+import org.dandoy.dbpop.database.ConnectionBuilder;
+import org.dandoy.dbpop.database.UrlConnectionBuilder;
 
 import java.io.BufferedReader;
 import java.io.File;

@@ -1,7 +1,7 @@
 package org.dandoy.dbpop.cli;
 
-import org.dandoy.dbpop.Database;
-import org.dandoy.dbpop.TableName;
+import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
 
 import java.sql.Connection;

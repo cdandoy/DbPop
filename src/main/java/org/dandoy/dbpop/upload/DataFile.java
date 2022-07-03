@@ -1,4 +1,6 @@
-package org.dandoy.dbpop;
+package org.dandoy.dbpop.upload;
+
+import org.dandoy.dbpop.database.TableName;
 
 import java.io.File;
 

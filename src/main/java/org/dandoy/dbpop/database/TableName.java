@@ -1,4 +1,4 @@
-package org.dandoy.dbpop;
+package org.dandoy.dbpop.database;
 
 import java.util.Objects;
 import java.util.stream.Collectors;

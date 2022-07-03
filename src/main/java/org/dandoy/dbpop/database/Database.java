@@ -1,6 +1,7 @@
-package org.dandoy.dbpop;
+package org.dandoy.dbpop.database;
 
 import org.apache.commons.csv.CSVRecord;
+import org.dandoy.dbpop.FeatureFlags;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -35,6 +36,10 @@ public abstract class Database implements AutoCloseable {
         }
     }
 
+    public Connection getConnection() {
+        return connection;
+    }
+
     protected void executeSql(String sql, Object... args) {
         String s = String.format(sql, args);
         try {
@@ -46,7 +51,7 @@ public abstract class Database implements AutoCloseable {
 
     public abstract Collection<TableName> getTableNames(String catalog, String schema);
 
-    abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
+    public abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
 
     public void dropForeignKey(ForeignKey foreignKey) {
         dropConstraint(foreignKey.getFkTableName(), foreignKey.getName());
@@ -118,7 +123,7 @@ public abstract class Database implements AutoCloseable {
 
     public abstract void identityInsert(TableName tableName, boolean enable);
 
-    DatabaseInserter createInserter(Table table, List<String> headerNames) throws SQLException {
+    public DatabaseInserter createInserter(Table table, List<String> headerNames) throws SQLException {
         TableName tableName = table.getTableName();
         String sql = String.format(
                 "INSERT INTO %s (%s) VALUES (%s)",
@@ -154,9 +159,9 @@ public abstract class Database implements AutoCloseable {
         executeSql("DELETE FROM %s", quote(table.getTableName()));
     }
 
-    abstract DatabasePreparationStrategy createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables);
+    public abstract DatabasePreparationStrategy createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables);
 
-    class DatabaseInserter implements AutoCloseable {
+    public class DatabaseInserter implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;
         private final PreparedStatement preparedStatement;
         private final List<Integer> binaryColumns = new ArrayList<>();
@@ -185,7 +190,7 @@ public abstract class Database implements AutoCloseable {
             batched = 0;
         }
 
-        void insert(CSVRecord csvRecord) throws SQLException {
+        public void insert(CSVRecord csvRecord) throws SQLException {
             for (int i = 0; i < csvRecord.size(); i++) {
                 String s = csvRecord.get(i);
                 if (binaryColumns.contains(i)) {

@@ -1,6 +1,6 @@
 package org.dandoy.test;
 
-import org.dandoy.dbpop.Populator;
+import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 

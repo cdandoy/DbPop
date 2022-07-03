@@ -1,4 +1,6 @@
-package org.dandoy.dbpop;
+package org.dandoy.dbpop.database;
+
+import org.dandoy.dbpop.Settings;
 
 import java.sql.*;
 import java.util.*;
@@ -53,7 +55,7 @@ class SqlServerDatabase extends Database {
     }
 
     @Override
-    Collection<Table> getTables(Set<TableName> datasetTableNames) {
+    public Collection<Table> getTables(Set<TableName> datasetTableNames) {
         Set<String> catalogs = datasetTableNames.stream().map(TableName::getCatalog).collect(Collectors.toSet());
         Map<TableName, List<Column>> tableColumns = new HashMap<>();
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
@@ -214,7 +216,7 @@ class SqlServerDatabase extends Database {
     }
 
     @Override
-    DatabasePreparationStrategy createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables) {
+    public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables) {
         if (Settings.DISABLE_CONTRAINTS) {
             return SqlServerDisablePreparationStrategy.createPreparationStrategy(this, tablesByName);
         } else {

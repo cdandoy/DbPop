@@ -1,12 +1,12 @@
 package org.dandoy.dbpop;
 
-class Settings {
+public class Settings {
     /**
      * Disable foreign keys before inserts vs. drop constraints, and indexes
      */
-    static final boolean DISABLE_CONTRAINTS = true;
+    public static final boolean DISABLE_CONTRAINTS = true;
     /**
      * Check the integrity of the data when re-enabling the foreign keys
      */
-    static final boolean CHECK_CONTRAINTS = false;
+    public static final boolean CHECK_CONTRAINTS = false;
 }

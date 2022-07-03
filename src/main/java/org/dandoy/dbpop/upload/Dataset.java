@@ -1,4 +1,4 @@
-package org.dandoy.dbpop;
+package org.dandoy.dbpop.upload;
 
 import java.util.Collection;
 

@@ -1,4 +1,4 @@
-package org.dandoy.dbpop;
+package org.dandoy.dbpop.database;
 
 class Column {
     private final String name;

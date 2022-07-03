@@ -1,6 +1,6 @@
 package org.dandoy.dbpop.cli;
 
-import org.dandoy.dbpop.Populator;
+import org.dandoy.dbpop.upload.Populator;
 
 import java.util.ArrayList;
 import java.util.List;

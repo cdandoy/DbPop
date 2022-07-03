@@ -1,8 +1,8 @@
-package org.dandoy.dbpop;
+package org.dandoy.dbpop.database;
 
 import java.util.List;
 
-class Table {
+public class Table {
     private final TableName tableName;
     private final List<Column> columns;
     private final List<Index> indexes;
@@ -22,7 +22,7 @@ class Table {
                 '}';
     }
 
-    TableName getTableName() {
+    public TableName getTableName() {
         return tableName;
     }
 

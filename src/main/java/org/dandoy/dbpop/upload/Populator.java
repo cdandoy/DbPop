@@ -1,9 +1,10 @@
-package org.dandoy.dbpop;
+package org.dandoy.dbpop.upload;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.dandoy.dbpop.Database.DatabaseInserter;
+import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.database.Database.DatabaseInserter;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -133,7 +134,8 @@ public class Populator implements AutoCloseable {
 
         try (DatabasePreparationStrategy ignored = database.createDatabasePreparationStrategy(tablesByName, loadedTables)) {
             try {
-                database.connection.setAutoCommit(false);
+                Connection connection = database.getConnection();
+                connection.setAutoCommit(false);
                 try {
                     for (String datasetName : datasets) {
                         Dataset dataset = datasetsByName.get(datasetName);
@@ -141,7 +143,7 @@ public class Populator implements AutoCloseable {
                         rowCount += loadDataset(dataset);
                     }
                 } finally {
-                    database.connection.setAutoCommit(true);
+                    connection.setAutoCommit(true);
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);

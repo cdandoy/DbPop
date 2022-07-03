@@ -2,10 +2,10 @@ package org.dandoy.dbpop.download;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
-import org.dandoy.dbpop.Database;
-import org.dandoy.dbpop.DefaultBuilder;
+import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.upload.DefaultBuilder;
 import org.dandoy.dbpop.FeatureFlags;
-import org.dandoy.dbpop.TableName;
+import org.dandoy.dbpop.database.TableName;
 
 import java.io.File;
 import java.io.IOException;
