@@ -14,7 +14,11 @@ import static org.dandoy.test.MainTest.assertCount;
 
 @EnabledIf("org.dandoy.TestEnv#hasDatabaseSetup")
 public class DbPopTests {
-    private static final List<String> args = Arrays.asList("populate", "--verbose");
+    private static final List<String> args = Arrays.asList(
+            "populate",
+            "--verbose",
+            "--directory", "./src/test/resources/tests"
+    );
 
     @Test
     void testDbPopMain() throws SQLException {
