@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.upload;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -15,6 +16,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class Populator implements AutoCloseable {
     private final ConnectionBuilder connectionBuilder;
     private final Database database;
@@ -127,7 +129,7 @@ public class Populator implements AutoCloseable {
      * @return the number of rows loaded
      */
     public int load(List<String> datasets) {
-        if (verbose) System.out.println("---- Loading " + String.join(", ", datasets));
+        if (verbose) log.info("---- Loading {}", String.join(", ", datasets));
 
         int rowCount = 0;
         Set<Table> loadedTables = getLoadedTables(datasets);
@@ -179,8 +181,7 @@ public class Populator implements AutoCloseable {
         TableName tableName = dataFile.getTableName();
         long t0 = System.currentTimeMillis();
         if (verbose) {
-            System.out.printf("Loading %-60s", tableName.toQualifiedName());
-            System.out.flush();
+            log.info(String.format("Loading %-60s", tableName.toQualifiedName()));
         }
         try {
             Table table = tablesByName.get(tableName);
@@ -193,7 +194,7 @@ public class Populator implements AutoCloseable {
                 int rows = insertRows(table, csvParser);
                 if (verbose) {
                     long t1 = System.currentTimeMillis();
-                    System.out.printf(" %5d rows %4dms%n", rows, t1 - t0);
+                    log.info(String.format(" %5d rows %4dms%n", rows, t1 - t0));
                 }
                 return rows;
             }

@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.upload;
 
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.cli.DatabaseOptions;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
@@ -13,6 +14,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
 
+@Slf4j
 public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
     private ConnectionBuilder connectionBuilder;
     private File directory;
@@ -23,8 +25,8 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
 
     public abstract T build();
 
+    @SuppressWarnings("unchecked")
     private SELF self() {
-        //noinspection unchecked
         return (SELF) this;
     }
 
@@ -158,7 +160,7 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
 
                 setVerbose(Boolean.parseBoolean(properties.getProperty("verbose", "false")));
                 if (this.verbose) {
-                    System.out.println("Properties loaded from " + propertyFile);
+                    log.info("Properties loaded from {}", propertyFile);
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -170,14 +172,14 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
 
     public SELF setConnection(DatabaseOptions databaseOptions) {
         if (databaseOptions.dbUrl != null && databaseOptions.dbUser != null && databaseOptions.dbPassword != null) {
-            setConnection(
+            return setConnection(
                     databaseOptions.dbUrl,
                     databaseOptions.dbUser,
                     databaseOptions.dbPassword
             );
         } else {
             this.connectionBuilder = null;
+            return self();
         }
-        return self();
     }
 }

@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.cli;
 
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.upload.Populator;
 
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import static picocli.CommandLine.*;
  * </pre>
  */
 @Command(name = "populate", description = "Populates the database with the content of the CSV files in the specified datasets")
+@Slf4j
 public class CommandPopulate implements Callable<Integer> {
     @Mixin
     private DatabaseOptions databaseOptions;
@@ -45,11 +47,11 @@ public class CommandPopulate implements Callable<Integer> {
                 rowCount = populator.load(this.datasets);
             }
             long t1 = System.currentTimeMillis();
-            System.out.printf("Loaded %d rows in %dms%n", rowCount, t1 - t0);
+            log.info("Loaded {} rows in {}ms", rowCount, t1 - t0);
             return 0;
         } catch (Exception e) {
             if (standardOptions.verbose) {
-                e.printStackTrace(System.err);
+                log.error("Internal error", e);
             } else {
                 printCauses(e);
             }
@@ -61,11 +63,10 @@ public class CommandPopulate implements Callable<Integer> {
         StringBuilder indent = new StringBuilder();
         while (t != null) {
             if (t.getMessage() != null) {
-                System.err.println(indent + t.getMessage());
+                log.error(indent + t.getMessage());
                 indent.append("  ");
             }
             t = t.getCause();
         }
     }
-
 }

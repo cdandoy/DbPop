@@ -1,5 +1,6 @@
 package org.dandoy.test;
 
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnabledIf("org.dandoy.TestEnv#hasDatabaseSetup")
+@Slf4j
 public class TestBinary {
     @Test
     void mainTest() throws SQLException, IOException {
@@ -70,7 +72,7 @@ public class TestBinary {
             }
         } finally {
             if (!deleteDirectory(tempDirectory)) {
-                System.err.println("Failed to delete " + tempDirectory);
+                log.error("Failed to delete {}", tempDirectory);
             }
         }
     }

@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.download;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.dandoy.dbpop.database.Database;
@@ -16,6 +17,7 @@ import java.sql.*;
 import java.util.Base64;
 import java.util.regex.Pattern;
 
+@Slf4j
 public class Downloader implements AutoCloseable {
     /**
      * Maximum length for an individual value
@@ -124,7 +126,7 @@ public class Downloader implements AutoCloseable {
                     csvPrinter.print(characterStream);
                 }
             } else {
-                System.out.printf("Data too large: %s.%s - %dKb%n",
+                log.error("Data too large: {}.{} - {}Kb",
                         tableName.toQualifiedName(),
                         metaData.getColumnName(i + 1),
                         length / 1024
@@ -146,12 +148,7 @@ public class Downloader implements AutoCloseable {
                 String s = encoder.encodeToString(bytes);
                 csvPrinter.print(s);
             } else {
-                System.out.printf("Data too large: %s.%s - %dKb%n",
-                        tableName.toQualifiedName(),
-                        metaData.getColumnName(i + 1),
-                        length / 1024
-                );
-                csvPrinter.print(null);
+                downloadTooLarge(tableName, csvPrinter, metaData, i, length);
             }
         } else {
             csvPrinter.print(null);
@@ -167,12 +164,7 @@ public class Downloader implements AutoCloseable {
                 String s = encoder.encodeToString(bytes);
                 csvPrinter.print(s);
             } else {
-                System.out.printf("Data too large: %s.%s - %dKb%n",
-                        tableName.toQualifiedName(),
-                        metaData.getColumnName(i + 1),
-                        length / 1024
-                );
-                csvPrinter.print(null);
+                downloadTooLarge(tableName, csvPrinter, metaData, i, length);
             }
         } else {
             csvPrinter.print(null);
@@ -186,16 +178,21 @@ public class Downloader implements AutoCloseable {
             if (length <= MAX_LENGTH) {
                 csvPrinter.print(s);
             } else {
-                System.out.printf("Data too large: %s.%s - %dKb%n",
-                        tableName.toQualifiedName(),
-                        metaData.getColumnName(i + 1),
-                        length / 1024
-                );
-                csvPrinter.print(null);
+                downloadTooLarge(tableName, csvPrinter, metaData, i, length);
             }
         } else {
             csvPrinter.print(null);
         }
+    }
+
+    private void downloadTooLarge(TableName tableName, CSVPrinter csvPrinter, ResultSetMetaData metaData, int i, long length) throws IOException, SQLException {
+        String columnName = metaData.getColumnName(i + 1);
+        log.error("Data too large: {}.{} - {}Kb",
+                tableName.toQualifiedName(),
+                columnName,
+                length / 1024
+        );
+        csvPrinter.print(null);
     }
 
     private Writer getFileWriter(TableName tableName) {
