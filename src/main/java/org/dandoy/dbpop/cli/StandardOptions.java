@@ -6,7 +6,7 @@ import static picocli.CommandLine.Option;
 
 public class StandardOptions {
     @Option(names = {"-d", "--directory"}, description = "Dataset Directory")
-    File directory = new File(".");
+    File directory;
 
     @Option(names = {"-v", "--verbose"}, description = "Verbose")
     boolean verbose;

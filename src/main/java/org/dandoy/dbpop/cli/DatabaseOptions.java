@@ -4,11 +4,11 @@ import static picocli.CommandLine.Option;
 
 public class DatabaseOptions {
     @Option(names = {"-j", "--jdbcurl"}, description = "Database URL")
-     String dbUrl = "jdbc:sqlserver://localhost;database=tempdb;trustServerCertificate=true";
+    public String dbUrl;
 
     @Option(names = {"-u", "--username"}, description = "Database user")
-     String dbUser = "sa";
+    public String dbUser;
 
-    @Option(names = {"-p", "--password"}, description = "Database password", required = true)
-     String dbPassword;
+    @Option(names = {"-p", "--password"}, description = "Database password")
+    public String dbPassword;
 }

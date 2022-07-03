@@ -7,6 +7,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Properties;
 
+/**
+ * Used by JUnit: <pre>@EnabledIf("org.dandoy.TestEnv#hasDatabaseSetup")</pre>
+ */
+@SuppressWarnings("unused")
 public class TestEnv {
     @SuppressWarnings("unused")
     public static boolean hasDatabaseSetup() {

@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.upload;
 
+import org.dandoy.dbpop.cli.DatabaseOptions;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
 
@@ -69,9 +70,12 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
      */
     public SELF setDirectory(File directory) {
         try {
-            if (directory == null) throw new RuntimeException("Directory cannot be null");
-            this.directory = directory.getAbsoluteFile().getCanonicalFile();
-            if (!this.directory.isDirectory()) throw new RuntimeException("Invalid dataset directory: " + this.directory);
+            if (directory != null) {
+                this.directory = directory.getAbsoluteFile().getCanonicalFile();
+                if (!this.directory.isDirectory()) throw new RuntimeException("Invalid dataset directory: " + this.directory);
+            } else {
+                this.directory = null;
+            }
             return self();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -162,5 +166,18 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
         } else {
             throw new RuntimeException("Could not find connection properties");
         }
+    }
+
+    public SELF setConnection(DatabaseOptions databaseOptions) {
+        if (databaseOptions.dbUrl != null && databaseOptions.dbUser != null && databaseOptions.dbPassword != null) {
+            setConnection(
+                    databaseOptions.dbUrl,
+                    databaseOptions.dbUser,
+                    databaseOptions.dbPassword
+            );
+        } else {
+            this.connectionBuilder = null;
+        }
+        return self();
     }
 }
