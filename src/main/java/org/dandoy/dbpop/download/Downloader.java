@@ -3,9 +3,8 @@ package org.dandoy.dbpop.download;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.dandoy.dbpop.database.Database;
-import org.dandoy.dbpop.upload.DefaultBuilder;
-import org.dandoy.dbpop.FeatureFlags;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.upload.DefaultBuilder;
 
 import java.io.File;
 import java.io.IOException;
@@ -85,17 +84,22 @@ public class Downloader implements AutoCloseable {
                 // Headers
                 for (int i = 0; i < columnCount; i++) {
                     String columnName = metaData.getColumnName(i + 1);
+                    if (database.isBinary(metaData, i)) {
+                        columnName += "*b64";
+                    }
                     csvPrinter.print(columnName);
                 }
                 csvPrinter.println();
 
-                // Data
+                // Data - it feels like the download*() methods would be better handled by the Database class
                 while (resultSet.next()) {
                     for (int i = 0; i < columnCount; i++) {
                         if (metaData.getColumnType(i + 1) == Types.CLOB) {
                             downloadClob(tableName, resultSet, csvPrinter, metaData, i);
                         } else if (metaData.getColumnType(i + 1) == Types.BLOB) {
                             downloadBlob(tableName, resultSet, csvPrinter, metaData, i);
+                        } else if (database.isBinary(metaData, i)) {
+                            downloadBinary(tableName, resultSet, csvPrinter, metaData, i);
                         } else {
                             downloadString(tableName, resultSet, csvPrinter, metaData, i);
                         }
@@ -133,24 +137,41 @@ public class Downloader implements AutoCloseable {
     }
 
     private void downloadBlob(TableName tableName, ResultSet resultSet, CSVPrinter csvPrinter, ResultSetMetaData metaData, int i) throws SQLException, IOException {
-        if (FeatureFlags.HANDLE_BINARY) {
-            Blob blob = resultSet.getBlob(i + 1);
-            if (blob != null) {
-                Base64.Encoder encoder = Base64.getEncoder();
-                long length = blob.length();
-                if (length <= MAX_LENGTH) {
-                    byte[] bytes = blob.getBytes(0, (int) length);
-                    String s = encoder.encodeToString(bytes);
-                    csvPrinter.print(s);
-                } else {
-                    System.out.printf("Data too large: %s.%s - %dKb%n",
-                            tableName.toQualifiedName(),
-                            metaData.getColumnName(i + 1),
-                            length / 1024
-                    );
-                    csvPrinter.print(null);
-                }
+        Blob blob = resultSet.getBlob(i + 1);
+        if (blob != null) {
+            Base64.Encoder encoder = Base64.getEncoder();
+            long length = blob.length();
+            if (length <= MAX_LENGTH) {
+                byte[] bytes = blob.getBytes(0, (int) length);
+                String s = encoder.encodeToString(bytes);
+                csvPrinter.print(s);
             } else {
+                System.out.printf("Data too large: %s.%s - %dKb%n",
+                        tableName.toQualifiedName(),
+                        metaData.getColumnName(i + 1),
+                        length / 1024
+                );
+                csvPrinter.print(null);
+            }
+        } else {
+            csvPrinter.print(null);
+        }
+    }
+
+    private void downloadBinary(TableName tableName, ResultSet resultSet, CSVPrinter csvPrinter, ResultSetMetaData metaData, int i) throws SQLException, IOException {
+        byte[] bytes = resultSet.getBytes(i + 1);
+        if (bytes != null) {
+            int length = bytes.length;
+            if (length <= MAX_LENGTH) {
+                Base64.Encoder encoder = Base64.getEncoder();
+                String s = encoder.encodeToString(bytes);
+                csvPrinter.print(s);
+            } else {
+                System.out.printf("Data too large: %s.%s - %dKb%n",
+                        tableName.toQualifiedName(),
+                        metaData.getColumnName(i + 1),
+                        length / 1024
+                );
                 csvPrinter.print(null);
             }
         } else {

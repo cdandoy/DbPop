@@ -1,12 +1,9 @@
 package org.dandoy.dbpop.database;
 
 import org.apache.commons.csv.CSVRecord;
-import org.dandoy.dbpop.FeatureFlags;
+import org.dandoy.dbpop.upload.DataFileHeader;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -123,15 +120,21 @@ public abstract class Database implements AutoCloseable {
 
     public abstract void identityInsert(TableName tableName, boolean enable);
 
-    public DatabaseInserter createInserter(Table table, List<String> headerNames) throws SQLException {
+    public DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders) throws SQLException {
         TableName tableName = table.getTableName();
         String sql = String.format(
                 "INSERT INTO %s (%s) VALUES (%s)",
                 quote(tableName),
-                quote(headerNames),
-                headerNames.stream().map(s -> "?").collect(Collectors.joining(", "))
+                quoteDataFileHeader(dataFileHeaders),
+                dataFileHeaders.stream().map(s -> "?").collect(Collectors.joining(", "))
         );
-        return createInserter(table, sql);
+        return createInserter(table, dataFileHeaders, sql);
+    }
+
+    public String quoteDataFileHeader(Collection<DataFileHeader> strings) {
+        return strings.stream()
+                .map(dataFileHeader -> quote(dataFileHeader.getColumnName()))
+                .collect(Collectors.joining(","));
     }
 
     public String quote(Collection<String> strings) {
@@ -149,8 +152,8 @@ public abstract class Database implements AutoCloseable {
         );
     }
 
-    protected DatabaseInserter createInserter(Table table, String sql) throws SQLException {
-        return new DatabaseInserter(table, sql);
+    protected DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
+        return new DatabaseInserter(dataFileHeaders, sql);
     }
 
     protected abstract String quote(String s);
@@ -161,18 +164,25 @@ public abstract class Database implements AutoCloseable {
 
     public abstract DatabasePreparationStrategy createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables);
 
+    public boolean isBinary(ResultSetMetaData metaData, int i) throws SQLException {
+        int columnType = metaData.getColumnType(i + 1);
+        return columnType == Types.BINARY ||
+                columnType == Types.VARBINARY ||
+                columnType == Types.LONGVARBINARY ||
+                columnType == Types.BLOB;
+    }
+
     public class DatabaseInserter implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;
         private final PreparedStatement preparedStatement;
         private final List<Integer> binaryColumns = new ArrayList<>();
         private int batched = 0;
 
-        DatabaseInserter(Table table, String sql) throws SQLException {
+        DatabaseInserter(List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
             preparedStatement = connection.prepareStatement(sql);
 
-            for (int i = 0; i < table.getColumns().size(); i++) {
-                Column column = table.getColumns().get(i);
-                if (column.isBinary()) {
+            for (int i = 0; i < dataFileHeaders.size(); i++) {
+                if (dataFileHeaders.get(i).isBinary()) {
                     binaryColumns.add(i);
                 }
             }
@@ -194,18 +204,14 @@ public abstract class Database implements AutoCloseable {
             for (int i = 0; i < csvRecord.size(); i++) {
                 String s = csvRecord.get(i);
                 if (binaryColumns.contains(i)) {
-                    if (FeatureFlags.HANDLE_BINARY) {
-                        byte[] bytes;
-                        if (s != null) {
-                            Base64.Decoder decoder = Base64.getDecoder();
-                            bytes = decoder.decode(s);
-                        } else {
-                            bytes = null;
-                        }
-                        preparedStatement.setBytes(i + 1, bytes);
+                    byte[] bytes;
+                    if (s != null) {
+                        Base64.Decoder decoder = Base64.getDecoder();
+                        bytes = decoder.decode(s);
                     } else {
-                        preparedStatement.setBytes(i + 1, null);
+                        bytes = null;
                     }
+                    preparedStatement.setBytes(i + 1, bytes);
                 } else {
                     preparedStatement.setString(i + 1, s);
                 }

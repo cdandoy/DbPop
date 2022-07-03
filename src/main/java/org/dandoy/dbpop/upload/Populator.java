@@ -205,7 +205,8 @@ public class Populator implements AutoCloseable {
     private int insertRows(Table table, CSVParser csvParser) {
         int count = 0;
         List<String> headerNames = csvParser.getHeaderNames();
-        try (DatabaseInserter databaseInserter = database.createInserter(table, headerNames)) {
+        List<DataFileHeader> dataFileHeaders = headerNames.stream().map(DataFileHeader::new).collect(Collectors.toList());
+        try (DatabaseInserter databaseInserter = database.createInserter(table, dataFileHeaders)) {
             for (CSVRecord csvRecord : csvParser) {
                 databaseInserter.insert(csvRecord);
                 count++;

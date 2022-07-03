@@ -1,6 +1,7 @@
 package org.dandoy.dbpop.database;
 
 import org.dandoy.dbpop.Settings;
+import org.dandoy.dbpop.upload.DataFileHeader;
 
 import java.sql.*;
 import java.util.*;
@@ -206,8 +207,8 @@ class SqlServerDatabase extends Database {
     }
 
     @Override
-    protected SqlServerDatabaseInserter createInserter(Table table, String sql) throws SQLException {
-        return new SqlServerDatabaseInserter(table, sql);
+    protected SqlServerDatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
+        return new SqlServerDatabaseInserter(table, dataFileHeaders, sql);
     }
 
     @Override
@@ -368,8 +369,8 @@ class SqlServerDatabase extends Database {
         private final TableName tableName;
         private final boolean identity;
 
-        SqlServerDatabaseInserter(Table table, String sql) throws SQLException {
-            super(table, sql);
+        SqlServerDatabaseInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
+            super(dataFileHeaders, sql);
 
             this.tableName = table.getTableName();
             identity = table.getColumns().stream().anyMatch(Column::isIdentity);
