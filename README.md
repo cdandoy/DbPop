@@ -103,10 +103,17 @@ public class TestUsage {
 
 ### Invoking DbPop from the command line:
 
-DbPop can be invoked from the command line to download data from the database to CSV files or to upload CSV files into the database.
+DbPop can be invoked from the command line using the `download` command to download data from the database to CSV files or the `populate` command to upload CSV files into the database.<br/>
+
 Both operations require a database connection and a dataset directory.
 
 ```text
+Usage: DbPop [-hV] [COMMAND] [options]
+Commands:
+  help      Displays help information about the specified command
+  populate  Populates the database with the content of the CSV files in the specified datasets
+  download  Download data to CSV files
+Common options:
   -d, --directory=<directory>   Dataset Directory
   -j, --jdbcurl=<dbUrl>         Database URL
   -u, --username=<dbUser>       Database user
@@ -115,14 +122,20 @@ Both operations require a database connection and a dataset directory.
 ```
 
 You can download individual tables to CSV files using `download tables <table-names>` or schemas using `download tables <schema-names>`<br/>
-For example:
+Examples:
 
+Download the content of the 3 tables (`actor`, `address`, `category`) to the corresponding CSV files.
 ```text
-download tables \
+DbPop download tables\
   --jdbcurl jdbc:sqlserver://localhost \
   --username scott \
   --password tiger \
   sakila.dbo.actor sakila.dbo.address sakila.dbo.category
+```
+
+Upload the content of the `base` directory.
+```text
+DbPop populate base
 ```
 
 
