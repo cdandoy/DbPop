@@ -1,19 +1,22 @@
 package org.dandoy.test;
 
-import org.dandoy.dbpop.database.ExpressionParser;
+import lombok.extern.slf4j.Slf4j;
+import org.dandoy.TestUtils;
+import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.sql.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@EnabledIf("org.dandoy.TestEnv#hasDatabaseSetup")
-public class MainTest {
+@EnabledIf("org.dandoy.TestUtils#isSqlServer")
+@Slf4j
+public class SqlServerTests {
     @Test
     void noCsvFiles() {
         assertThrows(RuntimeException.class, () -> {
@@ -61,7 +64,7 @@ public class MainTest {
     @Test
     void mainTest() throws SQLException {
         try (Populator populator = Populator.builder()
-                .setDirectory("src/test/resources/tests")
+                .setDirectory("src/test/resources/mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
 
@@ -97,20 +100,62 @@ public class MainTest {
     }
 
     @Test
-    void testExpressionParser() {
-        ExpressionParser parser = new ExpressionParser();
-        parser.evaluate("{{now}}");
-        parser.evaluate("{{yesterday}}");
-        parser.evaluate("{{tomorrow}}");
-        parser.evaluate("{{now - 1 minute}}");
-        parser.evaluate("{{now - 2 minutes}}");
-        parser.evaluate("{{now - 1 hour}}");
-        parser.evaluate("{{now - 2 hours}}");
-        parser.evaluate("{{now - 1 day}}");
-        parser.evaluate("{{now - 2 days}}");
-        parser.evaluate("{{now - 1 month}}");
-        parser.evaluate("{{now - 2 months}}");
-        parser.evaluate("{{now - 1 year}}");
-        parser.evaluate("{{now - 2 years}}");
+    void testBinary() throws SQLException, IOException {
+        File tempDirectory = Files.createTempDirectory("DbPopTestBinary").toFile();
+        try {
+            try (Downloader downloader = Downloader.builder()
+                    .setDirectory(tempDirectory)
+                    .setDataset("base")
+                    .build()) {
+                Connection connection = downloader.getConnection();
+
+                // Creates and populates the test table
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("DROP TABLE IF EXISTS master.dbo.test_binary");
+                    statement.execute("CREATE TABLE master.dbo.test_binary(id INT PRIMARY KEY, test_binary BINARY(32), test_blob VARBINARY(MAX))");
+                }
+                try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO master.dbo.test_binary(id, test_binary, test_blob) VALUES (?,?,?)")) {
+                    preparedStatement.setInt(1, 1);
+                    preparedStatement.setBytes(2, "HELLOHELLOHELLOHELLOHELLOHELLOHE".getBytes());
+                    Blob blob = connection.createBlob();
+                    blob.setBytes(1, "HELLO\0WORLD".getBytes());
+                    preparedStatement.setBlob(3, blob);
+                    preparedStatement.executeUpdate();
+                }
+
+                // Download the data
+                downloader.download("master.dbo.test_binary");
+
+                // Don't leave that data behind
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
+                }
+            }
+
+            try (Populator populator = Populator.builder()
+                    .setDirectory(tempDirectory)
+                    .build()) {
+
+                // Upload the data
+                populator.load("base");
+
+                // Verify
+                try (Connection connection = populator.createConnection()) {
+                    try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM master.dbo.test_binary")) {
+                        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                            assertTrue(resultSet.next());
+                            assertEquals(1, resultSet.getInt(1));
+                            assertEquals("HELLOHELLOHELLOHELLOHELLOHELLOHE", new String(resultSet.getBytes(2)));
+                            Blob blob = resultSet.getBlob(3);
+                            assertEquals("HELLO\0WORLD", new String(blob.getBytes(1, (int) blob.length())));
+                        }
+                    }
+                }
+            }
+        } finally {
+            if (!TestUtils.deleteDirectory(tempDirectory)) {
+                log.error("Failed to delete {}", tempDirectory);
+            }
+        }
     }
 }

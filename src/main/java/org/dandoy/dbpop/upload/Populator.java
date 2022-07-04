@@ -54,6 +54,7 @@ public class Populator implements AutoCloseable {
      *
      * @return a default Populator
      */
+    @SuppressWarnings("unused")
     public static Populator build() {
         return builder().build();
     }
@@ -134,22 +135,18 @@ public class Populator implements AutoCloseable {
         int rowCount = 0;
         Set<Table> loadedTables = getLoadedTables(datasets);
 
-        try (DatabasePreparationStrategy ignored = database.createDatabasePreparationStrategy(tablesByName, loadedTables)) {
-            try {
-                Connection connection = database.getConnection();
-                connection.setAutoCommit(false);
-                try {
-                    for (String datasetName : datasets) {
-                        Dataset dataset = datasetsByName.get(datasetName);
-                        if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
-                        rowCount += loadDataset(dataset);
-                    }
-                } finally {
-                    connection.setAutoCommit(true);
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+        DatabasePreparationStrategy<? extends Database> databasePreparationStrategy = database.createDatabasePreparationStrategy(tablesByName, loadedTables);
+        databasePreparationStrategy.beforeInserts();
+        try {
+            for (String datasetName : datasets) {
+                Dataset dataset = datasetsByName.get(datasetName);
+                if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
+                rowCount += loadDataset(dataset);
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            databasePreparationStrategy.afterInserts();
         }
         return rowCount;
     }
@@ -208,13 +205,6 @@ public class Populator implements AutoCloseable {
         List<String> headerNames = csvParser.getHeaderNames();
         List<DataFileHeader> dataFileHeaders = headerNames.stream().map(DataFileHeader::new).collect(Collectors.toList());
         try (DatabaseInserter databaseInserter = database.createInserter(table, dataFileHeaders)) {
-/*
-            Iterator<CSVRecord> csvRecordIterator = csvParser.iterator();
-            while (csvRecordIterator.hasNext()) {
-                CSVRecord csvRecord = csvRecordIterator.next();
-                csvRecord.size()
-            }
-*/
             for (CSVRecord csvRecord : csvParser) {
                 databaseInserter.insert(csvRecord);
                 count++;

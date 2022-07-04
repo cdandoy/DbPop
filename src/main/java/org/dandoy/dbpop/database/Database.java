@@ -1,28 +1,47 @@
 package org.dandoy.dbpop.database;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVRecord;
+import org.dandoy.dbpop.database.mssql.SqlServerDatabase;
+import org.dandoy.dbpop.database.pgsql.PostgresDatabase;
 import org.dandoy.dbpop.upload.DataFileHeader;
 
 import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 public abstract class Database implements AutoCloseable {
     private static final ExpressionParser EXPRESSION_PARSER = new ExpressionParser();
     protected final Connection connection;
-    private final Statement statement;
+    protected final Statement statement;
+    private final String identifierQuoteString;
 
     protected Database(Connection connection) {
         try {
             this.connection = connection;
             statement = connection.createStatement();
+            DatabaseMetaData metaData = connection.getMetaData();
+            identifierQuoteString = metaData.getIdentifierQuoteString();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
     public static Database createDatabase(Connection connection) {
-        return new SqlServerDatabase(connection);
+        try {
+            DatabaseMetaData metaData = connection.getMetaData();
+            String databaseProductName = metaData.getDatabaseProductName();
+            if ("Microsoft SQL Server".equals(databaseProductName)) {
+                return new SqlServerDatabase(connection);
+            } else if ("PostgreSQL".equals(databaseProductName)) {
+                return new PostgresDatabase(connection);
+            } else {
+                throw new RuntimeException("Unsupported database " + databaseProductName);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -41,9 +60,10 @@ public abstract class Database implements AutoCloseable {
     protected void executeSql(String sql, Object... args) {
         String s = String.format(sql, args);
         try {
+            log.debug("SQL: {}", s);
             statement.execute(s);
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(String.format("Failed to execute \"%s\"", s), e);
         }
     }
 
@@ -102,14 +122,23 @@ public abstract class Database implements AutoCloseable {
 
     public void createForeignKey(ForeignKey foreignKey) {
         try {
-            executeSql(
-                    "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)",
-                    quote(foreignKey.getFkTableName()),
-                    quote(foreignKey.getName()),
-                    quote(foreignKey.getFkColumns()),
-                    quote(foreignKey.getPkTableName()),
-                    quote(foreignKey.getPkColumns())
-            );
+            String constraintDef = foreignKey.getConstraintDef();
+            if (constraintDef == null) {
+                executeSql(
+                        "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)",
+                        quote(foreignKey.getFkTableName()),
+                        quote(foreignKey.getName()),
+                        quote(foreignKey.getFkColumns()),
+                        quote(foreignKey.getPkTableName()),
+                        quote(foreignKey.getPkColumns())
+                );
+            } else {
+                executeSql(
+                        "ALTER TABLE %s ADD %s",
+                        quote(foreignKey.getFkTableName()),
+                        constraintDef
+                );
+            }
         } catch (Exception e) {
             throw new RuntimeException(String.format("Failed to create the foreign key %s.%s", foreignKey.getFkTableName().toQualifiedName(), foreignKey.getName()), e);
         }
@@ -118,8 +147,6 @@ public abstract class Database implements AutoCloseable {
     public void truncateTable(Table table) {
         executeSql("TRUNCATE TABLE %s", quote(table.getTableName()));
     }
-
-    public abstract void identityInsert(TableName tableName, boolean enable);
 
     public DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders) throws SQLException {
         TableName tableName = table.getTableName();
@@ -154,16 +181,21 @@ public abstract class Database implements AutoCloseable {
     }
 
     protected DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
-        return new DatabaseInserter(dataFileHeaders, sql);
+        return new DatabaseInserter(table, dataFileHeaders, sql);
     }
 
-    protected abstract String quote(String s);
+    protected String quote(String s) {
+        if (s.contains(identifierQuoteString)) {
+            s = s.replace(identifierQuoteString, identifierQuoteString + identifierQuoteString);
+        }
+        return identifierQuoteString + s + identifierQuoteString;
+    }
 
-    void deleteTable(Table table) {
+    public void deleteTable(Table table) {
         executeSql("DELETE FROM %s", quote(table.getTableName()));
     }
 
-    public abstract DatabasePreparationStrategy createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables);
+    public abstract DatabasePreparationStrategy<? extends Database> createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables);
 
     public boolean isBinary(ResultSetMetaData metaData, int i) throws SQLException {
         int columnType = metaData.getColumnType(i + 1);
@@ -177,11 +209,24 @@ public abstract class Database implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;
         private final PreparedStatement preparedStatement;
         private final List<Integer> binaryColumns = new ArrayList<>();
+        private final List<ColumnType> columnTypes;
         private int batched = 0;
 
-        DatabaseInserter(List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
+        protected DatabaseInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
             preparedStatement = connection.prepareStatement(sql);
 
+            List<Column> columns = table.getColumns();
+            columnTypes = dataFileHeaders.stream()
+                    .map(dataFileHeader -> {
+                        String columnName = dataFileHeader.getColumnName();
+                        for (Column column : columns) {
+                            if (column.getName().equals(columnName)) {
+                                return column.getColumnType();
+                            }
+                        }
+                        throw new RuntimeException("Column doesn't exist: " + columnName);
+                    })
+                    .collect(Collectors.toList());
             for (int i = 0; i < dataFileHeaders.size(); i++) {
                 if (dataFileHeaders.get(i).isBinary()) {
                     binaryColumns.add(i);
@@ -197,13 +242,14 @@ public abstract class Database implements AutoCloseable {
 
         private void flush() throws SQLException {
             preparedStatement.executeBatch();
-            connection.commit();
             batched = 0;
         }
 
         public void insert(CSVRecord csvRecord) throws SQLException {
             for (int i = 0; i < csvRecord.size(); i++) {
+                int jdbcPos = i + 1;
                 String s = csvRecord.get(i);
+                ColumnType columnType = columnTypes.get(i);
                 if (binaryColumns.contains(i)) {
                     byte[] bytes;
                     if (s != null) {
@@ -212,15 +258,13 @@ public abstract class Database implements AutoCloseable {
                     } else {
                         bytes = null;
                     }
-                    preparedStatement.setBytes(i + 1, bytes);
+                    columnType.bind(preparedStatement, jdbcPos, bytes);
                 } else {
-                    if (s == null) {
-                        preparedStatement.setString(i + 1, null);
-                    } else if (!s.startsWith("{{") || !s.endsWith("}}")) {
-                        preparedStatement.setString(i + 1, s);
-                    } else {
+                    if (s != null && s.startsWith("{{") && s.endsWith("}}")) {
                         Object value = EXPRESSION_PARSER.evaluate(s);
-                        preparedStatement.setObject(i + 1, value);
+                        columnType.bind(preparedStatement, jdbcPos, value);
+                    } else {
+                        columnType.bind(preparedStatement, jdbcPos, s);
                     }
                 }
             }

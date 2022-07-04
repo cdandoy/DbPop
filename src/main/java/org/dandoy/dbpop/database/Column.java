@@ -1,30 +1,23 @@
 package org.dandoy.dbpop.database;
 
-class Column {
-    private final String name;
-    private final boolean identity;
-    private final boolean binary;
+import lombok.Getter;
 
-    public Column(String name, boolean identity, boolean binary) {
+@Getter
+public class Column {
+    private final String name;
+    private final ColumnType columnType;
+    private final boolean nullable;
+    private final boolean autoIncrement;
+
+    public Column(String name, ColumnType columnType, boolean nullable, boolean autoIncrement) {
         this.name = name;
-        this.identity = identity;
-        this.binary = binary;
+        this.columnType = columnType;
+        this.nullable = nullable;
+        this.autoIncrement = autoIncrement;
     }
 
     @Override
     public String toString() {
-        return identity ? name + " (identity)" : name;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public boolean isIdentity() {
-        return identity;
-    }
-
-    public boolean isBinary() {
-        return binary;
+        return autoIncrement ? name + " (identity)" : name;
     }
 }

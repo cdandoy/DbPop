@@ -1,12 +1,30 @@
 package org.dandoy.dbpop.database;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 /**
  * A DatabasePreparationStrategy prepares the tables for deletion and insertion.
- * The prefered strategy for SQL Server is to just disable and re-enable the foreign keys.
- * Code to execute before the deletes happens during the construction, code to execute after the inserts are in the {@link #close()} method.
  */
-public abstract class DatabasePreparationStrategy implements AutoCloseable {
+public abstract class DatabasePreparationStrategy<D extends Database> {
+    protected final D database;
+    protected final Collection<Table> tables;
+    protected final Set<ForeignKey> foreignKeys;
 
-    @Override
-    public abstract void close();
+    public DatabasePreparationStrategy(D database, Map<TableName, Table> tablesByName) {
+        this.database = database;
+        this.tables = tablesByName.values();
+        this.foreignKeys = tables.stream()
+                .flatMap(table -> table.getForeignKeys().stream())
+                .collect(Collectors.toSet());
+    }
+
+    public void beforeInserts() {
+        tables.forEach(database::deleteTable);
+    }
+
+    public void afterInserts() {
+    }
 }

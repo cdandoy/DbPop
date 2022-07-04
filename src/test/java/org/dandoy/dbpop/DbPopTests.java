@@ -10,19 +10,19 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.dandoy.test.MainTest.assertCount;
+import static org.dandoy.test.SqlServerTests.assertCount;
 
-@EnabledIf("org.dandoy.TestEnv#hasDatabaseSetup")
+@EnabledIf("org.dandoy.TestUtils#isSqlServer")
 public class DbPopTests {
     private static final List<String> args = Arrays.asList(
             "populate",
             "--verbose",
-            "--directory", "./src/test/resources/tests"
+            "--directory", "./src/test/resources/mssql"
     );
 
     @Test
     void testDbPopMain() throws SQLException {
-        try (Populator populator = Populator.build()) {
+        try (Populator populator = Populator.builder().setDirectory("./src/test/resources/mssql").build()) {
             try (Connection connection = populator.createConnection()) {
                 load("base");
                 assertCount(connection, "customers", 3);

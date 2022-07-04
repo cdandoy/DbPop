@@ -17,6 +17,8 @@ dependencies {
     implementation 'info.picocli:picocli:4.6.3'
     implementation 'org.apache.commons:commons-csv:1.9.0'
     implementation 'ch.qos.logback:logback-classic:1.2.11'
+    implementation 'org.postgresql:postgresql:42.3.6'
+
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 

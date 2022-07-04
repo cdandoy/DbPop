@@ -118,7 +118,7 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
         try (Connection connection = connectionBuilder.createConnection()) {
             connection.getMetaData();
         } catch (SQLException e) {
-            throw new RuntimeException("Invalid database connection " + connectionBuilder);
+            throw new RuntimeException("Invalid database connection " + connectionBuilder, e);
         }
     }
 

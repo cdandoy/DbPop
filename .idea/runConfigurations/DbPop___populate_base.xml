@@ -2,7 +2,7 @@
   <configuration default="false" name="DbPop - populate base" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="org.dandoy.dbpop.DbPop" />
     <module name="dbpop.main" />
-    <option name="PROGRAM_PARAMETERS" value="populate base" />
+    <option name="PROGRAM_PARAMETERS" value="populate base --verbose" />
     <extension name="coverage">
       <pattern>
         <option name="PATTERN" value="org.dandoy.dbpop.cli.*" />

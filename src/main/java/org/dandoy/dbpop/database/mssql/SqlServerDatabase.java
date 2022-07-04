@@ -1,36 +1,19 @@
-package org.dandoy.dbpop.database;
+package org.dandoy.dbpop.database.mssql;
 
 import org.dandoy.dbpop.Settings;
+import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
+import org.dandoy.dbpop.database.utils.IndexCollector;
+import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.upload.DataFileHeader;
 
 import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-class SqlServerDatabase extends Database {
-    private static final Collection<String> BLOB_SYSTEM_TYPES = Arrays.asList(
-            "binary",
-            "geography",
-            "geometry",
-            "image",
-            "varbinary"
-    );
-
+public class SqlServerDatabase extends Database {
     public SqlServerDatabase(Connection connection) {
         super(connection);
-    }
-
-    @Override
-    public Collection<TableName> getTableNames(String catalog, String schema) {
-        try {
-            use(catalog);
-            try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT s.name AS schema_name, t.name AS table_name FROM sys.schemas s JOIN sys.tables t ON s.schema_id = t.schema_id WHERE s.name = ?")) {
-                preparedStatement.setString(1, schema);
-                return getTableNames(catalog, preparedStatement);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private void use(String catalog) throws SQLException {
@@ -39,22 +22,32 @@ class SqlServerDatabase extends Database {
         }
     }
 
-    private Collection<TableName> getTableNames(String catalog, PreparedStatement preparedStatement) throws SQLException {
-        List<TableName> tableNames = new ArrayList<>();
-        try (ResultSet resultSet = preparedStatement.executeQuery()) {
-            while (resultSet.next()) {
-                tableNames.add(
-                        new TableName(
-                                catalog,
-                                resultSet.getString("schema_name"),
-                                resultSet.getString("table_name")
-                        )
-                );
+    @Override
+    public Collection<TableName> getTableNames(String catalog, String schema) {
+        try {
+            use(catalog);
+            try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT s.name AS schema_name, t.name AS table_name FROM sys.schemas s JOIN sys.tables t ON s.schema_id = t.schema_id WHERE s.name = ?")) {
+                preparedStatement.setString(1, schema);
+                List<TableName> tableNames = new ArrayList<>();
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        tableNames.add(
+                                new TableName(
+                                        catalog,
+                                        resultSet.getString("schema_name"),
+                                        resultSet.getString("table_name")
+                                )
+                        );
+                    }
+                }
+                return tableNames;
             }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
-        return tableNames;
     }
 
+    @SuppressWarnings("DuplicatedCode")
     @Override
     public Collection<Table> getTables(Set<TableName> datasetTableNames) {
         Set<String> catalogs = datasetTableNames.stream().map(TableName::getCatalog).collect(Collectors.toSet());
@@ -69,8 +62,14 @@ class SqlServerDatabase extends Database {
                         if (catalogs.contains(catalog)) {
                             statement.execute("USE " + catalog);
                             // Collects the tables and columns
-                            try (PreparedStatement tablesStatement = connection.prepareStatement("\n" +
-                                    "SELECT s.name AS s, t.name AS t, c.name AS c, c.is_identity, ty.name AS ty\n" +
+                            try (PreparedStatement tablesStatement = connection.prepareStatement("" +
+                                    "SELECT s.name   AS s,\n" +
+                                    "       t.name   AS t,\n" +
+                                    "       c.name   AS c,\n" +
+                                    "       c.is_nullable,\n" +
+                                    "       c.is_identity,\n" +
+                                    "       ty.name  AS type_name,\n" +
+                                    "       ty.scale AS type_scale\n" +
                                     "FROM sys.schemas s\n" +
                                     "         JOIN sys.tables t ON t.schema_id = s.schema_id\n" +
                                     "         JOIN sys.columns c ON c.object_id = t.object_id\n" +
@@ -86,12 +85,25 @@ class SqlServerDatabase extends Database {
                                         while (tablesResultSet.next()) {
                                             String schema = tablesResultSet.getString("s");
                                             String table = tablesResultSet.getString("t");
-                                            String column = tablesResultSet.getString("c");
-                                            boolean identity = tablesResultSet.getBoolean("is_identity");
-                                            String systemType = tablesResultSet.getString("ty");
-                                            boolean binary = BLOB_SYSTEM_TYPES.contains(systemType);
-
-                                            tableCollector.push(schema, table, new Column(column, identity, binary));
+                                            TableName tableName = new TableName(catalog, schema, table);
+                                            if (datasetTableNames.contains(tableName)) {
+                                                String column = tablesResultSet.getString("c");
+                                                boolean nullable = tablesResultSet.getBoolean("is_nullable");
+                                                boolean identity = tablesResultSet.getBoolean("is_identity");
+                                                String typeName = tablesResultSet.getString("type_name");
+                                                int typeScale = tablesResultSet.getInt("type_scale");
+                                                ColumnType columnType = getColumnType(typeName, typeScale);
+                                                tableCollector.push(
+                                                        schema,
+                                                        table,
+                                                        new Column(
+                                                                column,
+                                                                columnType,
+                                                                nullable,
+                                                                identity
+                                                        )
+                                                );
+                                            }
                                         }
                                     }
                                 }
@@ -151,12 +163,13 @@ class SqlServerDatabase extends Database {
                                     "         JOIN sys.columns o_c ON o_c.object_id = fkc.referenced_object_id AND o_c.column_id = fkc.referenced_column_id\n" +
                                     "         JOIN sys.columns m_c ON m_c.object_id = fkc.parent_object_id AND m_c.column_id = fkc.parent_column_id\n" +
                                     "ORDER BY fk.name, s.name, t.name, m_c.column_id")) {
-                                try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
+                                try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, constraintDef, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
                                     TableName pkTableName = new TableName(catalog, pkSchema, pkTable);
                                     TableName fkTableName = new TableName(catalog, fkSchema, fkTable);
                                     if (datasetTableNames.contains(fkTableName)) {
                                         ForeignKey foreignKey = new ForeignKey(
                                                 constraint,
+                                                null,
                                                 pkTableName,
                                                 pkColumns,
                                                 fkTableName,
@@ -169,6 +182,7 @@ class SqlServerDatabase extends Database {
                                         while (resultSet.next()) {
                                             foreignKeyCollector.push(
                                                     resultSet.getString("fk_name"),
+                                                    null,
                                                     resultSet.getString("s"),
                                                     resultSet.getString("t"),
                                                     resultSet.getString("col"),
@@ -197,8 +211,24 @@ class SqlServerDatabase extends Database {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public void identityInsert(TableName tableName, boolean enable) {
+    private static ColumnType getColumnType(String typeName, int typeScale) {
+        if ("varchar".equals(typeName)) return ColumnType.VARCHAR;
+        if ("nvarchar".equals(typeName)) return ColumnType.VARCHAR;
+        if ("int".equals(typeName)) return ColumnType.INTEGER;
+        if ("smallint".equals(typeName)) return ColumnType.INTEGER;
+        if ("tinyint".equals(typeName)) return ColumnType.INTEGER;
+        if ("text".equals(typeName)) return ColumnType.VARCHAR;
+        if ("decimal".equals(typeName)) return typeScale > 0 ? ColumnType.BIG_DECIMAL : ColumnType.INTEGER;
+        if ("datetime".equals(typeName)) return ColumnType.TIMESTAMP;
+        if ("binary".equals(typeName)) return ColumnType.BINARY;
+        if ("bit".equals(typeName)) return ColumnType.INTEGER;
+        if ("char".equals(typeName)) return ColumnType.VARCHAR;
+        if ("image".equals(typeName)) return ColumnType.BINARY;
+        if ("varbinary".equals(typeName)) return ColumnType.BINARY;
+        throw new RuntimeException("Unexpected type: " + typeName);
+    }
+
+    private void identityInsert(TableName tableName, boolean enable) {
         executeSql(
                 "SET IDENTITY_INSERT %s %s",
                 quote(tableName),
@@ -212,12 +242,7 @@ class SqlServerDatabase extends Database {
     }
 
     @Override
-    protected String quote(String s) {
-        return "[" + s + "]";
-    }
-
-    @Override
-    public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables) {
+    public DatabasePreparationStrategy<SqlServerDatabase> createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables) {
         if (Settings.DISABLE_CONTRAINTS) {
             return SqlServerDisablePreparationStrategy.createPreparationStrategy(this, tablesByName);
         } else {
@@ -242,138 +267,15 @@ class SqlServerDatabase extends Database {
         );
     }
 
-    static class TableCollector implements AutoCloseable {
-        final TableConsumer tableConsumer;
-        private String lastSchema;
-        private String lastTable;
-        private List<Column> columns;
-
-        TableCollector(TableConsumer tableConsumer) {
-            this.tableConsumer = tableConsumer;
-        }
-
-        void push(String schema, String table, Column column) {
-            if (!(table.equals(lastTable) && schema.equals(lastSchema))) {
-                flush();
-                lastSchema = schema;
-                lastTable = table;
-                columns = new ArrayList<>();
-            }
-            columns.add(column);
-        }
-
-        @Override
-        public void close() {
-            flush();
-        }
-
-        private void flush() {
-            if (columns != null) {
-                tableConsumer.consume(lastSchema, lastTable, columns);
-            }
-        }
-    }
-
-    interface TableConsumer {
-        void consume(String schema, String table, List<Column> columns);
-    }
-
-    static class IndexCollector implements AutoCloseable {
-        private final IndexConsumer indexConsumer;
-        private String lastSchema;
-        private String lastTable;
-        private String lastIndex;
-        private boolean lastUnique;
-        private boolean lastPrimaryKey;
-        private List<String> columns;
-
-        IndexCollector(IndexConsumer indexConsumer) {
-            this.indexConsumer = indexConsumer;
-        }
-
-        void push(String schema, String table, String index, boolean unique, boolean primaryKey, String column) {
-            if (!(index.equals(lastIndex) && table.equals(lastTable) && schema.equals(lastSchema))) {
-                flush();
-                lastSchema = schema;
-                lastTable = table;
-                lastIndex = index;
-                lastUnique = unique;
-                lastPrimaryKey = primaryKey;
-                columns = new ArrayList<>();
-            }
-            columns.add(column);
-        }
-
-        @Override
-        public void close() {
-            flush();
-        }
-
-        private void flush() {
-            if (columns != null) {
-                indexConsumer.consume(lastSchema, lastTable, lastIndex, lastUnique, lastPrimaryKey, columns);
-            }
-        }
-    }
-
-    interface IndexConsumer {
-        void consume(String schema, String table, String index, boolean unique, boolean primaryKey, List<String> columns);
-    }
-
-    static class ForeignKeyCollector implements AutoCloseable {
-        private final ForeignKeyConsumer foreignKeyConsumer;
-        private String lastConstraint;
-        private String lastFkSchema;
-        private String lastFkTable;
-        private List<String> fkColumns;
-        private String lastPkSchema;
-        private String lastPkTable;
-        private List<String> pkColumns;
-
-        ForeignKeyCollector(ForeignKeyConsumer foreignKeyConsumer) {
-            this.foreignKeyConsumer = foreignKeyConsumer;
-        }
-
-        @Override
-        public void close() {
-            flush();
-        }
-
-        void push(String constraint, String fkSchema, String fkTable, String fkColumn, String pkSchema, String pkTable, String pkColumn) {
-            if (!(constraint.equals(lastConstraint) && fkSchema.equals(lastFkSchema) && fkTable.equals(lastFkTable))) {
-                flush();
-                lastConstraint = constraint;
-                lastFkSchema = fkSchema;
-                lastFkTable = fkTable;
-                fkColumns = new ArrayList<>();
-                lastPkSchema = pkSchema;
-                lastPkTable = pkTable;
-                pkColumns = new ArrayList<>();
-            }
-            fkColumns.add(fkColumn);
-            pkColumns.add(pkColumn);
-        }
-
-        private void flush() {
-            if (fkColumns != null) {
-                foreignKeyConsumer.consume(lastConstraint, lastFkSchema, lastFkTable, fkColumns, lastPkSchema, lastPkTable, pkColumns);
-            }
-        }
-    }
-
-    interface ForeignKeyConsumer {
-        void consume(String constraint, String fkSchema, String fkTable, List<String> fkColumns, String pkSchema, String pkTable, List<String> pkColumns);
-    }
-
     class SqlServerDatabaseInserter extends DatabaseInserter {
         private final TableName tableName;
         private final boolean identity;
 
         SqlServerDatabaseInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
-            super(dataFileHeaders, sql);
+            super(table, dataFileHeaders, sql);
 
             this.tableName = table.getTableName();
-            identity = table.getColumns().stream().anyMatch(Column::isIdentity);
+            identity = table.getColumns().stream().anyMatch(Column::isAutoIncrement);
             if (identity) {
                 identityInsert(this.tableName, true);
             }

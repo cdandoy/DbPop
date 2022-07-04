@@ -1,4 +1,6 @@
-package org.dandoy.dbpop.database;
+package org.dandoy.dbpop.database.mssql;
+
+import org.dandoy.dbpop.database.*;
 
 import java.util.Collection;
 import java.util.Map;
@@ -9,38 +11,34 @@ import java.util.stream.Collectors;
  * This strategy drops and re-creates the indexes and constraints.
  * TODO: the indexes and constraints are not perfectly re-created, they are missing cascade deletes, filters, ...
  */
-class SqlServerDropCreatePreparationStrategy extends DatabasePreparationStrategy {
-    private final Database database;
+class SqlServerDropCreatePreparationStrategy extends DatabasePreparationStrategy<SqlServerDatabase> {
     private final Set<ForeignKey> affectedForeignKeys;
     private final Set<Index> affectedIndexes;
 
-    private SqlServerDropCreatePreparationStrategy(Database database, Set<ForeignKey> affectedForeignKeys, Set<Index> affectedIndexes) {
-        this.database = database;
-        this.affectedForeignKeys = affectedForeignKeys;
-        this.affectedIndexes = affectedIndexes;
-    }
-
-    static SqlServerDropCreatePreparationStrategy createPreparationStrategy(Database database, Map<TableName, Table> tablesByName) {
-        Collection<Table> tables = tablesByName.values();
-        Set<ForeignKey> foreignKeys = tables.stream()
+    private SqlServerDropCreatePreparationStrategy(SqlServerDatabase database, Map<TableName, Table> tablesByName) {
+        super(database, tablesByName);
+        this.affectedForeignKeys = tables.stream()
                 .flatMap(table -> table.getForeignKeys().stream())
                 .collect(Collectors.toSet());
-
-        Set<Index> indexes = tables.stream()
+        this.affectedIndexes = tables.stream()
                 .map(Table::getIndexes)
                 .flatMap(Collection::stream)
                 .collect(Collectors.toSet());
+    }
 
-
-        foreignKeys.forEach(database::dropForeignKey);
-        indexes.forEach(database::dropIndex);
-        tables.forEach(database::truncateTable);
-
-        return new SqlServerDropCreatePreparationStrategy(database, foreignKeys, indexes);
+    static SqlServerDropCreatePreparationStrategy createPreparationStrategy(SqlServerDatabase database, Map<TableName, Table> tablesByName) {
+        return new SqlServerDropCreatePreparationStrategy(database, tablesByName);
     }
 
     @Override
-    public void close() {
+    public void beforeInserts() {
+        affectedForeignKeys.forEach(database::dropForeignKey);
+        affectedIndexes.forEach(database::dropIndex);
+        tables.forEach(database::truncateTable);
+    }
+
+    @Override
+    public void afterInserts() {
         createIndexes(affectedIndexes);
         createForeignKeys(affectedForeignKeys);
     }

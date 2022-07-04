@@ -8,7 +8,7 @@ public class Table {
     private final List<Index> indexes;
     private final List<ForeignKey> foreignKeys;
 
-    Table(TableName tableName, List<Column> columns, List<Index> indexes, List<ForeignKey> foreignKeys) {
+    public Table(TableName tableName, List<Column> columns, List<Index> indexes, List<ForeignKey> foreignKeys) {
         this.tableName = tableName;
         this.columns = columns;
         this.indexes = indexes;
@@ -26,15 +26,15 @@ public class Table {
         return tableName;
     }
 
-    List<Column> getColumns() {
+    public List<Column> getColumns() {
         return columns;
     }
 
-    List<Index> getIndexes() {
+    public List<Index> getIndexes() {
         return indexes;
     }
 
-    List<ForeignKey> getForeignKeys() {
+    public List<ForeignKey> getForeignKeys() {
         return foreignKeys;
     }
 }
