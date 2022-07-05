@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'io.github.cdandoy'
-version '0.0.3-SNAPSHOT'
+version '0.0.2-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -46,6 +46,8 @@ artifacts {
     archives jar, sourcesJar, javadocJar
 }
 
+// TODO: Try the gradle-nexus.publish-plugin next time I publish
+// https://madhead.me/posts/no-bullshit-maven-publish/
 publishing {
     repositories {
         maven {
