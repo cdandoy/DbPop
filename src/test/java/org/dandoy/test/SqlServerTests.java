@@ -14,13 +14,14 @@ import java.sql.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@EnabledIf("org.dandoy.TestUtils#isSqlServer")
+@EnabledIf("org.dandoy.TestUtils#hasSqlServer")
 @Slf4j
 public class SqlServerTests {
     @Test
     void noCsvFiles() {
         assertThrows(RuntimeException.class, () -> {
             try (Populator ignored = Populator.builder()
+                    .setEnvironment("mssql")
                     .setDirectory("src/test/resources/test_no_datafiles")
                     .build()) {
                 System.out.println("I should not be here");
@@ -32,6 +33,7 @@ public class SqlServerTests {
     void datasetNotFound() {
         assertThrows(RuntimeException.class, () -> {
             try (Populator populator = Populator.builder()
+                    .setEnvironment("mssql")
                     .setDirectory("src/test/resources/tests")
                     .build()) {
                 populator.load("test_1_1");
@@ -43,6 +45,7 @@ public class SqlServerTests {
     void tableDoesNotExist() {
         RuntimeException runtimeException = assertThrows(RuntimeException.class, () -> {
             try (Populator ignored = Populator.builder()
+                    .setEnvironment("mssql")
                     .setDirectory("src/test/resources/test_bad_table")
                     .build()) {
                 System.out.println("I should not be here");
@@ -55,6 +58,7 @@ public class SqlServerTests {
     @Test
     void testExpressions() {
         try (Populator populator = Populator.builder()
+                .setEnvironment("mssql")
                 .setDirectory("src/test/resources/test_expressions")
                 .build()) {
             populator.load("base");
@@ -64,6 +68,7 @@ public class SqlServerTests {
     @Test
     void mainTest() throws SQLException {
         try (Populator populator = Populator.builder()
+                .setEnvironment("mssql")
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
@@ -104,6 +109,7 @@ public class SqlServerTests {
         File tempDirectory = Files.createTempDirectory("DbPopTestBinary").toFile();
         try {
             try (Downloader downloader = Downloader.builder()
+                    .setEnvironment("mssql")
                     .setDirectory(tempDirectory)
                     .setDataset("base")
                     .build()) {
@@ -133,6 +139,7 @@ public class SqlServerTests {
             }
 
             try (Populator populator = Populator.builder()
+                    .setEnvironment("mssql")
                     .setDirectory(tempDirectory)
                     .build()) {
 

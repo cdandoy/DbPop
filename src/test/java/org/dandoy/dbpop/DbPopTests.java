@@ -12,7 +12,7 @@ import java.util.List;
 
 import static org.dandoy.test.SqlServerTests.assertCount;
 
-@EnabledIf("org.dandoy.TestUtils#isSqlServer")
+@EnabledIf("org.dandoy.TestUtils#hasSqlServer")
 public class DbPopTests {
     private static final List<String> args = Arrays.asList(
             "populate",
@@ -22,7 +22,10 @@ public class DbPopTests {
 
     @Test
     void testDbPopMain() throws SQLException {
-        try (Populator populator = Populator.builder().setDirectory("./src/test/resources/mssql").build()) {
+        try (Populator populator = Populator.builder()
+                .setEnvironment("mssql")
+                .setDirectory("./src/test/resources/mssql")
+                .build()) {
             try (Connection connection = populator.createConnection()) {
                 load("base");
                 assertCount(connection, "customers", 3);

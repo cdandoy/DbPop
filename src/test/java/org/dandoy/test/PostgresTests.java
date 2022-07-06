@@ -11,11 +11,12 @@ import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@EnabledIf("org.dandoy.TestUtils#isPostgres")
+@EnabledIf("org.dandoy.TestUtils#hasPostgres")
 public class PostgresTests {
     @Test
     void mainTest() throws SQLException {
         try (Populator populator = Populator.builder()
+                .setEnvironment("pgsql")
                 .setDirectory("src/test/resources/pgsql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {

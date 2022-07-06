@@ -61,16 +61,22 @@ public class TestUsage {
 
 #### JDBC connection
 
-However, the JDBC connection can be built using a property file in your home directory, so you do not have to store a password in your source code:
-
-* Linux: `~/.dbpop.properties`
-* Windows: `C:\Users\<username>\dbpop.properties`
+However, the JDBC connection can be built using a property file in your home directory, so you do not have to store a password in your source code
+* Linux: `~/.dbpop/dbpop.properties`
+* Windows: `C:\Users\<username>\.dbpop\dbpop.properties`
 
 ```properties
+# Default environment
 jdbcurl=jdbc:sqlserver://localhost;database=tempdb;trustServerCertificate=true
 username=sa
 password=yourpassword
 verbose=false
+
+# pgsql environment
+pgsql.jdbcurl=jdbc:postgresql://localhost:5432/dbpop
+pgsql.username=postgres
+pgsql.password=GlobalTense1010
+pgsql.verbose=true
 ```
 
 #### Dataset directory
@@ -115,6 +121,7 @@ Commands:
   download  Download data to CSV files
 Common options:
   -d, --directory=<directory>   Dataset Directory
+  --environment=<environment>   dbpop.properties environment
   -j, --jdbcurl=<dbUrl>         Database URL
   -u, --username=<dbUser>       Database user
   -p, --password=<dbPassword>   Database password

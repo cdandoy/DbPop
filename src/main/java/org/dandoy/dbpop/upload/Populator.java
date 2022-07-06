@@ -279,7 +279,6 @@ public class Populator implements AutoCloseable {
          * @return the Populator
          */
         public Populator build() {
-            super.validate();
             return Populator.build(this);
         }
     }

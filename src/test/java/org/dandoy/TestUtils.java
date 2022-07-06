@@ -1,43 +1,35 @@
 package org.dandoy;
 
-import java.io.BufferedReader;
+import org.dandoy.dbpop.utils.Env;
+
 import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.Properties;
+import java.util.Objects;
 
 /**
  * Used by JUnit: <pre>@EnabledIf("org.dandoy.TestUtils#hasDatabaseSetup")</pre>
  */
 @SuppressWarnings("unused")
 public class TestUtils {
+    private static final Env env = Objects.requireNonNull(Env.createEnv());
+
     public static boolean hasDatabaseSetup() {
-        return getJdbcUrl().startsWith("jdbc:");
+        return env.getString("jdbcurl").startsWith("jdbc:");
     }
 
     public static boolean isSqlServer() {
-        return getJdbcUrl().startsWith("jdbc:sqlserver:");
+        return env.environment(null).getString("jdbcurl").startsWith("jdbc:sqlserver:");
+    }
+
+    public static boolean hasSqlServer() {
+        return env.environment("mssql").getString("jdbcurl").startsWith("jdbc:sqlserver:");
     }
 
     public static boolean isPostgres() {
-        return getJdbcUrl().startsWith("jdbc:postgresql:");
+        return env.environment(null).getString("jdbcurl").startsWith("jdbc:postgresql:");
     }
 
-    private static String getJdbcUrl() {
-        Properties properties = new Properties();
-        String userHome = System.getProperty("user.home");
-        if (userHome == null) throw new RuntimeException("Cannot find your home directory");
-        File propertyFile = new File(userHome, "dbpop.properties");
-        if (propertyFile.exists()) {
-            try (BufferedReader bufferedReader = Files.newBufferedReader(propertyFile.toPath(), StandardCharsets.UTF_8)) {
-                properties.load(bufferedReader);
-                return properties.getProperty("jdbcurl", "");
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return "";
+    public static boolean hasPostgres() {
+        return env.environment("pgsql").getString("jdbcurl").startsWith("jdbc:postgresql:");
     }
 
     public static boolean deleteDirectory(File directoryToBeDeleted) {

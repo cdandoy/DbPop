@@ -26,6 +26,7 @@ public class CommandDownloadTables implements Callable<Integer> {
     @Override
     public Integer call() {
         try (Downloader downloader = Downloader.builder()
+                .setEnvironment(standardOptions.environment)
                 .setConnection(databaseOptions)
                 .setDirectory(standardOptions.directory)
                 .setVerbose(standardOptions.verbose)

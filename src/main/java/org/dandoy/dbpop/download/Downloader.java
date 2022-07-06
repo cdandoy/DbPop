@@ -233,7 +233,6 @@ public class Downloader implements AutoCloseable {
 
         @Override
         public Downloader build() {
-            super.validate();
             return Downloader.build(this);
         }
 

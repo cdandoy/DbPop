@@ -4,23 +4,26 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.cli.DatabaseOptions;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
+import org.dandoy.dbpop.utils.Env;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.Properties;
 
 @Slf4j
 public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
-    private ConnectionBuilder connectionBuilder;
+    private Env env;
+    private String dbUrl;
+    private String dbUser;
+    private String dbPassword;
     private File directory;
-    private boolean verbose;
+    private Boolean verbose;
 
     protected DefaultBuilder() {
+        env = Env.createEnv();
+    }
+
+    DefaultBuilder(File directory) {
+        env = Env.createEnv(directory);
     }
 
     public abstract T build();
@@ -30,29 +33,50 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
         return (SELF) this;
     }
 
-    public ConnectionBuilder getConnectionBuilder() {
-        return connectionBuilder;
-    }
-
-    private SELF setConnectionBuilder(ConnectionBuilder connectionBuilder) {
-        this.connectionBuilder = connectionBuilder;
+    public SELF setEnvironment(String environment) {
+        env = env.environment(environment);
         return self();
     }
 
+    public String getDbUrl() {
+        return dbUrl == null ? env.getString("jdbcurl") : dbUrl;
+    }
+
+    public String getDbUser() {
+        return dbUser == null ? env.getString("username") : dbUser;
+    }
+
+    public String getDbPassword() {
+        return dbPassword == null ? env.getString("password") : dbPassword;
+    }
+
+    public boolean isVerbose() {
+        return verbose!= null ? verbose : Boolean.parseBoolean(env.getString("verbose", "false"));
+    }
+
     /**
-     * How to connect to the database.
+     * Enables verbose logging on System.out
      *
-     * @param dbUrl      The JDBC url
-     * @param dbUser     The database username
-     * @param dbPassword The database password
+     * @param verbose verbose on/off
      * @return this
      */
-    public SELF setConnection(String dbUrl, String dbUser, String dbPassword) {
-        return setConnectionBuilder(new UrlConnectionBuilder(dbUrl, dbUser, dbPassword));
+    public SELF setVerbose(boolean verbose) {
+        this.verbose = verbose;
+        return self();
+    }
+
+
+    public ConnectionBuilder getConnectionBuilder() {
+        return new UrlConnectionBuilder(
+                getDbUrl(),
+                getDbUser(),
+                getDbPassword()
+        );
     }
 
     public File getDirectory() {
-        return directory;
+        if (directory != null) return directory;
+        return findDirectory();
     }
 
     /**
@@ -93,93 +117,27 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
         return setDirectory(new File(path));
     }
 
-    public boolean isVerbose() {
-        return verbose;
-    }
-
-    /**
-     * Enables verbose logging on System.out
-     *
-     * @param verbose verbose on/off
-     * @return this
-     */
-    public SELF setVerbose(boolean verbose) {
-        this.verbose = verbose;
-        return self();
-    }
-
-    protected void validate() {
-        if (directory == null) findDirectory();
-        if (directory == null) throw new RuntimeException("You must specify a dataset directory");
-        if (!directory.isDirectory()) throw new RuntimeException("Invalid directory: " + directory);
-
-        if (connectionBuilder == null) setupConnectionFromExternal();
-        if (connectionBuilder == null) throw new RuntimeException("You must specify the database connection");
-        try (Connection connection = connectionBuilder.createConnection()) {
-            connection.getMetaData();
-        } catch (SQLException e) {
-            throw new RuntimeException("Invalid database connection " + connectionBuilder, e);
-        }
-    }
-
     /**
      * Tries to find the dataset directory starting from the current directory.
      */
-    private void findDirectory() {
+    private static File findDirectory() {
         for (File dir = new File("."); dir != null; dir = dir.getParentFile()) {
             File datasetsDirectory = new File(dir, "src/test/resources/datasets");
             if (datasetsDirectory.isDirectory()) {
                 try {
-                    this.directory = datasetsDirectory.getAbsoluteFile().getCanonicalFile();
+                    return datasetsDirectory.getAbsoluteFile().getCanonicalFile();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             }
         }
-    }
-
-    /**
-     * Loads the properties from ~/dbpop.properties
-     */
-    private void setupConnectionFromExternal() {
-        String userHome = System.getProperty("user.home");
-        if (userHome == null) throw new RuntimeException("Cannot find your home directory");
-        File propertyFile = new File(userHome, "dbpop.properties");
-        if (propertyFile.exists()) {
-            Properties properties = new Properties();
-            try (BufferedReader bufferedReader = Files.newBufferedReader(propertyFile.toPath(), StandardCharsets.UTF_8)) {
-                properties.load(bufferedReader);
-                String jdbcurl = properties.getProperty("jdbcurl");
-                String username = properties.getProperty("username");
-                String password = properties.getProperty("password");
-                if (jdbcurl == null) throw new RuntimeException("jdbcurl not set in " + propertyFile);
-                if (username == null) throw new RuntimeException("username not set in " + propertyFile);
-                if (password == null) throw new RuntimeException("password not set in " + propertyFile);
-
-                setConnectionBuilder(new UrlConnectionBuilder(jdbcurl, username, password));
-
-                setVerbose(Boolean.parseBoolean(properties.getProperty("verbose", "false")));
-                if (this.verbose) {
-                    log.info("Properties loaded from {}", propertyFile);
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } else {
-            throw new RuntimeException("Could not find connection properties");
-        }
+        throw new RuntimeException("Datasets directory not set");
     }
 
     public SELF setConnection(DatabaseOptions databaseOptions) {
-        if (databaseOptions.dbUrl != null && databaseOptions.dbUser != null && databaseOptions.dbPassword != null) {
-            return setConnection(
-                    databaseOptions.dbUrl,
-                    databaseOptions.dbUser,
-                    databaseOptions.dbPassword
-            );
-        } else {
-            this.connectionBuilder = null;
-            return self();
-        }
+        dbUrl = databaseOptions.dbUrl;
+        dbUser = databaseOptions.dbUser;
+        dbPassword = databaseOptions.dbPassword;
+        return self();
     }
 }
