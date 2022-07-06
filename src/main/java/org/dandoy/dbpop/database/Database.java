@@ -82,44 +82,6 @@ public abstract class Database implements AutoCloseable {
         );
     }
 
-    public void dropIndex(Index index) {
-        TableName tableName = index.getTableName();
-        try {
-            if (index.isPrimaryKey()) {
-                dropConstraint(tableName, index.getName());
-            } else {
-                executeSql(
-                        "DROP INDEX %s ON %s",
-                        quote(index.getName()),
-                        quote(tableName)
-                );
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(String.format("Failed to drop the index %s.%s", tableName.toQualifiedName(), index.getName()), e);
-        }
-    }
-
-    public void createIndex(Index index) {
-        TableName tableName = index.getTableName();
-        if (index.isPrimaryKey()) {
-            executeSql(
-                    "ALTER TABLE %s ADD CONSTRAINT %s %s (%s)",
-                    quote(tableName),
-                    quote(index.getName()),
-                    index.isPrimaryKey() ? "PRIMARY KEY" : "UNIQUE",
-                    quote(index.getColumns())
-            );
-        } else {
-            executeSql(
-                    "CREATE %sINDEX %s ON %s (%s)",
-                    index.isUnique() ? "UNIQUE " : "",
-                    quote(index.getName()),
-                    quote(tableName),
-                    quote(index.getColumns())
-            );
-        }
-    }
-
     public void createForeignKey(ForeignKey foreignKey) {
         try {
             String constraintDef = foreignKey.getConstraintDef();
@@ -142,10 +104,6 @@ public abstract class Database implements AutoCloseable {
         } catch (Exception e) {
             throw new RuntimeException(String.format("Failed to create the foreign key %s.%s", foreignKey.getFkTableName().toQualifiedName(), foreignKey.getName()), e);
         }
-    }
-
-    public void truncateTable(Table table) {
-        executeSql("TRUNCATE TABLE %s", quote(table.getTableName()));
     }
 
     public DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders) throws SQLException {

@@ -243,11 +243,7 @@ public class SqlServerDatabase extends Database {
 
     @Override
     public DatabasePreparationStrategy<SqlServerDatabase> createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables) {
-        if (Settings.DISABLE_CONTRAINTS) {
-            return SqlServerDisablePreparationStrategy.createPreparationStrategy(this, tablesByName);
-        } else {
-            return SqlServerDropCreatePreparationStrategy.createPreparationStrategy(this, tablesByName);
-        }
+        return SqlServerDisablePreparationStrategy.createPreparationStrategy(this, tablesByName);
     }
 
     void disableForeignKey(ForeignKey foreignKey) {
