@@ -26,7 +26,7 @@ For example:
                             /Employee.csv
 ```
 
-## Adding DbPop to your build
+## Add DbPop to your build
 Add the library to your dependencies via the [Maven package](https://mvnrepository.com/artifact/io.github.cdandoy/dbpop).
 
 Maven:
@@ -42,7 +42,7 @@ Gradle:
 ```
 implementation 'io.github.cdandoy:dbpop:0.0.2'
 ```
-### Invoking DbPop from your unit test:
+## Invoke DbPop from your unit test:
 
 ```java
 public class TestUsage {
@@ -78,7 +78,7 @@ public class TestUsage {
 }
 ```
 
-#### JDBC connection
+## JDBC connection
 
 The JDBC connection can be built using the API or using a property file in your home directory, so you do not have to store a password in your source code
 * Linux: `~/.dbpop/dbpop.properties`
@@ -98,7 +98,7 @@ pgsql.password=GlobalTense1010
 pgsql.verbose=true
 ```
 
-#### Dataset directory
+## Dataset directory
 
 If you do not specify a dataset directory, DbPop will use `./src/test/resources/datasets`
 
@@ -126,7 +126,7 @@ public class TestUsage {
 }
 ```
 
-### Invoking DbPop from the command line:
+## Invoke DbPop from the command line:
 
 DbPop can be invoked from the command line using the `download` command to download data from the database to CSV files or the `populate` command to upload CSV files into the database.<br/>
 
