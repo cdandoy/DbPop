@@ -3,7 +3,7 @@
 This utility allows you to quickly re-populate a development database to an initial state
 which opens the doors of fast and reliable functional tests.
 
-DbPop currently only supports SQL Server but support for other databases will be added.
+DbPop supports SQL Server and PostgreSQL, support for other databases will be added.
 
 DbPop can be invoked from the command line or be used as a dependency to load datasets.
 A dataset is a directory containing CSV files corresponding to your database tables.<br/>
@@ -26,12 +26,23 @@ For example:
                             /Employee.csv
 ```
 
+## Adding DbPop to your build
+Add the library to your dependencies via the [Maven package](https://mvnrepository.com/artifact/io.github.cdandoy/dbpop).
+
+Maven:
+```xml
+<dependency>
+    <groupId>io.github.cdandoy</groupId>
+    <artifactId>dbpop</artifactId>
+    <version>0.0.2</version>
+</dependency>
+```
+
+Gradle:
+```
+implementation 'io.github.cdandoy:dbpop:0.0.2'
+```
 ### Invoking DbPop from your unit test:
-
-You first create a `Populator` instance, you then invoke one of the `load()` methods to load a dataset.
-We recommend to create only one `Populator` that you re-use for all unit tests.
-
-To build a `Populator` you need a JDBC connection and a directory that contains your datasets.
 
 ```java
 public class TestUsage {
@@ -52,16 +63,24 @@ public class TestUsage {
     }
 
     @Test
-    void myTest() {
+    void testSomething() {
         populator.load("base");
         // Run some test
     }
+
+    @Test
+    void testSomethingElse() {
+        populator.load("base");
+        // Run some test
+    }
+    
+    // more tests...
 }
 ```
 
 #### JDBC connection
 
-However, the JDBC connection can be built using a property file in your home directory, so you do not have to store a password in your source code
+The JDBC connection can be built using the API or using a property file in your home directory, so you do not have to store a password in your source code
 * Linux: `~/.dbpop/dbpop.properties`
 * Windows: `C:\Users\<username>\.dbpop\dbpop.properties`
 
