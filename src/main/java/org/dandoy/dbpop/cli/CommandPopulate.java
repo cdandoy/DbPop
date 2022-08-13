@@ -18,7 +18,6 @@ import static picocli.CommandLine.*;
  *   -j, --jdbcurl=&lt;dbUrl&gt;          Database URL
  *   -p, --password=&lt;dbPassword&gt;    Database password
  *   -u, --username=&lt;dbUser&gt;        Database user
- *   -v, --verbose                  Verbose
  *   -V, --version                  Print version information and exit.
  * </pre>
  */
@@ -46,7 +45,6 @@ public class CommandPopulate implements Callable<Integer> {
                     .setEnvironment(standardOptions.environment)
                     .setConnection(databaseOptions)
                     .setPath(path)
-                    .setVerbose(standardOptions.verbose)
                     .build()) {
                 rowCount = populator.load(this.datasets);
             }
@@ -54,11 +52,7 @@ public class CommandPopulate implements Callable<Integer> {
             log.info("Loaded {} rows in {}ms", rowCount, t1 - t0);
             return 0;
         } catch (Exception e) {
-            if (standardOptions.verbose) {
-                log.error("Internal error", e);
-            } else {
-                printCauses(e);
-            }
+            log.error("Internal error", e);
             return 1;
         }
     }

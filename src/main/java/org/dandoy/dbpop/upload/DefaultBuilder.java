@@ -14,7 +14,6 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
     private String dbUrl;
     private String dbUser;
     private String dbPassword;
-    private Boolean verbose;
 
     protected DefaultBuilder() {
         env = Env.createEnv();
@@ -46,21 +45,6 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
 
     public String getDbPassword() {
         return dbPassword == null ? env.getString("password") : dbPassword;
-    }
-
-    public boolean isVerbose() {
-        return verbose != null ? verbose : Boolean.parseBoolean(env.getString("verbose", "false"));
-    }
-
-    /**
-     * Enables verbose logging on System.out
-     *
-     * @param verbose verbose on/off
-     * @return this
-     */
-    public SELF setVerbose(boolean verbose) {
-        this.verbose = verbose;
-        return self();
     }
 
     public ConnectionBuilder getConnectionBuilder() {

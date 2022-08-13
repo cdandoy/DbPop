@@ -23,14 +23,12 @@ public class Populator implements AutoCloseable {
     private final Database database;
     private final Map<String, Dataset> datasetsByName;
     private final Map<TableName, Table> tablesByName;
-    private final boolean verbose;
 
-    private Populator(ConnectionBuilder connectionBuilder, Database database, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, boolean verbose) {
+    private Populator(ConnectionBuilder connectionBuilder, Database database, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName) {
         this.connectionBuilder = connectionBuilder;
         this.database = database;
         this.datasetsByName = datasetsByName;
         this.tablesByName = tablesByName;
-        this.verbose = verbose;
     }
 
     /**
@@ -76,7 +74,7 @@ public class Populator implements AutoCloseable {
 
             Map<String, Dataset> datasetsByName = allDatasets.stream().collect(Collectors.toMap(Dataset::getName, Function.identity()));
             Map<TableName, Table> tablesByName = databaseTables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
-            return new Populator(builder.getConnectionBuilder(), database, datasetsByName, tablesByName, builder.isVerbose());
+            return new Populator(builder.getConnectionBuilder(), database, datasetsByName, tablesByName);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -131,7 +129,7 @@ public class Populator implements AutoCloseable {
      * @return the number of rows loaded
      */
     public int load(List<String> datasets) {
-        if (verbose) log.info("---- Loading {}", String.join(", ", datasets));
+        log.debug("---- Loading {}", String.join(", ", datasets));
 
         int rowCount = 0;
         Set<Table> loadedTables = getLoadedTables(datasets);
@@ -178,9 +176,7 @@ public class Populator implements AutoCloseable {
     private int loadDataFile(DataFile dataFile) {
         TableName tableName = dataFile.getTableName();
         long t0 = System.currentTimeMillis();
-        if (verbose) {
-            log.info(String.format("Loading %-60s", tableName.toQualifiedName()));
-        }
+        log.debug(String.format("Loading %-60s", tableName.toQualifiedName()));
         try {
             Table table = tablesByName.get(tableName);
             CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
@@ -190,9 +186,9 @@ public class Populator implements AutoCloseable {
                     .build();
             try (CSVParser csvParser = csvFormat.parse(new BufferedReader(new InputStreamReader(dataFile.createInputStream(), StandardCharsets.UTF_8)))) {
                 int rows = insertRows(table, csvParser);
-                if (verbose) {
+                if (log.isDebugEnabled()) {
                     long t1 = System.currentTimeMillis();
-                    log.info(String.format(" %5d rows %4dms%n", rows, t1 - t0));
+                    log.debug(String.format(" %5d rows %4dms%n", rows, t1 - t0));
                 }
                 return rows;
             }

@@ -227,10 +227,13 @@ public class Downloader implements AutoCloseable {
          */
         private static File findDirectory() {
             for (File dir = new File("."); dir != null; dir = dir.getParentFile()) {
-                File datasetsDirectory = new File(dir, "src/test/resources/datasets");
+                File datasetsDirectory = new File(dir, "src/test/resources/");
                 if (datasetsDirectory.isDirectory()) {
                     try {
-                        return datasetsDirectory.getAbsoluteFile().getCanonicalFile();
+                        File testdata = new File(datasetsDirectory, "testdata");
+                        if (testdata.isDirectory() || testdata.mkdirs()) {
+                            return testdata.getAbsoluteFile().getCanonicalFile();
+                        }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }

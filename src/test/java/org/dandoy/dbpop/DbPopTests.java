@@ -16,7 +16,6 @@ import static org.dandoy.test.SqlServerTests.assertCount;
 public class DbPopTests {
     private static final List<String> args = Arrays.asList(
             "populate",
-            "--verbose",
             "--path", "mssql"
     );
 

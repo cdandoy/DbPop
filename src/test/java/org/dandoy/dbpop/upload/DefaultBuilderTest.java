@@ -34,22 +34,16 @@ class DefaultBuilderTest {
             assertEquals("jdbc:postgresql://localhost:5432/default", builder.getDbUrl());
             assertEquals("default-username", builder.getDbUser());
             assertEquals("default-password", builder.getDbPassword());
-            assertTrue(builder.isVerbose());
 
             builder.setEnvironment("mssql");
             assertEquals("jdbc:sqlserver://localhost", builder.getDbUrl());
             assertEquals("mssql-username", builder.getDbUser());
             assertEquals("mssql-password", builder.getDbPassword());
-            assertFalse(builder.isVerbose());
 
             builder.setEnvironment("pgsql");
             assertEquals("jdbc:postgresql://localhost:5432/pgsql", builder.getDbUrl());
             assertEquals("pgsql-username", builder.getDbUser());
             assertEquals("pgsql-password", builder.getDbPassword());
-            assertFalse(builder.isVerbose());
-
-            builder.setVerbose(true);
-            assertTrue(builder.isVerbose());
 
         } finally {
             delete(directory);

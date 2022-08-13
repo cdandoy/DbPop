@@ -52,9 +52,9 @@ implementation 'io.github.cdandoy:dbpop:0.0.2'
 ```java
 public class TestUsage {
     private static Populator populator = Populator.builder()
-                                           .setDirectory("src/test/resources/datasets")
-                                           .setConnection("jdbc:sqlserver://localhost", "sa", "password")
-                                           .build();
+            .setPath("/testdata/")
+            .setConnection("jdbc:sqlserver://localhost", "sa", "password")
+            .build();
 
     @Test
     void testSomething() {
@@ -90,6 +90,7 @@ pgsql.jdbcurl=jdbc:postgresql://localhost:5432/yourdatabase
 pgsql.username=postgres
 pgsql.password=yourpassword
 ```
+
 You use `setEnvironment("pgsql")` on the builder to point to the `pgsql` environment.
 
 ## Dataset directory
@@ -114,7 +115,9 @@ public class TestUsage {
 
 DbPop can be invoked from the command line using the `download` command to download data from the database to CSV files or the `populate` command to upload CSV files into the database.<br/>
 
-Both operations require a database connection and a dataset directory.
+Both operations require a database connection.<br/>
+`download` writes the output at the location specified by the `--directory` option.<br/>
+`populate` reads the input from the classpath relative to the `--path` option.
 
 ```text
 Usage: DbPop [-hV] [COMMAND] [options]
@@ -123,18 +126,20 @@ Commands:
   populate  Populates the database with the content of the CSV files in the specified datasets
   download  Download data to CSV files
 Common options:
-  -d, --directory=<directory>   Dataset Directory
+  --path=<path>                 Dataset path, used in combination with populate
+                                Default: /testdata/
+  --directory=<directory>       Dataset directory, used in combination with download.
+                                Default: ./src/test/resources/testdata/
   --environment=<environment>   dbpop.properties environment
   -j, --jdbcurl=<dbUrl>         Database URL
   -u, --username=<dbUser>       Database user
   -p, --password=<dbPassword>   Database password
-  -v, --verbose                 Verbose
 ```
 
 You can download individual tables, schemas, or whole databases.
 
 Examples:<br/>
-Download the content of the 3 tables (`actor`, `address`, `category`) to the corresponding CSV files.
+Download the content of the 3 tables (`actor`, `address`, `category`) to the corresponding CSV files in src/test/resources/testdata/.
 
 ```text
 DbPop download\

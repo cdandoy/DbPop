@@ -37,7 +37,6 @@ public class CommandDownload implements Callable<Integer> {
                 .setEnvironment(standardOptions.environment)
                 .setConnection(databaseOptions)
                 .setDirectory(directory)
-                .setVerbose(standardOptions.verbose)
                 .setDataset(dataset)
                 .build()) {
             Database database = downloader.getDatabase();
