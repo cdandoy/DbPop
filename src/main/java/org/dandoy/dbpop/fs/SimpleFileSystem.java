@@ -17,7 +17,7 @@ import java.util.zip.ZipInputStream;
 public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
     private final String path;
 
-    private SimpleFileSystem(String path) {
+    protected SimpleFileSystem(String path) {
         this.path = path;
     }
 
@@ -25,7 +25,7 @@ public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
         return new SimpleFileSystem(trimSlashes(path));
     }
 
-    private static String trimSlashes(String path) {
+    static String trimSlashes(String path) {
         if (path.charAt(0) == '/') {
             path = path.substring(1);
         }
@@ -49,7 +49,6 @@ public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
     }
 
     public List<SimpleFileSystem> list() {
-        long t0 = System.currentTimeMillis();
         Set<SimpleFileSystem> ret = new TreeSet<>();
         for (ClassLoader classLoader = getClass().getClassLoader();
              classLoader != null;
@@ -74,13 +73,10 @@ public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
                 }
             }
         }
-        if (!ret.isEmpty()) {
-            System.out.printf("Found %s in %dms%n", path, System.currentTimeMillis() - t0);
-        }
         return new ArrayList<>(ret);
     }
 
-    private void listZip(Set<SimpleFileSystem> ret, File file) {
+    void listZip(Collection<SimpleFileSystem> ret, File file) {
         try {
             String search = path + "/";
             try (ZipFile zipFile = new ZipFile(file)) {
@@ -92,7 +88,7 @@ public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
                         String subPath = zipEntryName.substring(search.length());
                         subPath = trimSlashes(subPath);
                         if (!subPath.contains("/")) {
-                            ret.add(new SimpleFileSystem(zipEntryName));
+                            ret.add(new ZipFileSystem(file, zipEntryName));
                         }
                     }
                 }
@@ -102,7 +98,7 @@ public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
         }
     }
 
-    private void listFiles(Set<SimpleFileSystem> ret, File directory) {
+    void listFiles(Collection<SimpleFileSystem> ret, File directory) {
         File[] contents = new File(directory, path).listFiles();
         if (contents != null) {
             int baseLength = directory.getPath().length() + 1;
@@ -112,7 +108,7 @@ public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
                 if (File.separatorChar == '\\') {
                     newPath = newPath.replace('\\', '/');
                 }
-                ret.add(new SimpleFileSystem(newPath));
+                ret.add(new LocalFileSystem(directory, newPath));
             }
         }
     }
@@ -136,44 +132,39 @@ public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
     }
 
     public InputStream createInputStream() throws IOException {
-        long t0 = System.currentTimeMillis();
-        try {
-            for (ClassLoader classLoader = getClass().getClassLoader();
-                 classLoader != null;
-                 classLoader = classLoader.getParent()) {
-                if (classLoader instanceof URLClassLoader) {
-                    URLClassLoader urlClassLoader = (URLClassLoader) classLoader;
-                    URL[] urls = urlClassLoader.getURLs();
-                    if (urls != null) {
-                        for (URL url : urls) {
-                            if ("file".equals(url.getProtocol())) {
-                                File file = toFile(url);
-                                if (file.isFile()) {
-                                    String fileName = file.getName().toLowerCase();
-                                    if (fileName.endsWith(".jar") || fileName.endsWith(".zip")) {
-                                        InputStream zipInputStream = createZipInputStream(file);
-                                        if (zipInputStream != null) {
-                                            return zipInputStream;
-                                        }
+        for (ClassLoader classLoader = getClass().getClassLoader();
+             classLoader != null;
+             classLoader = classLoader.getParent()) {
+            if (classLoader instanceof URLClassLoader) {
+                URLClassLoader urlClassLoader = (URLClassLoader) classLoader;
+                URL[] urls = urlClassLoader.getURLs();
+                if (urls != null) {
+                    for (URL url : urls) {
+                        if ("file".equals(url.getProtocol())) {
+                            File file = toFile(url);
+                            if (file.isFile()) {
+                                String fileName = file.getName().toLowerCase();
+                                if (fileName.endsWith(".jar") || fileName.endsWith(".zip")) {
+                                    InputStream zipInputStream = createZipInputStream(file);
+                                    if (zipInputStream != null) {
+                                        return zipInputStream;
                                     }
-                                } else {
-                                    File content = new File(file, path);
-                                    if (content.isFile()) {
-                                        return Files.newInputStream(content.toPath());
-                                    }
+                                }
+                            } else {
+                                File content = new File(file, path);
+                                if (content.isFile()) {
+                                    return Files.newInputStream(content.toPath());
                                 }
                             }
                         }
                     }
                 }
             }
-        } finally {
-            System.out.printf("Found %s in %dms%n", path, System.currentTimeMillis() - t0);
         }
         throw new RuntimeException("Not found: " + this);
     }
 
-    private InputStream createZipInputStream(File file) throws IOException {
+    InputStream createZipInputStream(File file) throws IOException {
         try (ZipInputStream zipInputStream = new ZipInputStream(new BufferedInputStream(Files.newInputStream(file.toPath())))) {
             while (true) {
                 ZipEntry zipEntry = zipInputStream.getNextEntry();
