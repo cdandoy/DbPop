@@ -31,7 +31,7 @@ public class Downloader implements AutoCloseable {
         this.connection = connection;
         this.statement = connection.createStatement();
         this.directory = directory;
-        database = Database.createDatabase(connection);
+        this.database = Database.createDatabase(connection);
     }
 
     @Override
@@ -209,11 +209,63 @@ public class Downloader implements AutoCloseable {
     }
 
     public static class Builder extends DefaultBuilder<Builder, Downloader> {
+        private File directory;
         private String dataset;
 
         @Override
         public Downloader build() {
             return Downloader.build(this);
+        }
+
+        public File getDirectory() {
+            if (directory != null) return directory;
+            return findDirectory();
+        }
+
+        /**
+         * Tries to find the dataset directory starting from the current directory.
+         */
+        private static File findDirectory() {
+            for (File dir = new File("."); dir != null; dir = dir.getParentFile()) {
+                File datasetsDirectory = new File(dir, "src/test/resources/datasets");
+                if (datasetsDirectory.isDirectory()) {
+                    try {
+                        return datasetsDirectory.getAbsoluteFile().getCanonicalFile();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+            throw new RuntimeException("Datasets directory not set");
+        }
+
+        /**
+         * For example:
+         * <pre>
+         * directory/
+         *   base/
+         *     AdventureWorks/
+         *       HumanResources/
+         *         Department.csv
+         *         Employee.csv
+         *         Shift.csv
+         * </pre>
+         *
+         * @param directory The directory that holds the datasets
+         * @return this
+         */
+        public Builder setDirectory(File directory) {
+            try {
+                if (directory != null) {
+                    this.directory = directory.getAbsoluteFile().getCanonicalFile();
+                    if (!this.directory.isDirectory()) throw new RuntimeException("Invalid dataset directory: " + this.directory);
+                } else {
+                    this.directory = null;
+                }
+                return this;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public Builder setDataset(String dataset) {

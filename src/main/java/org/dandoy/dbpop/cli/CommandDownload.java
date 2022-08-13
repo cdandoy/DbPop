@@ -5,6 +5,7 @@ import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -20,6 +21,9 @@ public class CommandDownload implements Callable<Integer> {
     @Mixin
     private StandardOptions standardOptions;
 
+    @Option(names = {"-d", "--directory"}, description = "Dataset Directory")
+    File directory;
+
     @Option(names = {"--dataset"}, description = "Dataset", required = true)
     private String dataset;
 
@@ -32,7 +36,7 @@ public class CommandDownload implements Callable<Integer> {
         try (Downloader downloader = Downloader.builder()
                 .setEnvironment(standardOptions.environment)
                 .setConnection(databaseOptions)
-                .setDirectory(standardOptions.directory)
+                .setDirectory(directory)
                 .setVerbose(standardOptions.verbose)
                 .setDataset(dataset)
                 .build()) {

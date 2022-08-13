@@ -31,6 +31,9 @@ public class CommandPopulate implements Callable<Integer> {
     @Mixin
     private StandardOptions standardOptions;
 
+    @Option(names = {"--path"}, description = "Dataset path")
+    String path;
+
     @Parameters(paramLabel = "<dataset>", description = "Datasets", arity = "1..*")
     private final List<String> datasets = new ArrayList<>();
 
@@ -42,7 +45,7 @@ public class CommandPopulate implements Callable<Integer> {
             try (Populator populator = Populator.builder()
                     .setEnvironment(standardOptions.environment)
                     .setConnection(databaseOptions)
-                    .setDirectory(standardOptions.directory)
+                    .setPath(path)
                     .setVerbose(standardOptions.verbose)
                     .build()) {
                 rowCount = populator.load(this.datasets);

@@ -6,10 +6,11 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.Database.DatabaseInserter;
+import org.dandoy.dbpop.fs.SimpleFileSystem;
 
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
@@ -62,8 +63,8 @@ public class Populator implements AutoCloseable {
     private static Populator build(Builder builder) {
         try {
             Database database = Database.createDatabase(builder.getConnectionBuilder().createConnection());
-            List<Dataset> allDatasets = getDatasets(builder.getDirectory());
-            if (allDatasets.isEmpty()) throw new RuntimeException("No datasets found in " + builder.getDirectory());
+            List<Dataset> allDatasets = getDatasets(builder.getSimpleFileSystem());
+            if (allDatasets.isEmpty()) throw new RuntimeException("No datasets found in " + builder.getSimpleFileSystem());
 
             Set<TableName> datasetTableNames = allDatasets.stream()
                     .flatMap(dataset -> dataset.getDataFiles().stream())
@@ -102,7 +103,7 @@ public class Populator implements AutoCloseable {
             throw new RuntimeException(String.format(
                     "Table %s does not exist for this data file %s",
                     badDataFile.getTableName().toQualifiedName(),
-                    badDataFile.getFile()
+                    badDataFile.getSimpleFileSystem()
             ));
         }
     }
@@ -187,7 +188,7 @@ public class Populator implements AutoCloseable {
                     .setSkipHeaderRecord(true)
                     .setNullString("")
                     .build();
-            try (CSVParser csvParser = csvFormat.parse(Files.newBufferedReader(dataFile.getFile().toPath(), StandardCharsets.UTF_8))) {
+            try (CSVParser csvParser = csvFormat.parse(new BufferedReader(new InputStreamReader(dataFile.createInputStream(), StandardCharsets.UTF_8)))) {
                 int rows = insertRows(table, csvParser);
                 if (verbose) {
                     long t1 = System.currentTimeMillis();
@@ -215,46 +216,40 @@ public class Populator implements AutoCloseable {
         return count;
     }
 
-    private static List<Dataset> getDatasets(File directory) {
+    private static List<Dataset> getDatasets(SimpleFileSystem simpleFileSystem) {
         List<Dataset> datasets = new ArrayList<>();
-        File[] datasetFiles = directory.listFiles();
-        if (datasetFiles == null) throw new RuntimeException("Invalid directory " + directory);
-        for (File datasetFile : datasetFiles) {
-            File[] catalogFiles = datasetFile.listFiles();
-            if (catalogFiles != null) {
-                Collection<DataFile> dataFiles = new ArrayList<>();
-                for (File catalogFile : catalogFiles) {
-                    String catalog = catalogFile.getName();
-                    File[] schemaFiles = catalogFile.listFiles();
-                    if (schemaFiles != null) {
-                        for (File schemaFile : schemaFiles) {
-                            String schema = schemaFile.getName();
-                            File[] tableFiles = schemaFile.listFiles();
-                            if (tableFiles != null) {
-                                for (File tableFile : tableFiles) {
-                                    String tableFileName = tableFile.getName();
-                                    if (tableFileName.endsWith(".csv")) {
-                                        String table = tableFileName.substring(0, tableFileName.length() - 4);
-                                        dataFiles.add(
-                                                new DataFile(
-                                                        tableFile,
-                                                        new TableName(catalog, schema, table)
-                                                )
-                                        );
-                                    }
-                                }
-                            }
+        Collection<SimpleFileSystem> datasetFiles = simpleFileSystem.list();
+        if (datasetFiles.isEmpty()) throw new RuntimeException("Invalid path " + simpleFileSystem);
+        for (SimpleFileSystem datasetFile : datasetFiles) {
+            Collection<SimpleFileSystem> catalogFiles = datasetFile.list();
+            Collection<DataFile> dataFiles = new ArrayList<>();
+            for (SimpleFileSystem catalogFile : catalogFiles) {
+                String catalog = catalogFile.getName();
+                Collection<SimpleFileSystem> schemaFiles = catalogFile.list();
+                for (SimpleFileSystem schemaFile : schemaFiles) {
+                    String schema = schemaFile.getName();
+                    Collection<SimpleFileSystem> tableFiles = schemaFile.list();
+                    for (SimpleFileSystem tableFile : tableFiles) {
+                        String tableFileName = tableFile.getName();
+                        if (tableFileName.endsWith(".csv")) {
+                            String table = tableFileName.substring(0, tableFileName.length() - 4);
+                            dataFiles.add(
+                                    new DataFile(
+                                            tableFile,
+                                            new TableName(catalog, schema, table)
+                                    )
+                            );
                         }
                     }
                 }
-                if (!dataFiles.isEmpty()) {
-                    datasets.add(
-                            new Dataset(
-                                    datasetFile.getName(),
-                                    dataFiles
-                            )
-                    );
-                }
+            }
+            if (!dataFiles.isEmpty()) {
+                datasets.add(
+                        new Dataset(
+                                datasetFile.getName(),
+                                dataFiles
+                        )
+                );
             }
         }
         return datasets;
@@ -272,6 +267,37 @@ public class Populator implements AutoCloseable {
      * Populator builder
      */
     public static class Builder extends DefaultBuilder<Builder, Populator> {
+        private String path;
+
+        public String getPath() {
+            if (path != null) return path;
+            return "/testdata/";
+        }
+
+
+        /**
+         * For example:
+         * <pre>
+         * path/
+         *   base/
+         *     AdventureWorks/
+         *       HumanResources/
+         *         Department.csv
+         *         Employee.csv
+         *         Shift.csv
+         * </pre>
+         *
+         * @param path The path that holds the datasets
+         * @return this
+         */
+        public Builder setPath(String path) {
+            this.path = path;
+            return this;
+        }
+
+        public SimpleFileSystem getSimpleFileSystem() {
+            return SimpleFileSystem.fromPath(getPath());
+        }
 
         /**
          * Builds the Populator

@@ -17,14 +17,14 @@ public class DbPopTests {
     private static final List<String> args = Arrays.asList(
             "populate",
             "--verbose",
-            "--directory", "./src/test/resources/mssql"
+            "--path", "mssql"
     );
 
     @Test
     void testDbPopMain() throws SQLException {
         try (Populator populator = Populator.builder()
                 .setEnvironment("mssql")
-                .setDirectory("./src/test/resources/mssql")
+                .setPath("mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
                 load("base");

@@ -17,7 +17,7 @@ public class PostgresTests {
     void mainTest() throws SQLException {
         try (Populator populator = Populator.builder()
                 .setEnvironment("pgsql")
-                .setDirectory("src/test/resources/pgsql")
+                .setPath("pgsql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
 
