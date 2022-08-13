@@ -71,6 +71,22 @@ public abstract class Database implements AutoCloseable {
 
     public abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
 
+    public List<String> getSchemas(String catalog) {
+        try {
+            DatabaseMetaData metaData = connection.getMetaData();
+            try (ResultSet resultSet = metaData.getSchemas(catalog, null)) {
+                List<String> ret = new ArrayList<>();
+                while (resultSet.next()) {
+                    String name = resultSet.getString(1);
+                    ret.add(name);
+                }
+                return ret;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void dropForeignKey(ForeignKey foreignKey) {
         dropConstraint(foreignKey.getFkTableName(), foreignKey.getName());
     }
@@ -136,6 +152,21 @@ public abstract class Database implements AutoCloseable {
                 quote(tableName.getSchema()),
                 quote(tableName.getTable())
         );
+    }
+
+    public List<String> split(String name) {
+        List<String> ret = new ArrayList<>(3);
+        StringBuilder sb = new StringBuilder();
+        for (char c : name.toCharArray()) {
+            if (c == '.') {
+                ret.add(sb.toString());
+                sb.setLength(0);
+            } else {
+                sb.append(c);
+            }
+        }
+        ret.add(sb.toString());
+        return ret;
     }
 
     protected DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {

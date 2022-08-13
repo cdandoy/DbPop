@@ -15,7 +15,6 @@ import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.sql.*;
 import java.util.Base64;
-import java.util.regex.Pattern;
 
 @Slf4j
 public class Downloader implements AutoCloseable {
@@ -25,7 +24,6 @@ public class Downloader implements AutoCloseable {
     private static final int MAX_LENGTH = 1024 * 32;
     private final File directory;
     private final Connection connection;
-    private final Pattern SPLIT_PATTERN = Pattern.compile("\\.");
     private final Statement statement;
     private final Database database;
 
@@ -51,6 +49,10 @@ public class Downloader implements AutoCloseable {
         return connection;
     }
 
+    public Database getDatabase() {
+        return database;
+    }
+
     private static Downloader build(Builder builder) {
         try {
             return new Downloader(
@@ -67,11 +69,6 @@ public class Downloader implements AutoCloseable {
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public void download(String table) {
-        TableName tableName = getTableName(table);
-        download(tableName);
     }
 
     public void download(TableName tableName) {
@@ -208,23 +205,6 @@ public class Downloader implements AutoCloseable {
             return Files.newBufferedWriter(file.toPath(), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
         } catch (IOException e) {
             throw new RuntimeException("Failed to create ", e);
-        }
-    }
-
-    private TableName getTableName(String table) {
-        try {
-            String[] split = SPLIT_PATTERN.split(table);
-            if (split.length == 1) {
-                return new TableName(connection.getCatalog(), connection.getSchema(), split[0]);
-            } else if (split.length == 2) {
-                return new TableName(connection.getCatalog(), split[0], split[1]);
-            } else if (split.length == 3) {
-                return new TableName(split[0], split[1], split[2]);
-            } else {
-                throw new RuntimeException("Invalid table name: " + table);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
     }
 

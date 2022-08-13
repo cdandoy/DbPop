@@ -15,11 +15,10 @@ import picocli.CommandLine.Command;
         subcommands = {
                 CommandLine.HelpCommand.class,
                 CommandPopulate.class,
-                CommandDownload.class,
+                CommandDownload.class
         }
 )
 public class DbPop {
-
     public static void main(String[] args) {
         int exitCode = likeMain(args);
         System.exit(exitCode);
@@ -28,6 +27,7 @@ public class DbPop {
     /**
      * Used for tests only
      */
+    @SuppressWarnings("InstantiationOfUtilityClass")
     static int likeMain(String[] args) {
         DbPop dbPop = new DbPop();
         return new CommandLine(dbPop)

@@ -2,6 +2,7 @@ package org.dandoy.test;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.TestUtils;
+import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.Test;
@@ -130,7 +131,7 @@ public class SqlServerTests {
                 }
 
                 // Download the data
-                downloader.download("master.dbo.test_binary");
+                downloader.download(new TableName("master", "dbo", "test_binary"));
 
                 // Don't leave that data behind
                 try (Statement statement = connection.createStatement()) {

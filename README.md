@@ -10,27 +10,30 @@ A dataset is a directory containing CSV files corresponding to your database tab
 For example:
 
 ```
-/src/
-    /test/
-        /resources/
-            /testdata/
-                /base/                          - populates the base test data
-                    /AdventureWorks/
-                        /HumanResources/
-                            /Department.csv     - data files to populate AdventureWorks.HumanResources.Department
-                            /Employee.csv       -                        AdventureWorks.HumanResources.Employee
-                            /Shift.csv          -                        AdventureWorks.HumanResources.Shift
-                /ADV-7412/                      - Additional data specific to bug ADV-7412 
-                    /AdventureWorks/
-                        /HumanResources/
-                            /Employee.csv
+src
++-- test
+     +-- resources 
+          +-- testdata
+               +-- base                                 - populates the base test data
+               |    +-- AdventureWorks
+               |         +-- HumanResources
+               |              |-- Department.csv        - data files to populate AdventureWorks.HumanResources.Department                                  
+               |              |-- Employee.csv          -                        AdventureWorks.HumanResources.Employee                              
+               |              +-- Shift.csv             -                        AdventureWorks.HumanResources.Shift                          
+               +-- ADV-7412                             - test data specific to ticket ADV-7412           
+                    +-- AdventureWorks
+                         +-- HumanResources
+                              +-- Employee.csv
 ```
 
 ## Add DbPop to your build
+
 Add the library to your dependencies via the [Maven package](https://mvnrepository.com/artifact/io.github.cdandoy/dbpop).
 
 Maven:
+
 ```xml
+
 <dependency>
     <groupId>io.github.cdandoy</groupId>
     <artifactId>dbpop</artifactId>
@@ -39,41 +42,32 @@ Maven:
 ```
 
 Gradle:
+
 ```
 implementation 'io.github.cdandoy:dbpop:0.0.2'
 ```
+
 ## Invoke DbPop from your unit test:
 
 ```java
 public class TestUsage {
-    private static Populator populator;
-
-    @BeforeAll
-    static void beforeAll() {
-        populator = Populator
-                .builder()
-                .setDirectory("src/test/resources/datasets")
-                .setConnection("jdbc:sqlserver://localhost;database=tempdb;trustServerCertificate=true", "sa", "password")
-                .build();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        populator.close();
-    }
+    private static Populator populator = Populator.builder()
+                                           .setDirectory("src/test/resources/datasets")
+                                           .setConnection("jdbc:sqlserver://localhost", "sa", "password")
+                                           .build();
 
     @Test
     void testSomething() {
         populator.load("base");
-        // Run some test
+        // Run a test
     }
 
     @Test
     void testSomethingElse() {
         populator.load("base");
-        // Run some test
+        // Run another test
     }
-    
+
     // more tests...
 }
 ```
@@ -81,47 +75,37 @@ public class TestUsage {
 ## JDBC connection
 
 The JDBC connection can be built using the API or using a property file in your home directory, so you do not have to store a password in your source code
+
 * Linux: `~/.dbpop/dbpop.properties`
 * Windows: `C:\Users\<username>\.dbpop\dbpop.properties`
 
 ```properties
 # Default environment
-jdbcurl=jdbc:sqlserver://localhost;database=tempdb;trustServerCertificate=true
+jdbcurl=jdbc:sqlserver://localhost
 username=sa
 password=yourpassword
-verbose=false
 
 # pgsql environment
-pgsql.jdbcurl=jdbc:postgresql://localhost:5432/dbpop
+pgsql.jdbcurl=jdbc:postgresql://localhost:5432/yourdatabase
 pgsql.username=postgres
-pgsql.password=GlobalTense1010
-pgsql.verbose=true
+pgsql.password=yourpassword
 ```
+You use `setEnvironment("pgsql")` on the builder to point to the `pgsql` environment.
 
 ## Dataset directory
 
 If you do not specify a dataset directory, DbPop will use `./src/test/resources/datasets`
 
-This simplifies the construction of the `Populator`:
+Using dbpop.properties and the default path simplifies the construction of the `Populator`:
 
 ```java
 public class TestUsage {
-    private static Populator populator;
-
-    @BeforeAll
-    static void beforeAll() {
-        populator = Populator.build();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        populator.close();
-    }
+    private static Populator populator = Populator.build();
 
     @Test
     void myTest() {
         populator.load("base");
-        // Run some test
+        // Run a test
     }
 }
 ```
@@ -147,19 +131,31 @@ Common options:
   -v, --verbose                 Verbose
 ```
 
-You can download individual tables to CSV files using `download tables <table-names>` or schemas using `download tables <schema-names>`<br/>
-Examples:
+You can download individual tables, schemas, or whole databases.
 
+Examples:<br/>
 Download the content of the 3 tables (`actor`, `address`, `category`) to the corresponding CSV files.
+
 ```text
-DbPop download tables\
+DbPop download\
   --jdbcurl jdbc:sqlserver://localhost \
   --username scott \
   --password tiger \
   sakila.dbo.actor sakila.dbo.address sakila.dbo.category
 ```
 
+Download the content of the `sakila` database.
+
+```text
+DbPop download\
+  --jdbcurl jdbc:sqlserver://localhost \
+  --username scott \
+  --password tiger \
+  sakila
+```
+
 Upload the content of the `base` directory.
+
 ```text
 DbPop populate base
 ```

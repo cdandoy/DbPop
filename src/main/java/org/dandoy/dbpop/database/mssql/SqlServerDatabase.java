@@ -12,6 +12,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class SqlServerDatabase extends Database {
+    private static final Set<String> SYS_SCHEMAS = new HashSet<>(Arrays.asList("guest", "INFORMATION_SCHEMA", "sys", "db_owner", "db_accessadmin", "db_securityadmin", "db_ddladmin", "db_backupoperator", "db_datareader", "db_datawriter", "db_denydatareader", "db_denydatawriter"));
+
     public SqlServerDatabase(Connection connection) {
         super(connection);
     }
@@ -209,6 +211,24 @@ public class SqlServerDatabase extends Database {
                         foreignKeys.computeIfAbsent(entry.getKey(), tableName -> Collections.emptyList()))
                 )
                 .collect(Collectors.toList());
+    }
+
+    public List<String> getSchemas(String catalog) {
+        String sql = String.format("SELECT name FROM %s.sys.schemas", quote(catalog));
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                List<String> ret = new ArrayList<>();
+                while (resultSet.next()) {
+                    String name = resultSet.getString(1);
+                    if (!SYS_SCHEMAS.contains(name)) {
+                        ret.add(name);
+                    }
+                }
+                return ret;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static ColumnType getColumnType(String typeName, int typeScale) {
