@@ -8,6 +8,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.sql.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -102,9 +106,14 @@ public class SqlServerTests {
         }
     }
 
+    /**
+     * This test only works when running from the IDE because it is too complicated to change the classpath
+     */
     @Test
-    void testBinary() throws SQLException {
-        File dir = new File("./out/test/resources/generated_tests/");
+    void testBinary() throws SQLException, MalformedURLException, URISyntaxException {
+        URL resource = getClass().getClassLoader().getResource("logback.xml");
+        URL generatedTestsUrl = new URL(resource, "generated_tests/");
+        File dir = Paths.get(generatedTestsUrl.toURI()).toFile();
         assertTrue(dir.mkdirs() || dir.isDirectory());
         try (Downloader downloader = Downloader.builder()
                 .setEnvironment("mssql")
@@ -143,6 +152,31 @@ public class SqlServerTests {
 
             // Upload the data
             populator.load("base");
+
+            // Verify
+            try (Connection connection = populator.createConnection()) {
+                try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM master.dbo.test_binary")) {
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        assertTrue(resultSet.next());
+                        assertEquals(1, resultSet.getInt(1));
+                        assertEquals("HELLOHELLOHELLOHELLOHELLOHELLOHE", new String(resultSet.getBytes(2)));
+                        Blob blob = resultSet.getBlob(3);
+                        assertEquals("HELLO\0WORLD", new String(blob.getBytes(1, (int) blob.length())));
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void testLoadBinary() throws SQLException {
+        try (Populator populator = Populator.builder()
+                .setEnvironment("mssql")
+                .setPath("mssql")
+                .build()) {
+
+            // Upload the data
+            populator.load("test_binary");
 
             // Verify
             try (Connection connection = populator.createConnection()) {

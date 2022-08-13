@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.fs;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("SameParameterValue")
+@Slf4j
 class SimpleFileSystemTest {
     @Test
     void testDirectory() throws IOException {
@@ -44,19 +46,19 @@ class SimpleFileSystemTest {
     @Test
     void testJar() throws IOException {
         SimpleFileSystem platform = SimpleFileSystem.fromPath("org/junit/platform");
-        List<SimpleFileSystem> launchers = platform.list();
-        assertContains(launchers, "org/junit/platform/launcher");
-        SimpleFileSystem launcher = platform.cd("launcher");
-        List<SimpleFileSystem> launcherFiles = launcher.list();
-        assertContains(launcherFiles,
-                "org/junit/platform/launcher/core",
-                "org/junit/platform/launcher/Launcher.class",
-                "org/junit/platform/launcher/LauncherConstants.class"
+        List<SimpleFileSystem> platformEntries = platform.list();
+        assertContains(platformEntries, "org/junit/platform/engine");
+        SimpleFileSystem engine = platform.cd("engine");
+        List<SimpleFileSystem> engineEntries = engine.list();
+        assertContains(engineEntries,
+                "org/junit/platform/engine/discovery",
+                "org/junit/platform/engine/DiscoveryFilter.class",
+                "org/junit/platform/engine/DiscoverySelector.class"
         );
-        try (InputStream inputStream = launcher.cd("Launcher.class").createInputStream()) {
+        try (InputStream inputStream = engine.cd("DiscoveryFilter.class").createInputStream()) {
             assertNotNull(inputStream);
         }
-        try (InputStream inputStream = launcher.cd("LauncherConstants.class").createInputStream()) {
+        try (InputStream inputStream = engine.cd("DiscoverySelector.class").createInputStream()) {
             assertNotNull(inputStream);
         }
     }
