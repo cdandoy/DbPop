@@ -125,6 +125,18 @@ Populator.builder()
 
 Populator.getInstance().load("base");
 ```
+
+## Expressions
+DbPop supports expressions in the CSV file. The only expressions currently supported are related to dates and time.<br/>
+Examples:
+``` 
+id,date_created,name
+1,{{now - 3 days}},Banana
+2,{{yesterday}},Apple
+2,{{now + 1 minute}},Orange
+```
+
+
 ## Invoke DbPop from the command line:
 
 DbPop can be invoked from the command line using the `download` command to download data from the database to CSV files or the `populate` command to upload CSV files into the database.<br/>

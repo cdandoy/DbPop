@@ -5,6 +5,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.mssql.SqlServerDatabase;
 import org.dandoy.dbpop.database.pgsql.PostgresDatabase;
 import org.dandoy.dbpop.upload.DataFileHeader;
+import org.dandoy.dbpop.utils.StopWatch;
 
 import java.sql.*;
 import java.util.*;
@@ -166,7 +167,7 @@ public abstract class Database implements AutoCloseable {
     }
 
     public void deleteTable(Table table) {
-        executeSql("DELETE FROM %s", quote(table.getTableName()));
+        StopWatch.record("DELETE", () -> executeSql("DELETE FROM %s", quote(table.getTableName())));
     }
 
     public abstract DatabasePreparationStrategy<? extends Database> createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables);

@@ -28,7 +28,7 @@ public class DbPop {
      * Used for tests only
      */
     @SuppressWarnings("InstantiationOfUtilityClass")
-    static int likeMain(String[] args) {
+    public static int likeMain(String... args) {
         DbPop dbPop = new DbPop();
         return new CommandLine(dbPop)
                 .setUsageHelpAutoWidth(false)

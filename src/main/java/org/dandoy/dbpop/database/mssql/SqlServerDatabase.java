@@ -6,6 +6,7 @@ import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.upload.DataFileHeader;
+import org.dandoy.dbpop.utils.StopWatch;
 
 import java.sql.*;
 import java.util.*;
@@ -280,20 +281,20 @@ public class SqlServerDatabase extends Database {
     }
 
     void disableForeignKey(ForeignKey foreignKey) {
-        executeSql(
+        StopWatch.record("disableForeignKey", () -> executeSql(
                 "ALTER TABLE %s NOCHECK CONSTRAINT %s",
                 quote(foreignKey.getFkTableName()),
                 foreignKey.getName()
-        );
+        ));
     }
 
     void enableForeignKey(ForeignKey foreignKey) {
-        executeSql(
+        StopWatch.record("enableForeignKey", () -> executeSql(
                 "ALTER TABLE %s WITH %s CHECK CONSTRAINT %s",
                 quote(foreignKey.getFkTableName()),
                 Settings.CHECK_CONTRAINTS ? "CHECK" : "NOCHECK",
                 foreignKey.getName()
-        );
+        ));
     }
 
     class SqlServerDatabaseInserter extends DatabaseInserter {

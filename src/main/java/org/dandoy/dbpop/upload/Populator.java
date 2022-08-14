@@ -9,6 +9,7 @@ import org.dandoy.dbpop.database.Database.DatabaseInserter;
 import org.dandoy.dbpop.fs.LocalFileSystem;
 import org.dandoy.dbpop.fs.SimpleFileSystem;
 import org.dandoy.dbpop.utils.AutoComitterOff;
+import org.dandoy.dbpop.utils.StopWatch;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -152,26 +153,28 @@ public class Populator implements AutoCloseable {
      * @return the number of rows loaded
      */
     public int load(List<String> datasets) {
-        log.debug("---- Loading {}", String.join(", ", datasets));
-        try (AutoComitterOff ignored = new AutoComitterOff(database.getConnection())) {
-            int rowCount = 0;
-            Set<Table> loadedTables = getLoadedTables(datasets);
+        return StopWatch.record("Populator.load()", () -> {
+            log.debug("---- Loading {}", String.join(", ", datasets));
+            try (AutoComitterOff ignored = new AutoComitterOff(database.getConnection())) {
+                int rowCount = 0;
+                Set<Table> loadedTables = getLoadedTables(datasets);
 
-            DatabasePreparationStrategy<? extends Database> databasePreparationStrategy = database.createDatabasePreparationStrategy(tablesByName, loadedTables);
-            databasePreparationStrategy.beforeInserts();
-            try {
-                for (String datasetName : datasets) {
-                    Dataset dataset = datasetsByName.get(datasetName);
-                    if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
-                    rowCount += loadDataset(dataset);
+                DatabasePreparationStrategy<? extends Database> databasePreparationStrategy = database.createDatabasePreparationStrategy(tablesByName, loadedTables);
+                databasePreparationStrategy.beforeInserts();
+                try {
+                    for (String datasetName : datasets) {
+                        Dataset dataset = datasetsByName.get(datasetName);
+                        if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
+                        rowCount += loadDataset(dataset);
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    databasePreparationStrategy.afterInserts();
                 }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            } finally {
-                databasePreparationStrategy.afterInserts();
+                return rowCount;
             }
-            return rowCount;
-        }
+        });
     }
 
     private Set<Table> getLoadedTables(List<String> datasets) {
@@ -198,27 +201,23 @@ public class Populator implements AutoCloseable {
     }
 
     private int loadDataFile(DataFile dataFile) {
-        TableName tableName = dataFile.getTableName();
-        long t0 = System.currentTimeMillis();
-        log.debug(String.format("Loading %-60s", tableName.toQualifiedName()));
-        try {
-            Table table = tablesByName.get(tableName);
-            CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
-                    .setHeader()
-                    .setSkipHeaderRecord(true)
-                    .setNullString("")
-                    .build();
-            try (CSVParser csvParser = csvFormat.parse(new BufferedReader(new InputStreamReader(dataFile.createInputStream(), StandardCharsets.UTF_8)))) {
-                int rows = insertRows(table, csvParser);
-                if (log.isDebugEnabled()) {
-                    long t1 = System.currentTimeMillis();
-                    log.debug(String.format(" %5d rows %4dms%n", rows, t1 - t0));
+        return StopWatch.record("loadDataFile", () -> {
+            TableName tableName = dataFile.getTableName();
+            log.debug(String.format("Loading %-60s", tableName.toQualifiedName()));
+            try {
+                Table table = tablesByName.get(tableName);
+                CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
+                        .setHeader()
+                        .setSkipHeaderRecord(true)
+                        .setNullString("")
+                        .build();
+                try (CSVParser csvParser = csvFormat.parse(new BufferedReader(new InputStreamReader(dataFile.createInputStream(), StandardCharsets.UTF_8)))) {
+                    return insertRows(table, csvParser);
                 }
-                return rows;
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to load " + tableName.toQualifiedName(), e);
             }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load " + tableName.toQualifiedName(), e);
-        }
+        });
     }
 
     private int insertRows(Table table, CSVParser csvParser) {
@@ -241,42 +240,44 @@ public class Populator implements AutoCloseable {
     }
 
     private static List<Dataset> getDatasets(SimpleFileSystem simpleFileSystem) {
-        List<Dataset> datasets = new ArrayList<>();
-        Collection<SimpleFileSystem> datasetFiles = simpleFileSystem.list();
-        if (datasetFiles.isEmpty()) throw new RuntimeException("Invalid path " + simpleFileSystem);
-        for (SimpleFileSystem datasetFile : datasetFiles) {
-            Collection<SimpleFileSystem> catalogFiles = datasetFile.list();
-            Collection<DataFile> dataFiles = new ArrayList<>();
-            for (SimpleFileSystem catalogFile : catalogFiles) {
-                String catalog = catalogFile.getName();
-                Collection<SimpleFileSystem> schemaFiles = catalogFile.list();
-                for (SimpleFileSystem schemaFile : schemaFiles) {
-                    String schema = schemaFile.getName();
-                    Collection<SimpleFileSystem> tableFiles = schemaFile.list();
-                    for (SimpleFileSystem tableFile : tableFiles) {
-                        String tableFileName = tableFile.getName();
-                        if (tableFileName.endsWith(".csv")) {
-                            String table = tableFileName.substring(0, tableFileName.length() - 4);
-                            dataFiles.add(
-                                    new DataFile(
-                                            tableFile,
-                                            new TableName(catalog, schema, table)
-                                    )
-                            );
+        return StopWatch.record("Populator.getDatasets", () -> {
+            List<Dataset> datasets = new ArrayList<>();
+            Collection<SimpleFileSystem> datasetFiles = simpleFileSystem.list();
+            if (datasetFiles.isEmpty()) throw new RuntimeException("Invalid path " + simpleFileSystem);
+            for (SimpleFileSystem datasetFile : datasetFiles) {
+                Collection<SimpleFileSystem> catalogFiles = datasetFile.list();
+                Collection<DataFile> dataFiles = new ArrayList<>();
+                for (SimpleFileSystem catalogFile : catalogFiles) {
+                    String catalog = catalogFile.getName();
+                    Collection<SimpleFileSystem> schemaFiles = catalogFile.list();
+                    for (SimpleFileSystem schemaFile : schemaFiles) {
+                        String schema = schemaFile.getName();
+                        Collection<SimpleFileSystem> tableFiles = schemaFile.list();
+                        for (SimpleFileSystem tableFile : tableFiles) {
+                            String tableFileName = tableFile.getName();
+                            if (tableFileName.endsWith(".csv")) {
+                                String table = tableFileName.substring(0, tableFileName.length() - 4);
+                                dataFiles.add(
+                                        new DataFile(
+                                                tableFile,
+                                                new TableName(catalog, schema, table)
+                                        )
+                                );
+                            }
                         }
                     }
                 }
+                if (!dataFiles.isEmpty()) {
+                    datasets.add(
+                            new Dataset(
+                                    datasetFile.getName(),
+                                    dataFiles
+                            )
+                    );
+                }
             }
-            if (!dataFiles.isEmpty()) {
-                datasets.add(
-                        new Dataset(
-                                datasetFile.getName(),
-                                dataFiles
-                        )
-                );
-            }
-        }
-        return datasets;
+            return datasets;
+        });
     }
 
     /**
