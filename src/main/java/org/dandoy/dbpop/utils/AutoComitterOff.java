@@ -24,7 +24,7 @@ public class AutoComitterOff implements AutoCloseable {
         if (autoCommit) {
             try {
                 connection.commit();
-                connection.setAutoCommit(false);
+                connection.setAutoCommit(true);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
