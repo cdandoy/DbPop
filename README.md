@@ -112,6 +112,19 @@ public class TestUsage {
 }
 ```
 
+## Singleton Instance
+The `Populator` can hold a static singleton instance that can be retrived using `Populator.getInstance()`.
+You can set the singleton instance using `createSingletonInstance()` on the builder. Calling `getInstance()` without building a custom `Populator` returns a default instance.<br/>
+For example:
+
+```java
+Populator.builder()
+        .setEnvironment("mssql")
+        .setPath("/test_expressions")
+        .createSingletonInstance();
+
+Populator.getInstance().load("base");
+```
 ## Invoke DbPop from the command line:
 
 DbPop can be invoked from the command line using the `download` command to download data from the database to CSV files or the `populate` command to upload CSV files into the database.<br/>

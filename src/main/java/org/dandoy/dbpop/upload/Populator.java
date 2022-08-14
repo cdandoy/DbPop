@@ -22,12 +22,13 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class Populator implements AutoCloseable {
+    private static Populator INSTANCE;
     private final ConnectionBuilder connectionBuilder;
     private final Database database;
     private final Map<String, Dataset> datasetsByName;
     private final Map<TableName, Table> tablesByName;
 
-    private Populator(ConnectionBuilder connectionBuilder, Database database, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName) {
+    protected Populator(ConnectionBuilder connectionBuilder, Database database, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName) {
         this.connectionBuilder = connectionBuilder;
         this.database = database;
         this.datasetsByName = datasetsByName;
@@ -51,6 +52,21 @@ public class Populator implements AutoCloseable {
         return new Builder();
     }
 
+    public static synchronized Populator getInstance() {
+        if (INSTANCE == null) {
+            INSTANCE = build();
+        }
+        return INSTANCE;
+    }
+
+    static synchronized void setInstance(Populator instance) {
+        if (INSTANCE instanceof CloseShieldPopulator) {
+            CloseShieldPopulator closeShieldPopulator = (CloseShieldPopulator) INSTANCE;
+            closeShieldPopulator.doClose();
+        }
+        INSTANCE = instance;
+    }
+
     /**
      * Creates a default Populator based on the properties found in ~/dbpop.properties
      *
@@ -61,7 +77,7 @@ public class Populator implements AutoCloseable {
         return builder().build();
     }
 
-    private static Populator build(Builder builder) {
+    private static Populator build(Builder builder, boolean closeShield) {
         try {
             Database database = Database.createDatabase(builder.getConnectionBuilder().createConnection());
             List<Dataset> allDatasets = getDatasets(builder.getSimpleFileSystem());
@@ -77,7 +93,11 @@ public class Populator implements AutoCloseable {
 
             Map<String, Dataset> datasetsByName = allDatasets.stream().collect(Collectors.toMap(Dataset::getName, Function.identity()));
             Map<TableName, Table> tablesByName = databaseTables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
-            return new Populator(builder.getConnectionBuilder(), database, datasetsByName, tablesByName);
+            if (closeShield) {
+                return new CloseShieldPopulator(builder.getConnectionBuilder(), database, datasetsByName, tablesByName);
+            } else {
+                return new Populator(builder.getConnectionBuilder(), database, datasetsByName, tablesByName);
+            }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -325,7 +345,11 @@ public class Populator implements AutoCloseable {
          * @return the Populator
          */
         public Populator build() {
-            return Populator.build(this);
+            return Populator.build(this, false);
+        }
+
+        public synchronized void createSingletonInstance() {
+            setInstance(Populator.build(this, true));
         }
     }
 }

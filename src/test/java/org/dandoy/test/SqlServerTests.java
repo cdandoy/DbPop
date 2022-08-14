@@ -68,6 +68,16 @@ public class SqlServerTests {
     }
 
     @Test
+    void testSingleton() {
+        Populator.builder()
+                .setEnvironment("mssql")
+                .setPath("/test_expressions")
+                .createSingletonInstance();
+
+        Populator.getInstance().load("base");
+    }
+
+    @Test
     void mainTest() throws SQLException {
         try (Populator populator = Populator.builder()
                 .setEnvironment("mssql")
