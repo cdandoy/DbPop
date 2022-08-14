@@ -65,13 +65,13 @@ public class SqlServerDatabase extends Database {
                             statement.execute("USE " + catalog);
                             // Collects the tables and columns
                             try (PreparedStatement tablesStatement = connection.prepareStatement("" +
-                                    "SELECT s.name   AS s,\n" +
-                                    "       t.name   AS t,\n" +
-                                    "       c.name   AS c,\n" +
+                                    "SELECT s.name       AS s,\n" +
+                                    "       t.name       AS t,\n" +
+                                    "       c.name       AS c,\n" +
                                     "       c.is_nullable,\n" +
                                     "       c.is_identity,\n" +
-                                    "       ty.name  AS type_name,\n" +
-                                    "       ty.scale AS type_scale\n" +
+                                    "       ty.name      AS type_name,\n" +
+                                    "       ty.precision AS type_precision\n" +
                                     "FROM sys.schemas s\n" +
                                     "         JOIN sys.tables t ON t.schema_id = s.schema_id\n" +
                                     "         JOIN sys.columns c ON c.object_id = t.object_id\n" +
@@ -93,8 +93,8 @@ public class SqlServerDatabase extends Database {
                                                 boolean nullable = tablesResultSet.getBoolean("is_nullable");
                                                 boolean identity = tablesResultSet.getBoolean("is_identity");
                                                 String typeName = tablesResultSet.getString("type_name");
-                                                int typeScale = tablesResultSet.getInt("type_scale");
-                                                ColumnType columnType = getColumnType(typeName, typeScale);
+                                                int typePrecision = tablesResultSet.getInt("type_precision");
+                                                ColumnType columnType = getColumnType(typeName, typePrecision);
                                                 tableCollector.push(
                                                         schema,
                                                         table,
@@ -231,20 +231,33 @@ public class SqlServerDatabase extends Database {
         }
     }
 
-    private static ColumnType getColumnType(String typeName, int typeScale) {
+    private static ColumnType getColumnType(String typeName, int typePrecision) {
         if ("varchar".equals(typeName)) return ColumnType.VARCHAR;
         if ("nvarchar".equals(typeName)) return ColumnType.VARCHAR;
         if ("int".equals(typeName)) return ColumnType.INTEGER;
         if ("smallint".equals(typeName)) return ColumnType.INTEGER;
         if ("tinyint".equals(typeName)) return ColumnType.INTEGER;
+        if ("bigint".equals(typeName)) return ColumnType.BIG_DECIMAL;
+        if ("money".equals(typeName)) return ColumnType.BIG_DECIMAL;
         if ("text".equals(typeName)) return ColumnType.VARCHAR;
-        if ("decimal".equals(typeName)) return typeScale > 0 ? ColumnType.BIG_DECIMAL : ColumnType.INTEGER;
+        if ("decimal".equals(typeName)) return typePrecision > 0 ? ColumnType.BIG_DECIMAL : ColumnType.INTEGER;
+        if ("float".equals(typeName)) return typePrecision > 0 ? ColumnType.BIG_DECIMAL : ColumnType.INTEGER;
+        if ("numeric".equals(typeName)) return typePrecision > 0 ? ColumnType.BIG_DECIMAL : ColumnType.INTEGER;
+        if ("date".equals(typeName)) return ColumnType.DATE;
         if ("datetime".equals(typeName)) return ColumnType.TIMESTAMP;
+        if ("datetime2".equals(typeName)) return ColumnType.TIMESTAMP;
+        if ("time".equals(typeName)) return ColumnType.TIME;
         if ("binary".equals(typeName)) return ColumnType.BINARY;
         if ("bit".equals(typeName)) return ColumnType.INTEGER;
         if ("char".equals(typeName)) return ColumnType.VARCHAR;
+        if ("nchar".equals(typeName)) return ColumnType.VARCHAR;
+        if ("sysname".equals(typeName)) return ColumnType.VARCHAR;
         if ("image".equals(typeName)) return ColumnType.BINARY;
         if ("varbinary".equals(typeName)) return ColumnType.BINARY;
+        if ("geometry".equals(typeName)) return ColumnType.BINARY;
+        if ("geography".equals(typeName)) return ColumnType.BINARY;
+        if ("hierarchyid".equals(typeName)) return ColumnType.VARCHAR;
+        if ("uniqueidentifier".equals(typeName)) return ColumnType.VARCHAR;
         throw new RuntimeException("Unexpected type: " + typeName);
     }
 

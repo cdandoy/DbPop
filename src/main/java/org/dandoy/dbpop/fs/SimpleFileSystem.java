@@ -1,20 +1,21 @@
 package org.dandoy.dbpop.fs;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
+@Slf4j
 public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
+    public static final List<File> CLASSPATH_FILES = new ClasspathCollector().collectClasspathFiles(SimpleFileSystem.class);
+
     private final String path;
 
     protected SimpleFileSystem(String path) {
@@ -50,27 +51,14 @@ public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
 
     public List<SimpleFileSystem> list() {
         Set<SimpleFileSystem> ret = new TreeSet<>();
-        for (ClassLoader classLoader = getClass().getClassLoader();
-             classLoader != null;
-             classLoader = classLoader.getParent()) {
-            if (classLoader instanceof URLClassLoader) {
-                URLClassLoader urlClassLoader = (URLClassLoader) classLoader;
-                URL[] urls = urlClassLoader.getURLs();
-                if (urls != null) {
-                    for (URL url : urls) {
-                        if ("file".equals(url.getProtocol())) {
-                            File file = toFile(url);
-                            if (file.isFile()) {
-                                String fileName = file.getName().toLowerCase();
-                                if (fileName.endsWith(".jar") || fileName.endsWith(".zip")) {
-                                    listZip(ret, file);
-                                }
-                            } else {
-                                listFiles(ret, file);
-                            }
-                        }
-                    }
+        for (File file : CLASSPATH_FILES) {
+            if (file.isFile()) {
+                String fileName = file.getName().toLowerCase();
+                if (fileName.endsWith(".jar") || fileName.endsWith(".zip")) {
+                    listZip(ret, file);
                 }
+            } else {
+                listFiles(ret, file);
             }
         }
         return new ArrayList<>(ret);
@@ -113,14 +101,6 @@ public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
         }
     }
 
-    private static File toFile(URL url) {
-        try {
-            return Paths.get(url.toURI()).toFile();
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     @Override
     public int compareTo(SimpleFileSystem that) {
         return this.path.compareTo(that.path);
@@ -132,32 +112,19 @@ public class SimpleFileSystem implements Comparable<SimpleFileSystem> {
     }
 
     public InputStream createInputStream() throws IOException {
-        for (ClassLoader classLoader = getClass().getClassLoader();
-             classLoader != null;
-             classLoader = classLoader.getParent()) {
-            if (classLoader instanceof URLClassLoader) {
-                URLClassLoader urlClassLoader = (URLClassLoader) classLoader;
-                URL[] urls = urlClassLoader.getURLs();
-                if (urls != null) {
-                    for (URL url : urls) {
-                        if ("file".equals(url.getProtocol())) {
-                            File file = toFile(url);
-                            if (file.isFile()) {
-                                String fileName = file.getName().toLowerCase();
-                                if (fileName.endsWith(".jar") || fileName.endsWith(".zip")) {
-                                    InputStream zipInputStream = createZipInputStream(file);
-                                    if (zipInputStream != null) {
-                                        return zipInputStream;
-                                    }
-                                }
-                            } else {
-                                File content = new File(file, path);
-                                if (content.isFile()) {
-                                    return Files.newInputStream(content.toPath());
-                                }
-                            }
-                        }
+        for (File file : CLASSPATH_FILES) {
+            if (file.isFile()) {
+                String fileName = file.getName().toLowerCase();
+                if (fileName.endsWith(".jar") || fileName.endsWith(".zip")) {
+                    InputStream zipInputStream = createZipInputStream(file);
+                    if (zipInputStream != null) {
+                        return zipInputStream;
                     }
+                }
+            } else {
+                File content = new File(file, path);
+                if (content.isFile()) {
+                    return Files.newInputStream(content.toPath());
                 }
             }
         }

@@ -6,9 +6,12 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.Database.DatabaseInserter;
+import org.dandoy.dbpop.fs.LocalFileSystem;
 import org.dandoy.dbpop.fs.SimpleFileSystem;
+import org.dandoy.dbpop.utils.AutoComitterOff;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -130,24 +133,25 @@ public class Populator implements AutoCloseable {
      */
     public int load(List<String> datasets) {
         log.debug("---- Loading {}", String.join(", ", datasets));
+        try (AutoComitterOff ignored = new AutoComitterOff(database.getConnection())) {
+            int rowCount = 0;
+            Set<Table> loadedTables = getLoadedTables(datasets);
 
-        int rowCount = 0;
-        Set<Table> loadedTables = getLoadedTables(datasets);
-
-        DatabasePreparationStrategy<? extends Database> databasePreparationStrategy = database.createDatabasePreparationStrategy(tablesByName, loadedTables);
-        databasePreparationStrategy.beforeInserts();
-        try {
-            for (String datasetName : datasets) {
-                Dataset dataset = datasetsByName.get(datasetName);
-                if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
-                rowCount += loadDataset(dataset);
+            DatabasePreparationStrategy<? extends Database> databasePreparationStrategy = database.createDatabasePreparationStrategy(tablesByName, loadedTables);
+            databasePreparationStrategy.beforeInserts();
+            try {
+                for (String datasetName : datasets) {
+                    Dataset dataset = datasetsByName.get(datasetName);
+                    if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
+                    rowCount += loadDataset(dataset);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                databasePreparationStrategy.afterInserts();
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            databasePreparationStrategy.afterInserts();
+            return rowCount;
         }
-        return rowCount;
     }
 
     private Set<Table> getLoadedTables(List<String> datasets) {
@@ -203,8 +207,12 @@ public class Populator implements AutoCloseable {
         List<DataFileHeader> dataFileHeaders = headerNames.stream().map(DataFileHeader::new).collect(Collectors.toList());
         try (DatabaseInserter databaseInserter = database.createInserter(table, dataFileHeaders)) {
             for (CSVRecord csvRecord : csvParser) {
-                databaseInserter.insert(csvRecord);
-                count++;
+                try {
+                    databaseInserter.insert(csvRecord);
+                    count++;
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to process row " + count, e);
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -264,12 +272,7 @@ public class Populator implements AutoCloseable {
      */
     public static class Builder extends DefaultBuilder<Builder, Populator> {
         private String path;
-
-        public String getPath() {
-            if (path != null) return path;
-            return "/testdata/";
-        }
-
+        private File directory;
 
         /**
          * For example:
@@ -291,8 +294,29 @@ public class Populator implements AutoCloseable {
             return this;
         }
 
-        public SimpleFileSystem getSimpleFileSystem() {
-            return SimpleFileSystem.fromPath(getPath());
+        @SuppressWarnings("unused")
+        public Builder setDirectory(String path) {
+            return setDirectory(new File(path));
+        }
+
+        public Builder setDirectory(File directory) {
+            if (directory != null) {
+                if (!directory.isDirectory()) {
+                    throw new RuntimeException("Invalid directory: " + directory);
+                }
+            }
+            this.directory = directory;
+            return this;
+        }
+
+        SimpleFileSystem getSimpleFileSystem() {
+            if (directory != null) {
+                return new LocalFileSystem(directory, path == null ? "/" : path);
+            }
+            if (path != null) {
+                return SimpleFileSystem.fromPath(path);
+            }
+            return SimpleFileSystem.fromPath("/testdata/");
         }
 
         /**

@@ -71,7 +71,8 @@ public class TestUsage {
     // more tests...
 }
 ```
-
+The populator will load the data from the resource /testdata/ in the classpath.
+You would typically store your datasets under `src/test/resources/testdata/...`
 ## JDBC connection
 
 The JDBC connection can be built using the API or using a property file in your home directory, so you do not have to store a password in your source code

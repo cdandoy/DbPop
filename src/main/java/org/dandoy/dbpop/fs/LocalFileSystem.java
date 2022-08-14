@@ -10,7 +10,7 @@ import java.util.List;
 public class LocalFileSystem extends SimpleFileSystem {
     private final File directory;
 
-    protected LocalFileSystem(File directory, String path) {
+    public LocalFileSystem(File directory, String path) {
         super(path);
         this.directory = directory;
     }

@@ -154,21 +154,6 @@ public abstract class Database implements AutoCloseable {
         );
     }
 
-    public List<String> split(String name) {
-        List<String> ret = new ArrayList<>(3);
-        StringBuilder sb = new StringBuilder();
-        for (char c : name.toCharArray()) {
-            if (c == '.') {
-                ret.add(sb.toString());
-                sb.setLength(0);
-            } else {
-                sb.append(c);
-            }
-        }
-        ret.add(sb.toString());
-        return ret;
-    }
-
     protected DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
         return new DatabaseInserter(table, dataFileHeaders, sql);
     }
@@ -196,12 +181,14 @@ public abstract class Database implements AutoCloseable {
 
     public class DatabaseInserter implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;
+        private final List<DataFileHeader> dataFileHeaders;
         private final PreparedStatement preparedStatement;
         private final List<Integer> binaryColumns = new ArrayList<>();
         private final List<ColumnType> columnTypes;
         private int batched = 0;
 
         protected DatabaseInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
+            this.dataFileHeaders = dataFileHeaders;
             preparedStatement = connection.prepareStatement(sql);
 
             List<Column> columns = table.getColumns();
@@ -238,23 +225,31 @@ public abstract class Database implements AutoCloseable {
             for (int i = 0; i < csvRecord.size(); i++) {
                 int jdbcPos = i + 1;
                 String s = csvRecord.get(i);
-                ColumnType columnType = columnTypes.get(i);
-                if (binaryColumns.contains(i)) {
-                    byte[] bytes;
-                    if (s != null) {
-                        Base64.Decoder decoder = Base64.getDecoder();
-                        bytes = decoder.decode(s);
+                try {
+                    ColumnType columnType = columnTypes.get(i);
+                    if (binaryColumns.contains(i)) {
+                        byte[] bytes;
+                        if (s != null) {
+                            Base64.Decoder decoder = Base64.getDecoder();
+                            bytes = decoder.decode(s);
+                        } else {
+                            bytes = null;
+                        }
+                        columnType.bind(preparedStatement, jdbcPos, bytes);
                     } else {
-                        bytes = null;
+                        if (s != null && s.startsWith("{{") && s.endsWith("}}")) {
+                            Object value = EXPRESSION_PARSER.evaluate(s);
+                            columnType.bind(preparedStatement, jdbcPos, value);
+                        } else {
+                            columnType.bind(preparedStatement, jdbcPos, s);
+                        }
                     }
-                    columnType.bind(preparedStatement, jdbcPos, bytes);
-                } else {
-                    if (s != null && s.startsWith("{{") && s.endsWith("}}")) {
-                        Object value = EXPRESSION_PARSER.evaluate(s);
-                        columnType.bind(preparedStatement, jdbcPos, value);
-                    } else {
-                        columnType.bind(preparedStatement, jdbcPos, s);
-                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(String.format(
+                            "Failed to process column %s with value %s",
+                            dataFileHeaders.get(i).getColumnName(),
+                            s
+                    ), e);
                 }
             }
             preparedStatement.addBatch();

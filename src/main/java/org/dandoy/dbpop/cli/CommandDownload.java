@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
+import org.dandoy.dbpop.utils.StringUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -39,9 +40,8 @@ public class CommandDownload implements Callable<Integer> {
                 .setDirectory(directory)
                 .setDataset(dataset)
                 .build()) {
-            Database database = downloader.getDatabase();
             for (String table : tables) {
-                List<String> split = database.split(table);
+                List<String> split = StringUtils.split(table, '.');
 
                 if (split.size() == 1) {            // database, no catalog: "master"
                     downloadDatabase(downloader, split.get(0));
