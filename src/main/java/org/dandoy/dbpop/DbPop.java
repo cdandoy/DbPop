@@ -26,6 +26,8 @@ public class DbPop {
 
     /**
      * Used for tests only
+     * @param args the command line arguments
+     * @return the exit code
      */
     @SuppressWarnings("InstantiationOfUtilityClass")
     public static int likeMain(String... args) {

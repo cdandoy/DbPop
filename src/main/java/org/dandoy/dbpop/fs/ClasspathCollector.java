@@ -36,6 +36,26 @@ public class ClasspathCollector {
     }
 
     List<File> collectClasspathFiles(ClassLoader classLoader) {
+        if (URLClassLoader.class.isAssignableFrom(classLoader.getClass())) {
+            collectClasspathFiles_java8(classLoader);
+        } else {
+            collectClasspathFiles_postJava8();
+        }
+        return ret;
+    }
+
+    private void collectClasspathFiles_postJava8() {
+        String classPath = System.getProperty("java.class.path");
+        if (classPath != null) {
+            List<String> classpath = StringUtils.split(classPath, File.pathSeparatorChar);
+            for (String path : classpath) {
+                File file = new File(path);
+                addFile(file);
+            }
+        }
+    }
+
+    private void collectClasspathFiles_java8(ClassLoader classLoader) {
         for (; classLoader != null; classLoader = classLoader.getParent()) {
             if (classLoader instanceof URLClassLoader) {
                 URLClassLoader urlClassLoader = (URLClassLoader) classLoader;
@@ -47,7 +67,6 @@ public class ClasspathCollector {
                 }
             }
         }
-        return ret;
     }
 
     void addManifestJars(File file) {
@@ -58,26 +77,30 @@ public class ClasspathCollector {
                 String classPath = mainAttributes.getValue(Attributes.Name.CLASS_PATH);
                 if (classPath != null) {
                     List<String> paths = StringUtils.split(classPath, ' ');
-                    for (String path : paths) {
-                        if (!path.isEmpty()) {
-                            Matcher matcher = URL_PATTERN.matcher(path);
-                            if (matcher.matches()) {
-                                try {
-                                    URL url = new URL(path);
-                                    addUrl(url);
-                                } catch (MalformedURLException e) {
-                                    log.debug("Invalid URL: " + path, e);
-                                }
-                            } else {
-                                File referencedFile = isRelative(path) ? new File(file.getParentFile(), path) : new File(path);
-                                addFile(referencedFile);
-                            }
-                        }
-                    }
+                    addClasspaths(file, paths);
                 }
             }
         } catch (IOException e) {
             log.debug("Cannot read: " + file, e);
+        }
+    }
+
+    private void addClasspaths(File file, List<String> paths) {
+        for (String path : paths) {
+            if (!path.isEmpty()) {
+                Matcher matcher = URL_PATTERN.matcher(path);
+                if (matcher.matches()) {
+                    try {
+                        URL url = new URL(path);
+                        addUrl(url);
+                    } catch (MalformedURLException e) {
+                        log.debug("Invalid URL: " + path, e);
+                    }
+                } else {
+                    File referencedFile = isRelative(path) ? new File(file.getParentFile(), path) : new File(path);
+                    addFile(referencedFile);
+                }
+            }
         }
     }
 
