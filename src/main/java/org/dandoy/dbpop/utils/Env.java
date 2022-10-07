@@ -1,5 +1,7 @@
 package org.dandoy.dbpop.utils;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -11,6 +13,7 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 public class Env {
     private final String environment;
     private final Map<String, Environment> environments;
@@ -36,14 +39,18 @@ public class Env {
 
     public static Env createEnv() {
         String userHome = System.getProperty("user.home");
-        if (userHome == null) throw new RuntimeException("Cannot find your home directory");
-        File dir = new File(userHome, ".dbpop");
-        if (dir.isDirectory()) {
-            File propertyFile = new File(dir, "dbpop.properties");
-            if (propertyFile.exists()) return loadEnvironmentFromProperties(propertyFile);
-            return null;
+        if (userHome != null) {
+            File dir = new File(userHome, ".dbpop");
+            if (dir.isDirectory()) {
+                File propertyFile = new File(dir, "dbpop.properties");
+                if (propertyFile.exists()) {
+                    return loadEnvironmentFromProperties(propertyFile);
+                }
+            }
+        } else {
+            log.error("Home directory not found");
         }
-        return null;
+        return createEmptyEnv();
     }
 
     public static Env createEnv(File dir) {
@@ -73,6 +80,12 @@ public class Env {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        return new Env("default", map);
+    }
+
+    private static Env createEmptyEnv() {
+        Map<String, Environment> map = new HashMap<>();
+        map.put("default", new Environment());
         return new Env("default", map);
     }
 
