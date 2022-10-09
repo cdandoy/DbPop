@@ -55,6 +55,8 @@ public class Downloader implements AutoCloseable {
 
     private static Downloader build(Builder builder) {
         try {
+            if (builder.getDbUrl() == null) throw new RuntimeException("Missing --jdbcurl");
+
             return new Downloader(
                     builder.getConnectionBuilder().createConnection(),
                     new File(
