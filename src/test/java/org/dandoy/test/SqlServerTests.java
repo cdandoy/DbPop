@@ -1,9 +1,11 @@
 package org.dandoy.test;
 
 import lombok.extern.slf4j.Slf4j;
+import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
@@ -19,6 +21,12 @@ import static org.junit.jupiter.api.Assertions.*;
 @EnabledIf("org.dandoy.TestUtils#hasSqlServer")
 @Slf4j
 public class SqlServerTests {
+
+    @BeforeAll
+    public static void prepare() {
+        TestUtils.executeSqlScript("mssql", "/mssql/test.sql");
+    }
+
     @Test
     void noCsvFiles() {
         assertThrows(RuntimeException.class, () -> {

@@ -1,6 +1,8 @@
 plugins {
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
     id 'java'
     id 'java-library'
+    id 'application'
     id 'signing'
     id 'maven-publish'
     id("io.github.gradle-nexus.publish-plugin").version("1.1.0")
@@ -14,23 +16,33 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.microsoft.sqlserver:mssql-jdbc:10.2.1.jre8'
+    testImplementation 'commons-io:commons-io:2.11.0'
+    annotationProcessor 'org.projectlombok:lombok:1.18.24'
+    compileOnly 'org.projectlombok:lombok:1.18.24'
+
     implementation 'info.picocli:picocli:4.6.3'
     implementation 'org.apache.commons:commons-csv:1.9.0'
-    implementation 'ch.qos.logback:logback-classic:1.2.11'
-    implementation 'org.postgresql:postgresql:42.4.1'
-
-    compileOnly 'org.projectlombok:lombok:1.18.24'
-    annotationProcessor 'org.projectlombok:lombok:1.18.24'
+    implementation 'ch.qos.logback:logback-classic:1.3.4'
+    compileOnly 'com.microsoft.sqlserver:mssql-jdbc:11.2.1.jre8'
+    compileOnly 'org.postgresql:postgresql:42.5.0'
 
     testCompileOnly 'org.projectlombok:lombok:1.18.24'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.24'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
+
+    shadowJar {
+        implementation 'com.microsoft.sqlserver:mssql-jdbc:11.2.1.jre8'
+        implementation 'org.postgresql:postgresql:42.5.0'
+    }
 }
 
 test {
     useJUnitPlatform()
+}
+
+application {
+    mainClass = 'org.dandoy.dbpop.DbPop'
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {

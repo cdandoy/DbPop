@@ -37,14 +37,14 @@ Maven:
 <dependency>
     <groupId>io.github.cdandoy</groupId>
     <artifactId>dbpop</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.4</version>
 </dependency>
 ```
 
 Gradle:
 
 ```
-implementation 'io.github.cdandoy:dbpop:0.0.2'
+implementation 'io.github.cdandoy:dbpop:0.0.4'
 ```
 
 ## Invoke DbPop from your unit test:

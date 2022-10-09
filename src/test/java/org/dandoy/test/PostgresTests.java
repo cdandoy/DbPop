@@ -1,6 +1,8 @@
 package org.dandoy.test;
 
+import org.dandoy.TestUtils;
 import org.dandoy.dbpop.upload.Populator;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
@@ -13,6 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @EnabledIf("org.dandoy.TestUtils#hasPostgres")
 public class PostgresTests {
+    @BeforeAll
+    public static void prepare() {
+        TestUtils.executeSqlScript("pgsql", "/pgsql/test.sql");
+    }
+
     @Test
     void mainTest() throws SQLException {
         try (Populator populator = Populator.builder()

@@ -1,6 +1,8 @@
 package org.dandoy.dbpop;
 
+import org.dandoy.TestUtils;
 import org.dandoy.dbpop.upload.Populator;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
@@ -18,6 +20,11 @@ public class DbPopTests {
             "populate",
             "--path", "mssql"
     );
+
+    @BeforeAll
+    static void beforeAll() {
+        TestUtils.executeSqlScript("mssql", "/mssql/test.sql");
+    }
 
     @Test
     void testDbPopMain() throws SQLException {
