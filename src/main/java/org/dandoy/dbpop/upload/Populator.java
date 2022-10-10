@@ -315,7 +315,6 @@ public class Populator implements AutoCloseable {
             return this;
         }
 
-        @SuppressWarnings("unused")
         public Builder setDirectory(String path) {
             return setDirectory(new File(path));
         }
