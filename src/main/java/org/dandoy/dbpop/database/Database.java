@@ -11,9 +11,12 @@ import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.dandoy.dbpop.database.ColumnType.INVALID;
+
 @Slf4j
 public abstract class Database implements AutoCloseable {
     private static final ExpressionParser EXPRESSION_PARSER = new ExpressionParser();
+    private static final Base64.Decoder decoder = Base64.getDecoder();
     protected final Connection connection;
     protected final Statement statement;
     private final String identifierQuoteString;
@@ -124,20 +127,37 @@ public abstract class Database implements AutoCloseable {
     }
 
     public DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders) throws SQLException {
-        TableName tableName = table.getTableName();
+        StringBuilder columnNames = new StringBuilder();
+        StringBuilder bindVariables = new StringBuilder();
+
+        for (DataFileHeader dataFileHeader : dataFileHeaders) {
+            String columnName = dataFileHeader.getColumnName();
+            Column column = table.getColumn(columnName);
+            if (column != null) {
+                ColumnType columnType = column.getColumnType();
+                if (columnType != INVALID) {
+                    if (columnNames.length() > 0) columnNames.append(",");
+                    columnNames.append(quote(columnName));
+
+                    if (bindVariables.length() > 0) bindVariables.append(",");
+                    bindVariables.append("?");
+                } else {
+                    log.error("Cannot load the data type of {}.{}", table.getTableName().toQualifiedName(), columnName);
+                    dataFileHeader.setLoadable(false);
+                }
+            } else {
+                log.error("Column not found: {}.{}", table.getTableName().toQualifiedName(), columnName);
+                dataFileHeader.setLoadable(false);
+            }
+        }
+
         String sql = String.format(
                 "INSERT INTO %s (%s) VALUES (%s)",
-                quote(tableName),
-                quoteDataFileHeader(dataFileHeaders),
-                dataFileHeaders.stream().map(s -> "?").collect(Collectors.joining(", "))
+                quote(table.getTableName()),
+                columnNames,
+                bindVariables
         );
         return createInserter(table, dataFileHeaders, sql);
-    }
-
-    public String quoteDataFileHeader(Collection<DataFileHeader> strings) {
-        return strings.stream()
-                .map(dataFileHeader -> quote(dataFileHeader.getColumnName()))
-                .collect(Collectors.joining(","));
     }
 
     public String quote(Collection<String> strings) {
@@ -184,29 +204,26 @@ public abstract class Database implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;
         private final List<DataFileHeader> dataFileHeaders;
         private final PreparedStatement preparedStatement;
-        private final List<Integer> binaryColumns = new ArrayList<>();
-        private final List<ColumnType> columnTypes;
         private int batched = 0;
+        private final List<ColumnInserter> columnInserters = new ArrayList<>();
 
         protected DatabaseInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
             this.dataFileHeaders = dataFileHeaders;
             preparedStatement = connection.prepareStatement(sql);
 
-            List<Column> columns = table.getColumns();
-            columnTypes = dataFileHeaders.stream()
-                    .map(dataFileHeader -> {
-                        String columnName = dataFileHeader.getColumnName();
-                        for (Column column : columns) {
-                            if (column.getName().equals(columnName)) {
-                                return column.getColumnType();
-                            }
-                        }
-                        throw new RuntimeException("Column doesn't exist: " + columnName);
-                    })
-                    .collect(Collectors.toList());
+            int jdbcPos = 0;
             for (int i = 0; i < dataFileHeaders.size(); i++) {
-                if (dataFileHeaders.get(i).isBinary()) {
-                    binaryColumns.add(i);
+                DataFileHeader dataFileHeader = dataFileHeaders.get(i);
+                if (dataFileHeader.isLoadable()) {
+                    jdbcPos++;
+                    String columnName = dataFileHeader.getColumnName();
+                    Column column = table.getColumn(columnName);
+                    ColumnType columnType = column.getColumnType();
+                    if (dataFileHeader.isBinary()) {
+                        columnInserters.add(new BinaryColumnInserter(i, jdbcPos, columnType));
+                    } else {
+                        columnInserters.add(new RegularColumnInserter(i, jdbcPos, columnType));
+                    }
                 }
             }
         }
@@ -223,39 +240,71 @@ public abstract class Database implements AutoCloseable {
         }
 
         public void insert(CSVRecord csvRecord) throws SQLException {
-            for (int i = 0; i < csvRecord.size(); i++) {
-                int jdbcPos = i + 1;
-                String s = csvRecord.get(i);
+            columnInserters.forEach(columnInserter -> columnInserter.consume(csvRecord));
+            preparedStatement.addBatch();
+            if (batched++ > DatabaseInserter.BATCH_SIZE) {
+                flush();
+            }
+        }
+
+        abstract class ColumnInserter {
+            protected final int csvPos;
+            protected final int jdbcPos;
+            protected final ColumnType columnType;
+
+            public ColumnInserter(int csvPos, int jdbcPos, ColumnType columnType) {
+                this.csvPos = csvPos;
+                this.jdbcPos = jdbcPos;
+                this.columnType = columnType;
+            }
+
+            final void consume(CSVRecord csvRecord) {
+                String s = csvRecord.get(csvPos);
                 try {
-                    ColumnType columnType = columnTypes.get(i);
-                    if (binaryColumns.contains(i)) {
-                        byte[] bytes;
-                        if (s != null) {
-                            Base64.Decoder decoder = Base64.getDecoder();
-                            bytes = decoder.decode(s);
-                        } else {
-                            bytes = null;
-                        }
-                        columnType.bind(preparedStatement, jdbcPos, bytes);
-                    } else {
-                        if (s != null && s.startsWith("{{") && s.endsWith("}}")) {
-                            Object value = EXPRESSION_PARSER.evaluate(s);
-                            columnType.bind(preparedStatement, jdbcPos, value);
-                        } else {
-                            columnType.bind(preparedStatement, jdbcPos, s);
-                        }
-                    }
-                } catch (Exception e) {
+                    consume(s);
+                } catch (SQLException e) {
                     throw new RuntimeException(String.format(
                             "Failed to process column %s with value %s",
-                            dataFileHeaders.get(i).getColumnName(),
+                            dataFileHeaders.get(csvPos).getColumnName(),
                             s
                     ), e);
                 }
             }
-            preparedStatement.addBatch();
-            if (batched++ > DatabaseInserter.BATCH_SIZE) {
-                flush();
+
+            abstract void consume(String s) throws SQLException;
+        }
+
+        class RegularColumnInserter extends ColumnInserter {
+            public RegularColumnInserter(int csvPos, int jdbcPos, ColumnType columnType) {
+                super(csvPos, jdbcPos, columnType);
+            }
+
+            @Override
+            void consume(String s) throws SQLException {
+                if (s != null && s.startsWith("{{") && s.endsWith("}}")) {
+                    Object value = EXPRESSION_PARSER.evaluate(s);
+                    columnType.bind(preparedStatement, jdbcPos, value);
+                } else {
+                    columnType.bind(preparedStatement, jdbcPos, s);
+                }
+            }
+        }
+
+        class BinaryColumnInserter extends ColumnInserter {
+
+            public BinaryColumnInserter(int csvPos, int jdbcPos, ColumnType columnType) {
+                super(csvPos, jdbcPos, columnType);
+            }
+
+            @Override
+            void consume(String s) throws SQLException {
+                byte[] bytes;
+                if (s != null) {
+                    bytes = decoder.decode(s);
+                } else {
+                    bytes = null;
+                }
+                columnType.bind(preparedStatement, jdbcPos, bytes);
             }
         }
     }

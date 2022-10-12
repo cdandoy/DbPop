@@ -1,8 +1,14 @@
 package org.dandoy.dbpop.upload;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class DataFileHeader {
     private final String columnName;
     private final boolean binary;
+    private boolean loadable = true;
 
     public DataFileHeader(String header) {
         boolean binary = false;

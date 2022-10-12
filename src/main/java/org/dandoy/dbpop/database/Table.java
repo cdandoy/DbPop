@@ -30,6 +30,10 @@ public class Table {
         return columns;
     }
 
+    public Column getColumn(String name) {
+        return columns.stream().filter(column -> name.equals(column.getName())).findFirst().orElse(null);
+    }
+
     public List<Index> getIndexes() {
         return indexes;
     }

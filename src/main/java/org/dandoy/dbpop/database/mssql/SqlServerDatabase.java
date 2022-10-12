@@ -255,9 +255,9 @@ public class SqlServerDatabase extends Database {
         if ("sysname".equals(typeName)) return ColumnType.VARCHAR;
         if ("image".equals(typeName)) return ColumnType.BINARY;
         if ("varbinary".equals(typeName)) return ColumnType.BINARY;
-        if ("geometry".equals(typeName)) return ColumnType.BINARY;
-        if ("geography".equals(typeName)) return ColumnType.BINARY;
-        if ("hierarchyid".equals(typeName)) return ColumnType.VARCHAR;
+        if ("geometry".equals(typeName)) return ColumnType.INVALID;
+        if ("geography".equals(typeName)) return ColumnType.INVALID;
+        if ("hierarchyid".equals(typeName)) return ColumnType.INVALID;
         if ("uniqueidentifier".equals(typeName)) return ColumnType.VARCHAR;
         throw new RuntimeException("Unexpected type: " + typeName);
     }

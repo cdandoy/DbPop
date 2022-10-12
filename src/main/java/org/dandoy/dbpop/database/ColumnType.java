@@ -123,6 +123,13 @@ public abstract class ColumnType {
         }
     };
 
+    public static ColumnType INVALID = new ColumnType() {
+        @Override
+        public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) {
+            throw new RuntimeException("Cannot load this data type");
+        }
+    };
+
     public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) throws SQLException {
         preparedStatement.setString(jdbcPos, input);
     }
