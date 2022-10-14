@@ -1,40 +1,42 @@
 package org.dandoy.dbpop.database.mssql;
 
-import org.dandoy.dbpop.database.DatabasePreparationStrategy;
-import org.dandoy.dbpop.database.ForeignKey;
-import org.dandoy.dbpop.database.Table;
-import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.upload.Dataset;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
 
 /**
  * This strategy disabled the foreign keys
  */
-class SqlServerDisablePreparationStrategy extends DatabasePreparationStrategy<SqlServerDatabase> {
+class SqlServerDisablePreparationStrategy extends DatabasePreparationStrategy {
+    private final SqlServerDatabase database;
+    private final Collection<Table> tablesToDelete;
     private final Set<ForeignKey> foreignKeys;
 
-    private SqlServerDisablePreparationStrategy(SqlServerDatabase database, Map<TableName, Table> tablesByName) {
-        super(database, tablesByName);
-        this.foreignKeys = tables.stream()
-                .flatMap(table -> table.getForeignKeys().stream())
-                .collect(Collectors.toSet());
+    public SqlServerDisablePreparationStrategy(SqlServerDatabase database, Collection<Table> tablesToDelete, Set<ForeignKey> foreignKeys) {
+        this.database = database;
+        this.tablesToDelete = tablesToDelete;
+        this.foreignKeys = foreignKeys;
     }
 
-    static SqlServerDisablePreparationStrategy createPreparationStrategy(SqlServerDatabase sqlServerDatabase, Map<TableName, Table> tablesByName) {
-        return new SqlServerDisablePreparationStrategy(sqlServerDatabase, tablesByName);
+    public static SqlServerDisablePreparationStrategy createPreparationStrategy(SqlServerDatabase sqlServerDatabase, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
+        Set<TableName> tableNamesToDelete = getTableNamesToDelete(datasetsByName, tablesByName, datasets);
+
+        Set<ForeignKey> foreignKeys = getForeignKeysToSuppress(tablesByName, tableNamesToDelete);
+
+        Collection<Table> tablesToDelete = toTables(tablesByName, tableNamesToDelete);
+
+        return new SqlServerDisablePreparationStrategy(sqlServerDatabase, tablesToDelete, foreignKeys);
     }
 
     @Override
     public void beforeInserts() {
         foreignKeys.forEach(database::disableForeignKey);
-        super.beforeInserts();
+        tablesToDelete.forEach(database::deleteTable);
     }
 
     @Override
     public void afterInserts() {
-        super.afterInserts();
         foreignKeys.forEach(database::enableForeignKey);
     }
 }

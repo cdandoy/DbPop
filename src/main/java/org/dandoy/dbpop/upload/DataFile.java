@@ -6,7 +6,7 @@ import org.dandoy.dbpop.fs.SimpleFileSystem;
 import java.io.IOException;
 import java.io.InputStream;
 
-class DataFile {
+public class DataFile {
     private final SimpleFileSystem simpleFileSystem;
     private final TableName tableName;
 

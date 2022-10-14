@@ -5,6 +5,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.mssql.SqlServerDatabase;
 import org.dandoy.dbpop.database.pgsql.PostgresDatabase;
 import org.dandoy.dbpop.upload.DataFileHeader;
+import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpop.utils.StopWatch;
 
 import java.sql.*;
@@ -190,7 +191,7 @@ public abstract class Database implements AutoCloseable {
         StopWatch.record("DELETE", () -> executeSql("DELETE FROM %s", quote(table.getTableName())));
     }
 
-    public abstract DatabasePreparationStrategy<? extends Database> createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables);
+    public abstract DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets);
 
     public boolean isBinary(ResultSetMetaData metaData, int i) throws SQLException {
         int columnType = metaData.getColumnType(i + 1);
@@ -199,6 +200,7 @@ public abstract class Database implements AutoCloseable {
                 columnType == Types.LONGVARBINARY ||
                 columnType == Types.BLOB;
     }
+
 
     public class DatabaseInserter implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;

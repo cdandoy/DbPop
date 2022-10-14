@@ -21,7 +21,7 @@ CREATE TABLE products
 CREATE TABLE invoices
 (
     invoice_id   INT PRIMARY KEY IDENTITY,
-    customer_id  INT      NOT NULL REFERENCES products,
+    customer_id  INT      NOT NULL REFERENCES customers,
     invoice_date DATETIME NOT NULL
 );
 

@@ -114,6 +114,48 @@ public class SqlServerTests {
         }
     }
 
+    @Test
+    void testStatic() throws SQLException {
+        // product is in the static dataset and should only be loaded once per populator.
+        try (Populator populator = Populator.builder()
+                .setEnvironment("mssql")
+                .setPath("/mssql")
+                .build()) {
+            try (Connection connection = populator.createConnection()) {
+
+                populator.load("base");
+                assertCount(connection, "customers", 3);
+                assertCount(connection, "invoices", 0);
+                assertCount(connection, "invoice_details", 0);
+                assertCount(connection, "products", 3);
+
+                // Insert a product (static dataset) before to load. the populator is not supposed to notice
+                try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO master.dbo.products (part_no, part_desc) VALUES ('XXX', 'XXX')")) {
+                    preparedStatement.execute();
+                }
+                populator.load("base");
+                assertCount(connection, "customers", 3);
+                assertCount(connection, "invoices", 0);
+                assertCount(connection, "invoice_details", 0);
+                assertCount(connection, "products", 4);
+            }
+        }
+
+        // A new populator will reset products
+        try (Populator populator = Populator.builder()
+                .setEnvironment("mssql")
+                .setPath("/mssql")
+                .build()) {
+            try (Connection connection = populator.createConnection()) {
+                populator.load("base");
+                assertCount(connection, "customers", 3);
+                assertCount(connection, "invoices", 0);
+                assertCount(connection, "invoice_details", 0);
+                assertCount(connection, "products", 3);
+            }
+        }
+    }
+
     public static void assertCount(Connection connection, String table, int expected) throws SQLException {
         try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT COUNT(*) FROM master.dbo." + table)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {

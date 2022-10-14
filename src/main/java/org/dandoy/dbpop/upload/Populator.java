@@ -23,11 +23,13 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class Populator implements AutoCloseable {
+    public static final String STATIC = "static";
     private static Populator INSTANCE;
     private final ConnectionBuilder connectionBuilder;
     private final Database database;
     private final Map<String, Dataset> datasetsByName;
     private final Map<TableName, Table> tablesByName;
+    private int staticLoaded;
 
     protected Populator(ConnectionBuilder connectionBuilder, Database database, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName) {
         this.connectionBuilder = connectionBuilder;
@@ -94,6 +96,8 @@ public class Populator implements AutoCloseable {
 
             Map<String, Dataset> datasetsByName = allDatasets.stream().collect(Collectors.toMap(Dataset::getName, Function.identity()));
             Map<TableName, Table> tablesByName = databaseTables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
+            validateStaticTables(datasetsByName);
+
             if (closeShield) {
                 return new CloseShieldPopulator(builder.getConnectionBuilder(), database, datasetsByName, tablesByName);
             } else {
@@ -101,6 +105,27 @@ public class Populator implements AutoCloseable {
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Validate that none of the tables in the static dataset are also in another dataset
+     */
+    private static void validateStaticTables(Map<String, Dataset> datasetsByName) {
+        Dataset staticDataset = datasetsByName.get(STATIC);
+        if (staticDataset == null) return;
+        Set<TableName> staticTableNames = staticDataset.getDataFiles().stream().map(DataFile::getTableName).collect(Collectors.toSet());
+        for (Map.Entry<String, Dataset> datasetEntry : datasetsByName.entrySet()) {
+            String datasetName = datasetEntry.getKey();
+            if (!STATIC.equals(datasetName)) {
+                Dataset dataset = datasetEntry.getValue();
+                for (DataFile dataFile : dataset.getDataFiles()) {
+                    TableName tableName = dataFile.getTableName();
+                    if (staticTableNames.contains(tableName)) {
+                        throw new RuntimeException("Table cannot be both in the static and in the " + datasetName + " datasets");
+                    }
+                }
+            }
         }
     }
 
@@ -154,15 +179,15 @@ public class Populator implements AutoCloseable {
      */
     public int load(List<String> datasets) {
         return StopWatch.record("Populator.load()", () -> {
-            log.debug("---- Loading {}", String.join(", ", datasets));
+            List<String> adjustedDatasets = adjustDatasetsForStatic(datasets);
+            log.debug("---- Loading {}", String.join(", ", adjustedDatasets));
             try (AutoComitterOff ignored = new AutoComitterOff(database.getConnection())) {
                 int rowCount = 0;
-                Set<Table> loadedTables = getLoadedTables(datasets);
 
-                DatabasePreparationStrategy<? extends Database> databasePreparationStrategy = database.createDatabasePreparationStrategy(tablesByName, loadedTables);
+                DatabasePreparationStrategy databasePreparationStrategy = database.createDatabasePreparationStrategy(datasetsByName, tablesByName, adjustedDatasets);
                 databasePreparationStrategy.beforeInserts();
                 try {
-                    for (String datasetName : datasets) {
+                    for (String datasetName : adjustedDatasets) {
                         Dataset dataset = datasetsByName.get(datasetName);
                         if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
                         rowCount += loadDataset(dataset);
@@ -177,15 +202,21 @@ public class Populator implements AutoCloseable {
         });
     }
 
-    private Set<Table> getLoadedTables(List<String> datasets) {
-        return this.datasetsByName
-                .values().stream()
-                .filter(it -> datasets.contains(it.getName()))
-                .map(Dataset::getDataFiles)
-                .flatMap(Collection::stream)
-                .map(it -> tablesByName.get(it.getTableName()))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+    /**
+     * The static dataset is only loaded once per Populator
+     */
+    private List<String> adjustDatasetsForStatic(List<String> datasets) {
+        // No need to adjust if we don't have a static dataset
+        if (!datasetsByName.containsKey(STATIC)) return datasets;
+        ArrayList<String> ret = new ArrayList<>(datasets);
+
+        if (ret.remove(STATIC))
+            log.warn("Cannot explicitely load the static dataset");
+
+        if (staticLoaded++ == 0)
+            ret.add(0, STATIC);
+
+        return ret;
     }
 
     private int loadDataset(Dataset dataset) {
@@ -322,7 +353,7 @@ public class Populator implements AutoCloseable {
         public Builder setDirectory(File directory) {
             if (directory != null) {
                 if (!directory.isDirectory()) {
-                    throw new RuntimeException("Invalid directory: " + directory);
+                    throw new RuntimeException("Invalid directory: " + directory.getAbsolutePath());
                 }
             }
             this.directory = directory;

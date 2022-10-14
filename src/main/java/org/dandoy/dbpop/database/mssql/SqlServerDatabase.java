@@ -6,6 +6,7 @@ import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.upload.DataFileHeader;
+import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpop.utils.StopWatch;
 
 import java.sql.*;
@@ -276,8 +277,8 @@ public class SqlServerDatabase extends Database {
     }
 
     @Override
-    public DatabasePreparationStrategy<SqlServerDatabase> createDatabasePreparationStrategy(Map<TableName, Table> tablesByName, Set<Table> loadedTables) {
-        return SqlServerDisablePreparationStrategy.createPreparationStrategy(this, tablesByName);
+    public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
+        return SqlServerDisablePreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
     }
 
     void disableForeignKey(ForeignKey foreignKey) {

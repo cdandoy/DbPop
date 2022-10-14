@@ -18,7 +18,7 @@ import static org.dandoy.test.SqlServerTests.assertCount;
 public class DbPopTests {
     private static final List<String> args = Arrays.asList(
             "populate",
-            "--path", "mssql"
+            "--directory", "./src/test/resources/mssql"
     );
 
     @BeforeAll
@@ -57,6 +57,9 @@ public class DbPopTests {
     private void load(String... datasets) {
         List<String> args = new ArrayList<>(DbPopTests.args);
         args.addAll(Arrays.asList(datasets));
-        DbPop.likeMain(args.toArray(new String[0]));
+        int ret = DbPop.likeMain(args.toArray(new String[0]));
+        if (ret != 0) {
+            throw new RuntimeException("DbPop returned " + ret);
+        }
     }
 }

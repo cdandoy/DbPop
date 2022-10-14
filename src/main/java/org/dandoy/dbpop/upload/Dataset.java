@@ -2,7 +2,7 @@ package org.dandoy.dbpop.upload;
 
 import java.util.Collection;
 
-class Dataset {
+public class Dataset {
     private final String name;
     private final Collection<DataFile> dataFiles;
 
