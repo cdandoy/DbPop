@@ -39,12 +39,27 @@ public abstract class DefaultBuilder<SELF extends DefaultBuilder<?, ?>, T> {
         return dbUrl == null ? env.getString("jdbcurl") : dbUrl;
     }
 
+    public SELF setDbUrl(String dbUrl) {
+        this.dbUrl = dbUrl;
+        return self();
+    }
+
     public String getDbUser() {
         return dbUser == null ? env.getString("username") : dbUser;
     }
 
+    public SELF setDbUser(String dbUser) {
+        this.dbUser = dbUser;
+        return self();
+    }
+
     public String getDbPassword() {
         return dbPassword == null ? env.getString("password") : dbPassword;
+    }
+
+    public SELF setDbPassword(String dbPassword) {
+        this.dbPassword = dbPassword;
+        return self();
     }
 
     public ConnectionBuilder getConnectionBuilder() {

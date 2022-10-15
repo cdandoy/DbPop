@@ -346,8 +346,8 @@ public class Populator implements AutoCloseable {
             return this;
         }
 
-        public Builder setDirectory(String path) {
-            return setDirectory(new File(path));
+        public Builder setDirectory(String directory) {
+            return setDirectory(new File(directory));
         }
 
         public Builder setDirectory(File directory) {
