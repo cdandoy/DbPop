@@ -9,7 +9,7 @@ plugins {
 }
 
 group 'io.github.cdandoy'
-version '0.0.5-SNAPSHOT'
+version '0.0.6-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -45,6 +45,8 @@ application {
     mainClass = 'org.dandoy.dbpop.DbPop'
 }
 
+javadoc.options.addStringOption('Xdoclint:none', '-quiet')
+
 task sourcesJar(type: Jar, dependsOn: classes) {
     classifier = 'sources'
     from sourceSets.main.allSource
@@ -61,7 +63,12 @@ artifacts {
 
 // TODO: Try the gradle-nexus.publish-plugin next time I publish
 // https://madhead.me/posts/no-bullshit-maven-publish/
-// Run: gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
+// To publish:
+// * Update the version
+// * gradlew clean build publishToSonatype closeAndReleaseSonatypeStagingRepository
+// * After a ~10 minutes: https://repo1.maven.org/maven2/io/github/cdandoy/dbpop/
+//                        https://central.sonatype.dev/namespace/io.github.cdandoy
+// * Change the version to -SNAPSHOT
 
 nexusPublishing {
     repositories {
