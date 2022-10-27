@@ -61,7 +61,7 @@ artifacts {
 
 // TODO: Try the gradle-nexus.publish-plugin next time I publish
 // https://madhead.me/posts/no-bullshit-maven-publish/
-// publishToSonatype closeAndReleaseSonatypeStagingRepository
+// Run: gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
 
 nexusPublishing {
     repositories {
