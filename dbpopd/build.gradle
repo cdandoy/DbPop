@@ -1,0 +1,52 @@
+plugins {
+    id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("io.micronaut.application") version "3.6.2"
+}
+
+version = "0.1"
+group = "org.dandoy.dbpopd"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("io.micronaut:micronaut-http-validation")
+    annotationProcessor("io.micronaut.openapi:micronaut-openapi")
+    implementation("io.micronaut:micronaut-http-client")
+    implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("io.swagger.core.v3:swagger-annotations")
+    implementation("jakarta.annotation:jakarta.annotation-api")
+    compileOnly("org.projectlombok:lombok")
+    implementation 'ch.qos.logback:logback-classic:1.4.4'
+    implementation('org.slf4j:jcl-over-slf4j:2.0.3')
+    implementation("io.micronaut:micronaut-validation")
+    implementation project(":lib")
+}
+
+application {
+    mainClass.set("org.dandoy.dbpopd.Application")
+}
+java {
+    sourceCompatibility = JavaVersion.toVersion("17")
+    targetCompatibility = JavaVersion.toVersion("17")
+}
+
+dockerBuild {
+    inputDir = project.projectDir
+    images = ["docker.io/cdandoy/dbpop:$project.version"]
+}
+
+graalvmNative.toolchainDetection = false
+micronaut {
+    runtime("netty")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("org.dandoy.dbpopd.*")
+    }
+}
+
+
+

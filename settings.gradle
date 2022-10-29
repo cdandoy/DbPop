@@ -1,2 +1,4 @@
 rootProject.name = 'dbpop'
 
+include 'lib'
+include 'dbpopd'

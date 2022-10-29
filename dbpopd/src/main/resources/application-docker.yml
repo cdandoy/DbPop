@@ -1,0 +1,6 @@
+micronaut:
+  server:
+    port: 80
+dbpopd:
+  configuration:
+    path: '/var/opt/dbpop'
