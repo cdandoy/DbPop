@@ -1,26 +1,27 @@
 package org.dandoy.dbpop.upload;
 
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.fs.SimpleFileSystem;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 
 public class DataFile {
-    private final SimpleFileSystem simpleFileSystem;
+    private final File file;
     private final TableName tableName;
 
-    public DataFile(SimpleFileSystem simpleFileSystem, TableName tableName) {
-        this.simpleFileSystem = simpleFileSystem;
+    public DataFile(File file, TableName tableName) {
+        this.file = file;
         this.tableName = tableName;
     }
 
     public InputStream createInputStream() throws IOException {
-        return simpleFileSystem.createInputStream();
+        return Files.newInputStream(file.toPath());
     }
 
-    public SimpleFileSystem getSimpleFileSystem() {
-        return simpleFileSystem;
+    public File getFile() {
+        return file;
     }
 
     public TableName getTableName() {

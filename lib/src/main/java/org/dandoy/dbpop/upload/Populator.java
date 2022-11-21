@@ -6,8 +6,6 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.Database.DatabaseInserter;
-import org.dandoy.dbpop.fs.LocalFileSystem;
-import org.dandoy.dbpop.fs.SimpleFileSystem;
 import org.dandoy.dbpop.utils.AutoComitterOff;
 import org.dandoy.dbpop.utils.StopWatch;
 
@@ -57,7 +55,8 @@ public class Populator implements AutoCloseable {
 
     public static synchronized Populator getInstance() {
         if (INSTANCE == null) {
-            INSTANCE = build();
+            // Creates a default Populator based on the properties found in ~/dbpop.properties
+            INSTANCE = builder().build();
         }
         return INSTANCE;
     }
@@ -70,21 +69,12 @@ public class Populator implements AutoCloseable {
         INSTANCE = instance;
     }
 
-    /**
-     * Creates a default Populator based on the properties found in ~/dbpop.properties
-     *
-     * @return a default Populator
-     */
-    @SuppressWarnings("unused")
-    public static Populator build() {
-        return builder().build();
-    }
-
     private static Populator build(Builder builder, boolean closeShield) {
         try {
             Database database = Database.createDatabase(builder.getConnectionBuilder().createConnection());
-            List<Dataset> allDatasets = getDatasets(builder.getSimpleFileSystem());
-            if (allDatasets.isEmpty()) throw new RuntimeException("No datasets found in " + builder.getSimpleFileSystem());
+            File directory = builder.getDirectory();
+            List<Dataset> allDatasets = getDatasets(directory);
+            if (allDatasets.isEmpty()) throw new RuntimeException("No datasets found in " + directory);
 
             Set<TableName> datasetTableNames = allDatasets.stream()
                     .flatMap(dataset -> dataset.getDataFiles().stream())
@@ -150,7 +140,7 @@ public class Populator implements AutoCloseable {
             throw new RuntimeException(String.format(
                     "Table %s does not exist for this data file %s",
                     badDataFile.getTableName().toQualifiedName(),
-                    badDataFile.getSimpleFileSystem()
+                    badDataFile.getFile()
             ));
         }
     }
@@ -270,41 +260,53 @@ public class Populator implements AutoCloseable {
         return count;
     }
 
-    private static List<Dataset> getDatasets(SimpleFileSystem simpleFileSystem) {
+    private static List<Dataset> getDatasets(File directory) {
         return StopWatch.record("Populator.getDatasets", () -> {
             List<Dataset> datasets = new ArrayList<>();
-            Collection<SimpleFileSystem> datasetFiles = simpleFileSystem.list();
-            if (datasetFiles.isEmpty()) throw new RuntimeException("Invalid path " + simpleFileSystem);
-            for (SimpleFileSystem datasetFile : datasetFiles) {
-                Collection<SimpleFileSystem> catalogFiles = datasetFile.list();
-                Collection<DataFile> dataFiles = new ArrayList<>();
-                for (SimpleFileSystem catalogFile : catalogFiles) {
-                    String catalog = catalogFile.getName();
-                    Collection<SimpleFileSystem> schemaFiles = catalogFile.list();
-                    for (SimpleFileSystem schemaFile : schemaFiles) {
-                        String schema = schemaFile.getName();
-                        Collection<SimpleFileSystem> tableFiles = schemaFile.list();
-                        for (SimpleFileSystem tableFile : tableFiles) {
-                            String tableFileName = tableFile.getName();
-                            if (tableFileName.endsWith(".csv")) {
-                                String table = tableFileName.substring(0, tableFileName.length() - 4);
-                                dataFiles.add(
-                                        new DataFile(
-                                                tableFile,
-                                                new TableName(catalog, schema, table)
-                                        )
-                                );
+            File[] datasetFiles = directory.listFiles();
+            if (datasetFiles == null) throw new RuntimeException("Invalid path " + directory);
+            for (File datasetFile : datasetFiles) {
+                File[] catalogFiles = datasetFile.listFiles();
+                if (catalogFiles != null) {
+                    Collection<DataFile> dataFiles = new ArrayList<>();
+                    for (File catalogFile : catalogFiles) {
+                        String catalog = catalogFile.getName();
+                        File[] schemaFiles = catalogFile.listFiles();
+                        if (schemaFiles != null) {
+                            for (File schemaFile : schemaFiles) {
+                                String schema = schemaFile.getName();
+                                File[] tableFiles = schemaFile.listFiles();
+                                if (tableFiles != null) {
+                                    for (File tableFile : tableFiles) {
+                                        String tableFileName = tableFile.getName();
+                                        if (tableFileName.endsWith(".csv")) {
+                                            String table = tableFileName.substring(0, tableFileName.length() - 4);
+                                            dataFiles.add(
+                                                    new DataFile(
+                                                            tableFile,
+                                                            new TableName(catalog, schema, table)
+                                                    )
+                                            );
+                                        }
+                                    }
+                                } else {
+                                    log.warn("Unexpected file " + schemaFile);
+                                }
                             }
+                        } else {
+                            log.warn("Unexpected file " + catalogFile);
                         }
                     }
-                }
-                if (!dataFiles.isEmpty()) {
-                    datasets.add(
-                            new Dataset(
-                                    datasetFile.getName(),
-                                    dataFiles
-                            )
-                    );
+                    if (!dataFiles.isEmpty()) {
+                        datasets.add(
+                                new Dataset(
+                                        datasetFile.getName(),
+                                        dataFiles
+                                )
+                        );
+                    }
+                } else {
+                    log.warn("Unexpected file " + datasetFile);
                 }
             }
             return datasets;
@@ -323,14 +325,9 @@ public class Populator implements AutoCloseable {
      * Populator builder
      */
     public static class Builder extends DefaultBuilder<Builder, Populator> {
-        private String path;
         private File directory;
 
         private Builder() {
-        }
-
-        public Builder(File directory) {
-            super(directory);
         }
 
         /**
@@ -345,14 +342,9 @@ public class Populator implements AutoCloseable {
          *         Shift.csv
          * </pre>
          *
-         * @param path The path that holds the datasets
+         * @param directory The directory that holds the datasets
          * @return this
          */
-        public Builder setPath(String path) {
-            this.path = path;
-            return this;
-        }
-
         public Builder setDirectory(String directory) {
             return setDirectory(new File(directory));
         }
@@ -367,14 +359,8 @@ public class Populator implements AutoCloseable {
             return this;
         }
 
-        SimpleFileSystem getSimpleFileSystem() {
-            if (directory != null) {
-                return new LocalFileSystem(directory, path == null ? "/" : path);
-            }
-            if (path != null) {
-                return SimpleFileSystem.fromPath(path);
-            }
-            return SimpleFileSystem.fromPath("/testdata/");
+        File getDirectory() {
+            return directory;
         }
 
         /**

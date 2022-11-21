@@ -30,7 +30,7 @@ public class DbPopTests {
     void testDbPopMain() throws SQLException {
         try (Populator populator = Populator.builder()
                 .setEnvironment("mssql")
-                .setPath("mssql")
+                .setDirectory("src/test/resources/mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
                 load("base");

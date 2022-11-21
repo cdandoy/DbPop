@@ -17,7 +17,7 @@ public class DbpopdService {
             @Property(name = "dbpopd.configuration.path") String configurationPath
     ) {
         File configurationDir = toConfigurationDir(configurationPath);
-        Populator.Builder builder = new Populator.Builder(configurationDir)
+        Populator.Builder builder = Populator.builder()
                 .setDirectory(configurationDir);
         populator = builder.build();
     }
