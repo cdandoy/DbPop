@@ -52,7 +52,7 @@ implementation 'io.github.cdandoy:dbpop:0.0.4'
 ```java
 public class TestUsage {
     private static Populator populator = Populator.builder()
-            .setPath("/testdata/")
+            .setDirectory("./testdata/")
             .setConnection("jdbc:sqlserver://localhost", "sa", "password")
             .build();
 
@@ -120,7 +120,7 @@ For example:
 ```java
 Populator.builder()
         .setEnvironment("mssql")
-        .setPath("/test_expressions")
+        .setDirectory("./test_expressions")
         .createSingletonInstance();
 
 Populator.getInstance().load("base");
