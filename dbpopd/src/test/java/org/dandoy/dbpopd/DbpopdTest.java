@@ -3,7 +3,7 @@ package org.dandoy.dbpopd;
 import io.micronaut.core.convert.ConversionService;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
-import org.dandoy.dbpop.utils.FileUtils;
+import org.dandoy.dbpopd.utils.FileUtils;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
