@@ -16,6 +16,4 @@ public class DownloadRequest {
     private String dataset;
     private String catalog;
     private String schema;
-    @NotNull
-    private String table;
 }
