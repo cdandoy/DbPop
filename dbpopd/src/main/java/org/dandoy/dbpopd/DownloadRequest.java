@@ -6,6 +6,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 
 import javax.validation.constraints.NotNull;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -18,4 +19,5 @@ public class DownloadRequest {
     private String schema;
     @NotNull
     private String table;
+    private Map<String, Object> where;
 }

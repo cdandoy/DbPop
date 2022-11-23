@@ -23,6 +23,7 @@ dependencies {
     implementation('org.slf4j:jcl-over-slf4j:2.0.3')
     implementation("io.micronaut:micronaut-validation")
     implementation project(":lib")
+    testImplementation 'commons-io:commons-io:2.11.0'
 }
 
 application {

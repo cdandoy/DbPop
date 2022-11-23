@@ -3,13 +3,17 @@ package org.dandoy.dbpopd;
 import io.micronaut.core.convert.ConversionService;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
-import org.dandoy.dbpopd.utils.FileUtils;
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.commons.io.FileUtils.readLines;
+import static org.dandoy.dbpopd.utils.FileUtils.deleteRecursively;
 import static org.junit.jupiter.api.Assertions.*;
 
 @MicronautTest
@@ -33,11 +37,11 @@ class DbpopdTest {
     }
 
     @Test
-    void testDownload() {
+    void testDownload() throws IOException {
         File dir = new File("src/test/resources/config/datasets/test_dataset/");
         File file = new File(dir, "/master/dbo/customers.csv");
         if (dir.exists()) {
-            FileUtils.deleteRecursively(dir);
+            deleteRecursively(dir);
         }
 
         DownloadRequest downloadRequest = ConversionService.SHARED
@@ -46,7 +50,10 @@ class DbpopdTest {
                                 "dataset", "test_dataset",
                                 "catalog", "master",
                                 "schema", "dbo",
-                                "table", "customers"
+                                "table", "customers",
+                                "where", Map.of(
+                                        "customer_id", 102
+                                )
                         ),
                         DownloadRequest.class);
         assertNotNull(downloadRequest);
@@ -54,6 +61,11 @@ class DbpopdTest {
         dbpopdController.download(downloadRequest);
 
         assertTrue(file.exists());
-        FileUtils.deleteRecursively(dir);
+        assertEquals(2, readLines(file, UTF_8).size());
+        String content = FileUtils.readFileToString(file, UTF_8);
+        assertTrue(content.contains("Crown"));
+        assertFalse(content.contains("AirMethod"));
+
+        deleteRecursively(dir);
     }
 }

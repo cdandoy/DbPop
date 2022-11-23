@@ -32,7 +32,8 @@ public class DbpopdController {
                         downloadRequest.getCatalog(),
                         downloadRequest.getSchema(),
                         downloadRequest.getTable()
-                )
+                ),
+                downloadRequest.getWhere()
         );
     }
 }

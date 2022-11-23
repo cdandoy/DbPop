@@ -1,20 +1,25 @@
 package org.dandoy.dbpop.download;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
-import org.dandoy.dbpop.database.Database;
-import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.upload.DefaultBuilder;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.sql.*;
-import java.util.Base64;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class Downloader implements AutoCloseable {
@@ -22,14 +27,23 @@ public class Downloader implements AutoCloseable {
      * Maximum length for an individual value
      */
     private static final int MAX_LENGTH = 1024 * 32;
+    private static final Set<Class<?>> VALID_WHERE_CLASSES = new HashSet<>(Arrays.asList(
+            String.class,
+            Float.class,
+            BigDecimal.class,
+            Long.class,
+            Double.class,
+            Short.class,
+            BigInteger.class,
+            Byte.class,
+            Integer.class
+    ));
     private final File directory;
     private final Connection connection;
-    private final Statement statement;
     private final Database database;
 
     private Downloader(Connection connection, File directory) throws SQLException {
         this.connection = connection;
-        this.statement = connection.createStatement();
         this.directory = directory;
         this.database = Database.createDatabase(connection);
     }
@@ -38,7 +52,6 @@ public class Downloader implements AutoCloseable {
     public void close() {
         try {
             database.close();
-            statement.close();
             connection.close();
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -75,46 +88,108 @@ public class Downloader implements AutoCloseable {
     }
 
     public void download(TableName tableName) {
-        String quotedTableName = database.quote(tableName);
-        try (ResultSet resultSet = statement.executeQuery("SELECT * FROM " + quotedTableName)) {
-            CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
-                    .build();
-            try (CSVPrinter csvPrinter = new CSVPrinter(getFileWriter(tableName), csvFormat)) {
-                ResultSetMetaData metaData = resultSet.getMetaData();
-                int columnCount = metaData.getColumnCount();
+        download(tableName, Collections.emptyList());
+    }
 
-                // Headers
-                for (int i = 0; i < columnCount; i++) {
-                    String columnName = metaData.getColumnName(i + 1);
-                    if (database.isBinary(metaData, i)) {
-                        columnName += "*b64";
-                    }
-                    csvPrinter.print(columnName);
-                }
-                csvPrinter.println();
+    public void download(TableName tableName, List<Where> wheres) {
+        List<ColumnWhere> columnWheres = getColumnWheres(tableName, wheres);
+        String selectStatement = createSelectStatement(tableName, columnWheres);
+        try (PreparedStatement preparedStatement = connection.prepareStatement(selectStatement)) {
+            // Bind the where clauses
+            for (int i = 0; i < columnWheres.size(); i++) {
+                ColumnWhere columnWhere = columnWheres.get(i);
+                ColumnType columnType = columnWhere.getColumn().getColumnType();
+                Object value = columnWhere.getValue();
+                columnType.bind(preparedStatement, i + 1, value);
+            }
 
-                // Data - it feels like the download*() methods would be better handled by the Database class
-                while (resultSet.next()) {
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
+                        .build();
+                try (CSVPrinter csvPrinter = new CSVPrinter(getFileWriter(tableName), csvFormat)) {
+                    ResultSetMetaData metaData = resultSet.getMetaData();
+                    int columnCount = metaData.getColumnCount();
+
+                    // Headers
                     for (int i = 0; i < columnCount; i++) {
-                        if (metaData.getColumnType(i + 1) == Types.CLOB) {
-                            downloadClob(tableName, resultSet, csvPrinter, metaData, i);
-                        } else if (metaData.getColumnType(i + 1) == Types.BLOB) {
-                            downloadBlob(tableName, resultSet, csvPrinter, metaData, i);
-                        } else if (database.isBinary(metaData, i)) {
-                            downloadBinary(tableName, resultSet, csvPrinter, metaData, i);
-                        } else {
-                            downloadString(tableName, resultSet, csvPrinter, metaData, i);
+                        String columnName = metaData.getColumnName(i + 1);
+                        if (database.isBinary(metaData, i)) {
+                            columnName += "*b64";
                         }
+                        csvPrinter.print(columnName);
                     }
                     csvPrinter.println();
+
+                    // Data - it feels like the download*() methods would be better handled by the Database class
+                    while (resultSet.next()) {
+                        for (int i = 0; i < columnCount; i++) {
+                            if (metaData.getColumnType(i + 1) == Types.CLOB) {
+                                downloadClob(tableName, resultSet, csvPrinter, metaData, i);
+                            } else if (metaData.getColumnType(i + 1) == Types.BLOB) {
+                                downloadBlob(tableName, resultSet, csvPrinter, metaData, i);
+                            } else if (database.isBinary(metaData, i)) {
+                                downloadBinary(tableName, resultSet, csvPrinter, metaData, i);
+                            } else {
+                                downloadString(tableName, resultSet, csvPrinter, metaData, i);
+                            }
+                        }
+                        csvPrinter.println();
+                    }
+                    csvPrinter.printRecords(resultSet);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
-                csvPrinter.printRecords(resultSet);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private List<ColumnWhere> getColumnWheres(TableName tableName, List<Where> wheres) {
+        Collection<Table> tables = database.getTables(Collections.singleton(tableName));
+        if (tables.isEmpty()) throw new RuntimeException("Table does not exist: " + tableName.toQualifiedName());
+        Map<String, Column> columnMap = tables.iterator().next().getColumns().stream().
+                collect(Collectors.toMap(
+                        Column::getName,
+                        Function.identity()
+                ));
+
+        return wheres.stream()
+                .map(where -> {
+                    // Validate that the column names are in the table
+                    String columnName = where.getColumn();
+                    Column tableColumn = columnMap.get(columnName);
+                    if (tableColumn == null) throw new RuntimeException(String.format(
+                            "Column does not exist: %s in table %s",
+                            columnName, tableName.toQualifiedName()
+                    ));
+
+                    // Validate that the values are either strings or numbers
+                    Object value = where.getValue();
+                    if (value != null && !VALID_WHERE_CLASSES.contains(value.getClass())) {
+                        throw new RuntimeException("WHERE values must be strings or numbers");
+                    }
+
+                    return new ColumnWhere(tableColumn, value);
+                })
+                .collect(Collectors.toList());
+    }
+
+    private String createSelectStatement(TableName tableName, List<ColumnWhere> wheres) {
+        String quotedTableName = database.quote(tableName);
+        String ret = "SELECT *\nFROM " + quotedTableName;
+
+        if (!wheres.isEmpty()) {
+            String whereClauses = wheres.stream()
+                    .map(where -> {
+                        String columnName = where.getColumn().getName();
+                        String quotedColumnName = database.quote(columnName);
+                        return String.format("%s = ?", quotedColumnName);
+                    })
+                    .collect(Collectors.joining("\nAND "));
+            ret += "\nWHERE " + whereClauses;
+        }
+        return ret;
     }
 
     private void downloadClob(TableName tableName, ResultSet resultSet, CSVPrinter csvPrinter, ResultSetMetaData metaData, int i) throws SQLException, IOException {
@@ -278,5 +353,12 @@ public class Downloader implements AutoCloseable {
             this.dataset = dataset;
             return this;
         }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    private static class ColumnWhere {
+        private final Column column;
+        private final Object value;
     }
 }

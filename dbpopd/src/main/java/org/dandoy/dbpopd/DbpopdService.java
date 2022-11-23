@@ -5,11 +5,13 @@ import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
+import org.dandoy.dbpop.download.Where;
 import org.dandoy.dbpop.upload.Populator;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @Singleton
 public class DbpopdService {
@@ -55,11 +57,14 @@ public class DbpopdService {
         return new PopulateResult(rows, t1 - t0);
     }
 
-    public void download(String dataset, TableName tableName) {
+    public void download(String dataset, TableName tableName, Map<String, Object> whereMap) {
         try (Downloader downloader = downloadBuilder
                 .setDataset(dataset)
                 .build()) {
-            downloader.download(tableName);
+            List<Where> wheres = whereMap.entrySet().stream()
+                    .map(entry -> new Where(entry.getKey(), entry.getValue()))
+                    .toList();
+            downloader.download(tableName, wheres);
         }
     }
 
