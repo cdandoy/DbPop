@@ -6,6 +6,7 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.Database.DatabaseInserter;
+import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.utils.AutoComitterOff;
 import org.dandoy.dbpop.utils.StopWatch;
 
@@ -21,7 +22,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class Populator implements AutoCloseable {
-    public static final String STATIC = "static";
     private static Populator INSTANCE;
     private final ConnectionBuilder connectionBuilder;
     private final Database database;
@@ -73,7 +73,7 @@ public class Populator implements AutoCloseable {
         try {
             Database database = Database.createDatabase(builder.getConnectionBuilder().createConnection());
             File directory = builder.getDirectory();
-            List<Dataset> allDatasets = getDatasets(directory);
+            List<Dataset> allDatasets = Datasets.getDatasets(directory);
             if (allDatasets.isEmpty()) throw new RuntimeException("No datasets found in " + directory);
 
             Set<TableName> datasetTableNames = allDatasets.stream()
@@ -82,7 +82,7 @@ public class Populator implements AutoCloseable {
                     .collect(Collectors.toSet());
 
             Collection<Table> databaseTables = database.getTables(datasetTableNames);
-            validateAllTablesExist(allDatasets, datasetTableNames, databaseTables);
+            Datasets.validateAllTablesExist(allDatasets, datasetTableNames, databaseTables);
 
             Map<String, Dataset> datasetsByName = allDatasets.stream().collect(Collectors.toMap(Dataset::getName, Function.identity()));
             Map<TableName, Table> tablesByName = databaseTables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
@@ -102,12 +102,12 @@ public class Populator implements AutoCloseable {
      * Validate that none of the tables in the static dataset are also in another dataset
      */
     private static void validateStaticTables(Map<String, Dataset> datasetsByName) {
-        Dataset staticDataset = datasetsByName.get(STATIC);
+        Dataset staticDataset = datasetsByName.get(Datasets.STATIC);
         if (staticDataset == null) return;
         Set<TableName> staticTableNames = staticDataset.getDataFiles().stream().map(DataFile::getTableName).collect(Collectors.toSet());
         for (Map.Entry<String, Dataset> datasetEntry : datasetsByName.entrySet()) {
             String datasetName = datasetEntry.getKey();
-            if (!STATIC.equals(datasetName)) {
+            if (!Datasets.STATIC.equals(datasetName)) {
                 Dataset dataset = datasetEntry.getValue();
                 for (DataFile dataFile : dataset.getDataFiles()) {
                     TableName tableName = dataFile.getTableName();
@@ -116,32 +116,6 @@ public class Populator implements AutoCloseable {
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Check that we have all the tables that are in the dataset
-     *
-     * @param allDatasets       The datasets
-     * @param datasetTableNames The table names found in the data sets
-     * @param databaseTables    the tables found in the database that are in the data sets
-     */
-    private static void validateAllTablesExist(List<Dataset> allDatasets, Set<TableName> datasetTableNames, Collection<Table> databaseTables) {
-        Set<TableName> databaseTableNames = databaseTables.stream().map(Table::getTableName).collect(Collectors.toSet());
-        List<TableName> missingTables = datasetTableNames.stream()
-                .filter(tableName -> !databaseTableNames.contains(tableName))
-                .collect(Collectors.toList());
-        if (!missingTables.isEmpty()) {
-            DataFile badDataFile = allDatasets.stream()
-                    .flatMap(dataset -> dataset.getDataFiles().stream())
-                    .filter(dataFile -> missingTables.contains(dataFile.getTableName()))
-                    .findFirst()
-                    .orElseThrow(RuntimeException::new);
-            throw new RuntimeException(String.format(
-                    "Table %s does not exist for this data file %s",
-                    badDataFile.getTableName().toQualifiedName(),
-                    badDataFile.getFile()
-            ));
         }
     }
 
@@ -197,14 +171,14 @@ public class Populator implements AutoCloseable {
      */
     private List<String> adjustDatasetsForStatic(List<String> datasets) {
         // No need to adjust if we don't have a static dataset
-        if (!datasetsByName.containsKey(STATIC)) return datasets;
+        if (!datasetsByName.containsKey(Datasets.STATIC)) return datasets;
         ArrayList<String> ret = new ArrayList<>(datasets);
 
-        if (ret.remove(STATIC))
+        if (ret.remove(Datasets.STATIC))
             log.warn("Cannot explicitely load the static dataset");
 
         if (staticLoaded++ == 0)
-            ret.add(0, STATIC);
+            ret.add(0, Datasets.STATIC);
 
         return ret;
     }
@@ -258,59 +232,6 @@ public class Populator implements AutoCloseable {
             throw new RuntimeException(e);
         }
         return count;
-    }
-
-    private static List<Dataset> getDatasets(File directory) {
-        return StopWatch.record("Populator.getDatasets", () -> {
-            List<Dataset> datasets = new ArrayList<>();
-            File[] datasetFiles = directory.listFiles();
-            if (datasetFiles == null) throw new RuntimeException("Invalid path " + directory);
-            for (File datasetFile : datasetFiles) {
-                File[] catalogFiles = datasetFile.listFiles();
-                if (catalogFiles != null) {
-                    Collection<DataFile> dataFiles = new ArrayList<>();
-                    for (File catalogFile : catalogFiles) {
-                        String catalog = catalogFile.getName();
-                        File[] schemaFiles = catalogFile.listFiles();
-                        if (schemaFiles != null) {
-                            for (File schemaFile : schemaFiles) {
-                                String schema = schemaFile.getName();
-                                File[] tableFiles = schemaFile.listFiles();
-                                if (tableFiles != null) {
-                                    for (File tableFile : tableFiles) {
-                                        String tableFileName = tableFile.getName();
-                                        if (tableFileName.endsWith(".csv")) {
-                                            String table = tableFileName.substring(0, tableFileName.length() - 4);
-                                            dataFiles.add(
-                                                    new DataFile(
-                                                            tableFile,
-                                                            new TableName(catalog, schema, table)
-                                                    )
-                                            );
-                                        }
-                                    }
-                                } else {
-                                    log.warn("Unexpected file " + schemaFile);
-                                }
-                            }
-                        } else {
-                            log.warn("Unexpected file " + catalogFile);
-                        }
-                    }
-                    if (!dataFiles.isEmpty()) {
-                        datasets.add(
-                                new Dataset(
-                                        datasetFile.getName(),
-                                        dataFiles
-                                )
-                        );
-                    }
-                } else {
-                    log.warn("Unexpected file " + datasetFile);
-                }
-            }
-            return datasets;
-        });
     }
 
     /**

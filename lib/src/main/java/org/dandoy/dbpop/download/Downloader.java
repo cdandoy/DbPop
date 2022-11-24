@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.datasets.Datasets;
+import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpop.upload.DefaultBuilder;
 
 import java.io.File;
@@ -20,6 +22,9 @@ import java.sql.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.dandoy.dbpop.datasets.Datasets.BASE;
+import static org.dandoy.dbpop.datasets.Datasets.STATIC;
 
 @Slf4j
 public class Downloader implements AutoCloseable {
@@ -39,27 +44,22 @@ public class Downloader implements AutoCloseable {
             Integer.class
     ));
     private final File directory;
-    private final Connection connection;
     private final Database database;
+    private final PkReader pkReader;
 
-    private Downloader(Connection connection, File directory) throws SQLException {
-        this.connection = connection;
+    private Downloader(Database database, File directory, PkReader pkReader) throws SQLException {
         this.directory = directory;
-        this.database = Database.createDatabase(connection);
+        this.database = database;
+        this.pkReader = pkReader;
     }
 
     @Override
     public void close() {
-        try {
-            database.close();
-            connection.close();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        database.close();
     }
 
     public Connection getConnection() {
-        return connection;
+        return database.getConnection();
     }
 
     public Database getDatabase() {
@@ -71,16 +71,32 @@ public class Downloader implements AutoCloseable {
             if (builder.getDbUrl() == null) throw new RuntimeException("Missing --jdbcurl");
             if (builder.dataset == null) throw new RuntimeException("Missing dataset");
 
+            Connection connection = builder.getConnectionBuilder().createConnection();
+            Database database = Database.createDatabase(connection);
+            PkReader pkReader = createPkReader(database, builder.directory, builder.dataset);
             return new Downloader(
-                    builder.getConnectionBuilder().createConnection(),
+                    database,
                     new File(
                             builder.getDirectory(),
                             builder.dataset
-                    )
+                    ),
+                    pkReader
             );
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static PkReader createPkReader(
+            Database database,
+            File datasetsDirectory,
+            @SuppressWarnings("unused") String loadedDataset // We don't include the loaded dataset yet because the downloader overrides the file, it doesn't append. See #15
+    ) {
+        List<Dataset> pkDatasets = Datasets.getDatasets(datasetsDirectory)
+                .stream()
+                .filter(dataset -> STATIC.equals(dataset.getName()) || BASE.equals(dataset.getName())/* || loadedDataset.equals(dataset.getName())*/)
+                .collect(Collectors.toList());
+        return PkReader.readDatasets(database, pkDatasets);
     }
 
     public static Builder builder() {
@@ -94,7 +110,7 @@ public class Downloader implements AutoCloseable {
     public void download(TableName tableName, List<Where> wheres) {
         List<ColumnWhere> columnWheres = getColumnWheres(tableName, wheres);
         String selectStatement = createSelectStatement(tableName, columnWheres);
-        try (PreparedStatement preparedStatement = connection.prepareStatement(selectStatement)) {
+        try (PreparedStatement preparedStatement = database.getConnection().prepareStatement(selectStatement)) {
             // Bind the where clauses
             for (int i = 0; i < columnWheres.size(); i++) {
                 ColumnWhere columnWhere = columnWheres.get(i);
@@ -120,8 +136,19 @@ public class Downloader implements AutoCloseable {
                     }
                     csvPrinter.println();
 
+                    // PKs
+                    PkReader.PkInfo pkInfo = pkReader.getPkInfo(tableName);
+                    List<Integer> pkPositions = pkInfo.toPositions(metaData);
+
                     // Data - it feels like the download*() methods would be better handled by the Database class
+                    List<String> pk = new ArrayList<>();
                     while (resultSet.next()) {
+                        pk.clear();
+                        for (Integer pos : pkPositions) {
+                            pk.add(getString(resultSet, pos));
+                        }
+                        if (pkInfo.containsRow(pk)) continue;
+
                         for (int i = 0; i < columnCount; i++) {
                             if (metaData.getColumnType(i + 1) == Types.CLOB) {
                                 downloadClob(tableName, resultSet, csvPrinter, metaData, i);
@@ -243,6 +270,14 @@ public class Downloader implements AutoCloseable {
             }
         } else {
             csvPrinter.print(null);
+        }
+    }
+
+    private String getString(ResultSet resultSet, int i) {
+        try {
+            return resultSet.getString(i + 1);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 

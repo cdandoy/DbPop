@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.singletonList;
 import static org.apache.commons.io.FileUtils.readLines;
 import static org.dandoy.dbpopd.utils.FileUtils.deleteRecursively;
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,6 +39,8 @@ class DbpopdTest {
 
     @Test
     void testDownload() throws IOException {
+        dbpopdController.populate(singletonList("customers_1000"));
+
         File dir = new File("src/test/resources/config/datasets/test_dataset/");
         File file = new File(dir, "/master/dbo/customers.csv");
         if (dir.exists()) {
@@ -52,7 +55,7 @@ class DbpopdTest {
                                 "schema", "dbo",
                                 "table", "customers",
                                 "where", Map.of(
-                                        "customer_id", 102
+                                        "customer_id", 1001
                                 )
                         ),
                         DownloadRequest.class);
@@ -63,8 +66,8 @@ class DbpopdTest {
         assertTrue(file.exists());
         assertEquals(2, readLines(file, UTF_8).size());
         String content = FileUtils.readFileToString(file, UTF_8);
-        assertTrue(content.contains("Crown"));
-        assertFalse(content.contains("AirMethod"));
+        assertTrue(content.contains("Ontel"));
+        assertFalse(content.contains("Arris"));
 
         deleteRecursively(dir);
     }

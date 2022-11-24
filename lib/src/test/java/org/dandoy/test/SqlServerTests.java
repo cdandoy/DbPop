@@ -5,6 +5,7 @@ import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
+import org.dandoy.dbpopd.utils.FileUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -172,8 +173,9 @@ public class SqlServerTests {
     @Test
     void testBinary() throws SQLException, MalformedURLException, URISyntaxException {
         URL resource = getClass().getClassLoader().getResource("logback.xml");
-        URL generatedTestsUrl = new URL(resource, "src/test/resources/generated_tests/");
+        URL generatedTestsUrl = new URL(resource, "generated_tests");
         File dir = Paths.get(generatedTestsUrl.toURI()).toFile();
+        FileUtils.deleteRecursively(dir);
         assertTrue(dir.mkdirs() || dir.isDirectory());
         try (Downloader downloader = Downloader.builder()
                 .setEnvironment("mssql")
@@ -181,6 +183,10 @@ public class SqlServerTests {
                 .setDataset("base")
                 .build()) {
             Connection connection = downloader.getConnection();
+
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
+            }
 
             try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO master.dbo.test_binary(id, test_binary, test_blob) VALUES (?,?,?)")) {
                 preparedStatement.setInt(1, 1);
@@ -198,6 +204,7 @@ public class SqlServerTests {
             try (Statement statement = connection.createStatement()) {
                 statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
             }
+            connection.commit();
         }
 
         try (Populator populator = Populator.builder()
