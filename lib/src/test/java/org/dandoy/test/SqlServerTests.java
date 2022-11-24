@@ -11,11 +11,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.*;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -167,16 +170,25 @@ public class SqlServerTests {
         }
     }
 
+    private static File createGeneratedTestDirectory() {
+        try {
+            URL resource = SqlServerTests.class.getClassLoader().getResource("logback.xml");
+            URL generatedTestsUrl = new URL(resource, "generated_tests");
+            File dir = Paths.get(generatedTestsUrl.toURI()).toFile();
+            FileUtils.deleteRecursively(dir);
+            assertTrue(dir.mkdirs() || dir.isDirectory());
+            return dir;
+        } catch (MalformedURLException | URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     /**
      * This test only works when running from the IDE because it is too complicated to change the classpath
      */
     @Test
-    void testBinary() throws SQLException, MalformedURLException, URISyntaxException {
-        URL resource = getClass().getClassLoader().getResource("logback.xml");
-        URL generatedTestsUrl = new URL(resource, "generated_tests");
-        File dir = Paths.get(generatedTestsUrl.toURI()).toFile();
-        FileUtils.deleteRecursively(dir);
-        assertTrue(dir.mkdirs() || dir.isDirectory());
+    void testBinary() throws SQLException {
+        File dir = createGeneratedTestDirectory();
         try (Downloader downloader = Downloader.builder()
                 .setEnvironment("mssql")
                 .setDirectory(dir)
@@ -252,6 +264,56 @@ public class SqlServerTests {
                     }
                 }
             }
+        }
+    }
+
+    @Test
+    void testAppend() throws SQLException, IOException {
+
+        // Load the default dataset
+        try (Populator populator = Populator.builder()
+                .setEnvironment("mssql")
+                .setDirectory("src/test/resources/mssql")
+                .build()) {
+            populator.load("base");
+        }
+
+        // Download it in a temp directory
+        File dir = createGeneratedTestDirectory();
+        try (Downloader downloader = Downloader.builder()
+                .setEnvironment("mssql")
+                .setDirectory(dir)
+                .setDataset("base")
+                .build()) {
+            downloader.download(new TableName("master", "dbo", "customers"));
+        }
+
+        // Insert a new customer
+        try (Populator populator = Populator.builder()
+                .setEnvironment("mssql")
+                .setDirectory(dir)
+                .build()) {
+            try (Connection connection = populator.createConnection()) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("INSERT INTO master.dbo.customers (name) VALUES ('HyperAir')");
+                }
+            }
+
+            // then download in append mode
+            try (Downloader downloader = Downloader.builder()
+                    .setEnvironment("mssql")
+                    .setDirectory(dir)
+                    .setDataset("base")
+                    .build()) {
+                // This is supposed to only download the new customer
+                downloader.download(new TableName("master", "dbo", "customers"));
+            }
+
+            List<String> lines = Files.readAllLines(new File(dir, "base/master/dbo/customers.csv").toPath());
+            assertEquals("customer_id,name", lines.get(0));                                     // Check that the first line is the header
+            assertEquals(1, lines.stream().filter(it -> it.contains("customer_id")).count());   // Check that we only have one header
+            assertEquals(1, lines.stream().filter(it -> it.contains("AirMethod")).count());     // Check that we still have the other customers
+            assertTrue(lines.get(lines.size() - 1).contains("HyperAir"));                       // Check that the last added line is our inserted customer
         }
     }
 }

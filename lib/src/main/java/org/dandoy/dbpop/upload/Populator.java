@@ -1,19 +1,16 @@
 package org.dandoy.dbpop.upload;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.Database.DatabaseInserter;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.utils.AutoComitterOff;
+import org.dandoy.dbpop.utils.DbPopUtils;
 import org.dandoy.dbpop.utils.StopWatch;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
@@ -201,12 +198,7 @@ public class Populator implements AutoCloseable {
             log.debug(String.format("Loading %-60s", tableName.toQualifiedName()));
             try {
                 Table table = tablesByName.get(tableName);
-                CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
-                        .setHeader()
-                        .setSkipHeaderRecord(true)
-                        .setNullString("")
-                        .build();
-                try (CSVParser csvParser = csvFormat.parse(new BufferedReader(new InputStreamReader(dataFile.createInputStream(), StandardCharsets.UTF_8)))) {
+                try (CSVParser csvParser = DbPopUtils.createCsvParser(dataFile.getFile())) {
                     return insertRows(table, csvParser);
                 }
             } catch (Exception e) {

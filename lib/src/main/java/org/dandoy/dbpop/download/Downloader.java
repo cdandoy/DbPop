@@ -4,25 +4,28 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpop.upload.DefaultBuilder;
+import org.dandoy.dbpop.utils.DbPopUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.sql.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.StandardOpenOption.APPEND;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static org.dandoy.dbpop.datasets.Datasets.BASE;
 import static org.dandoy.dbpop.datasets.Datasets.STATIC;
 
@@ -90,11 +93,11 @@ public class Downloader implements AutoCloseable {
     private static PkReader createPkReader(
             Database database,
             File datasetsDirectory,
-            @SuppressWarnings("unused") String loadedDataset // We don't include the loaded dataset yet because the downloader overrides the file, it doesn't append. See #15
+            String loadedDataset
     ) {
         List<Dataset> pkDatasets = Datasets.getDatasets(datasetsDirectory)
                 .stream()
-                .filter(dataset -> STATIC.equals(dataset.getName()) || BASE.equals(dataset.getName())/* || loadedDataset.equals(dataset.getName())*/)
+                .filter(dataset -> STATIC.equals(dataset.getName()) || BASE.equals(dataset.getName()) || loadedDataset.equals(dataset.getName()))
                 .collect(Collectors.toList());
         return PkReader.readDatasets(database, pkDatasets);
     }
@@ -120,21 +123,22 @@ public class Downloader implements AutoCloseable {
             }
 
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                ResultSetMetaData metaData = resultSet.getMetaData();
+                List<String> metaDataHeaders = getHeaders(metaData);
                 CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
                         .build();
-                try (CSVPrinter csvPrinter = new CSVPrinter(getFileWriter(tableName), csvFormat)) {
-                    ResultSetMetaData metaData = resultSet.getMetaData();
-                    int columnCount = metaData.getColumnCount();
 
-                    // Headers
-                    for (int i = 0; i < columnCount; i++) {
-                        String columnName = metaData.getColumnName(i + 1);
-                        if (database.isBinary(metaData, i)) {
-                            columnName += "*b64";
-                        }
-                        csvPrinter.print(columnName);
+                File file = getFile(tableName);
+                boolean append = file.isFile();
+                if (append) {
+                    compareHeaders(file, metaDataHeaders);
+                }
+
+                try (CSVPrinter csvPrinter = new CSVPrinter(Files.newBufferedWriter(file.toPath(), UTF_8, append ? APPEND : CREATE_NEW), csvFormat)) {
+
+                    if (!append) {
+                        csvPrinter.printRecord(metaDataHeaders);
                     }
-                    csvPrinter.println();
 
                     // PKs
                     PkReader.PkInfo pkInfo = pkReader.getPkInfo(tableName);
@@ -149,6 +153,7 @@ public class Downloader implements AutoCloseable {
                         }
                         if (pkInfo.containsRow(pk)) continue;
 
+                        int columnCount = metaData.getColumnCount();
                         for (int i = 0; i < columnCount; i++) {
                             if (metaData.getColumnType(i + 1) == Types.CLOB) {
                                 downloadClob(tableName, resultSet, csvPrinter, metaData, i);
@@ -169,6 +174,35 @@ public class Downloader implements AutoCloseable {
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private List<String> getHeaders(ResultSetMetaData metaData) throws SQLException {
+        List<String> ret = new ArrayList<>();
+        int columnCount = metaData.getColumnCount();
+        for (int i = 0; i < columnCount; i++) {
+            String columnName = metaData.getColumnName(i + 1);
+            if (database.isBinary(metaData, i)) {
+                columnName += "*b64";
+            }
+            ret.add(columnName);
+        }
+        return ret;
+    }
+
+    private void compareHeaders(File file, List<String> metaDataHeaders) {
+        try (CSVParser csvParser = DbPopUtils.createCsvParser(file)) {
+            List<String> fileHeaders = csvParser.getHeaderNames();
+            if (!fileHeaders.equals(metaDataHeaders)) {
+                throw new RuntimeException(String.format(
+                        "Headers of %s do not match the database:\n  Database: %s\n  File    : %s\n",
+                        file,
+                        metaDataHeaders,
+                        fileHeaders
+                ));
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read the headers of " + file, e);
         }
     }
 
@@ -305,20 +339,15 @@ public class Downloader implements AutoCloseable {
         csvPrinter.print(null);
     }
 
-    private Writer getFileWriter(TableName tableName) {
-        File catalogDir = new File(directory, tableName.getCatalog());
-        File schemaDir = new File(catalogDir, tableName.getSchema());
-        if (!schemaDir.mkdirs()) {
-            if (!schemaDir.isDirectory()) {
-                throw new RuntimeException("Cannot create the directory " + schemaDir);
-            }
+    private File getFile(TableName tableName) {
+        File dir = directory;
+        if (tableName.getCatalog() != null) dir = new File(dir, tableName.getCatalog());
+        if (tableName.getSchema() != null) dir = new File(dir, tableName.getSchema());
+
+        if (!dir.mkdirs() && !dir.isDirectory()) {
+            throw new RuntimeException("Cannot create the directory " + dir);
         }
-        File file = new File(schemaDir, tableName.getTable() + ".csv");
-        try {
-            return Files.newBufferedWriter(file.toPath(), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to create ", e);
-        }
+        return new File(dir, tableName.getTable() + ".csv");
     }
 
     public static class Builder extends DefaultBuilder<Builder, Downloader> {

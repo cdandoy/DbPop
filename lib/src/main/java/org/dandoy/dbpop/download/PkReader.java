@@ -1,7 +1,6 @@
 package org.dandoy.dbpop.download;
 
 import lombok.Getter;
-import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.Database;
@@ -11,11 +10,9 @@ import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.upload.DataFile;
 import org.dandoy.dbpop.upload.Dataset;
+import org.dandoy.dbpop.utils.DbPopUtils;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.*;
@@ -64,12 +61,7 @@ public class PkReader {
     }
 
     private void readFile(DataFile dataFile, List<String> pkColumns) {
-        CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
-                .setHeader()
-                .setSkipHeaderRecord(true)
-                .setNullString("")
-                .build();
-        try (CSVParser csvParser = csvFormat.parse(new BufferedReader(new InputStreamReader(dataFile.createInputStream(), StandardCharsets.UTF_8)))) {
+        try (CSVParser csvParser = DbPopUtils.createCsvParser(dataFile.getFile())) {
             int count = 0;
             List<Integer> pkPositions = new ArrayList<>();
             for (int i = 0; i < pkColumns.size(); i++) {
