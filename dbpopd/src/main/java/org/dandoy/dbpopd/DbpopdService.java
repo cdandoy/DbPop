@@ -3,10 +3,13 @@ package org.dandoy.dbpopd;
 import io.micronaut.context.annotation.Property;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
+import lombok.Getter;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.download.Where;
 import org.dandoy.dbpop.upload.Populator;
+import org.dandoy.dbpop.utils.ApplicationException;
+import org.dandoy.dbpop.utils.Env;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,15 +18,26 @@ import java.util.Map;
 
 @Singleton
 public class DbpopdService {
+    @Getter
     private final Populator populator;
     private final Downloader.Builder downloadBuilder;
 
     public DbpopdService(
-            @Property(name = "dbpopd.configuration.path") String configurationPath
+            @SuppressWarnings("MnInjectionPoints") @Property(name = "dbpopd.configuration.path") String configurationPath
     ) {
         File configurationDir = toConfigurationDir(configurationPath);
+
+        // TODO: This is so wrong. I need to cleanup the configuration classes
+        Env env = Env.createEnv(configurationDir);
+        if (env == null) {
+            throw new ApplicationException("Cannot load the configuration from " + new File(configurationDir, "dbpop.properties"));
+        }
+
         File datasetsDirectory = new File(configurationDir, "datasets");
         populator = Populator.builder()
+                .setDbUrl(env.getString("jdbcurl"))
+                .setDbUser(env.getString("username"))
+                .setDbPassword(env.getString("password"))
                 .setDirectory(datasetsDirectory)
                 .build();
         downloadBuilder = Downloader.builder()

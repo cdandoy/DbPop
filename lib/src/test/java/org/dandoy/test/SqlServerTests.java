@@ -5,7 +5,7 @@ import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
-import org.dandoy.dbpopd.utils.FileUtils;
+import org.dandoy.dbpop.utils.FileUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;

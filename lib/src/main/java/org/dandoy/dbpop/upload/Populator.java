@@ -1,11 +1,13 @@
 package org.dandoy.dbpop.upload;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.Database.DatabaseInserter;
 import org.dandoy.dbpop.datasets.Datasets;
+import org.dandoy.dbpop.utils.ApplicationException;
 import org.dandoy.dbpop.utils.AutoComitterOff;
 import org.dandoy.dbpop.utils.DbPopUtils;
 import org.dandoy.dbpop.utils.StopWatch;
@@ -22,7 +24,9 @@ public class Populator implements AutoCloseable {
     private static Populator INSTANCE;
     private final ConnectionBuilder connectionBuilder;
     private final Database database;
+    @Getter
     private final Map<String, Dataset> datasetsByName;
+    @Getter
     private final Map<TableName, Table> tablesByName;
     private int staticLoaded;
 
@@ -150,11 +154,9 @@ public class Populator implements AutoCloseable {
                 try {
                     for (String datasetName : adjustedDatasets) {
                         Dataset dataset = datasetsByName.get(datasetName);
-                        if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
+                        if (dataset == null) throw new ApplicationException("Dataset not found: " + datasetName);
                         rowCount += loadDataset(dataset);
                     }
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
                 } finally {
                     databasePreparationStrategy.afterInserts();
                 }

@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd.utils;
+package org.dandoy.dbpop.utils;
 
 import java.io.File;
 

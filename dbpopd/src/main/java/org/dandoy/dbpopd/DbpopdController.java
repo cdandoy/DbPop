@@ -1,10 +1,13 @@
 package org.dandoy.dbpopd;
 
+import io.micronaut.http.HttpStatus;
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
+import io.micronaut.http.exceptions.HttpStatusException;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.utils.ApplicationException;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -21,7 +24,11 @@ public class DbpopdController {
     public DbpopdService.PopulateResult populate(
             List<String> dataset
     ) {
-        return dbpopdService.populate(dataset);
+        try {
+            return dbpopdService.populate(dataset);
+        } catch (ApplicationException e) {
+            throw new HttpStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @Post("download")

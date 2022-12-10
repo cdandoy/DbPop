@@ -1,0 +1,14 @@
+.datasets .title {
+    justify-content: center;
+    font-weight: bold;
+    border-bottom-width: 2px;
+}
+
+.button-load:disabled {
+    border: 1px solid transparent;
+}
+
+.dataset-result, .dataset-error {
+    font-size: 80%;
+    margin-left: 50px;
+}

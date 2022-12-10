@@ -14,7 +14,7 @@ import java.util.Map;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.io.FileUtils.readLines;
-import static org.dandoy.dbpopd.utils.FileUtils.deleteRecursively;
+import static org.dandoy.dbpop.utils.FileUtils.deleteRecursively;
 import static org.junit.jupiter.api.Assertions.*;
 
 @MicronautTest
