@@ -17,9 +17,28 @@ $(function () {
                     .append(`<div><label>Loaded ${data.rows} rows in ${data.millis}ms</label></div>`);
             })
             .fail(function (response) {
-                $('.dataset-result').empty();
-                for (const error of response.responseJSON._embedded.errors) {
-                    $datasetDiv.find('.dataset-error').append(`<div><label class="text-danger">${error.message}</label> </div>`);
+                function addError(message) {
+                    $datasetDiv.find('.dataset-error').append(`<div><label class="text-danger">${message}</label> </div>`);
+                }
+
+                try {
+                    $('.dataset-result').empty();
+                    if (response.responseJSON._embedded.errors) {
+                        for (const error of response.responseJSON._embedded.errors) {
+                            if (error.message) {
+                                let messages = error.message.split('\n');
+                                for (const message of messages) {
+                                    addError(message);
+                                }
+                            }
+                        }
+                    } else if (response.responseText) {
+                        addError(response.responseText);
+                    } else {
+                        addError("Failed");
+                    }
+                } catch (e) {
+                    console.log(e);
                 }
             })
             .always(function () {

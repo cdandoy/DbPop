@@ -7,7 +7,6 @@ import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.Database.DatabaseInserter;
 import org.dandoy.dbpop.datasets.Datasets;
-import org.dandoy.dbpop.utils.ApplicationException;
 import org.dandoy.dbpop.utils.AutoComitterOff;
 import org.dandoy.dbpop.utils.DbPopUtils;
 import org.dandoy.dbpop.utils.StopWatch;
@@ -154,7 +153,7 @@ public class Populator implements AutoCloseable {
                 try {
                     for (String datasetName : adjustedDatasets) {
                         Dataset dataset = datasetsByName.get(datasetName);
-                        if (dataset == null) throw new ApplicationException("Dataset not found: " + datasetName);
+                        if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
                         rowCount += loadDataset(dataset);
                     }
                 } finally {
@@ -196,15 +195,21 @@ public class Populator implements AutoCloseable {
 
     private int loadDataFile(DataFile dataFile) {
         return StopWatch.record("loadDataFile", () -> {
+            File file = dataFile.getFile();
             TableName tableName = dataFile.getTableName();
             log.debug(String.format("Loading %-60s", tableName.toQualifiedName()));
             try {
                 Table table = tablesByName.get(tableName);
-                try (CSVParser csvParser = DbPopUtils.createCsvParser(dataFile.getFile())) {
+                try (CSVParser csvParser = DbPopUtils.createCsvParser(file)) {
                     return insertRows(table, csvParser);
                 }
             } catch (Exception e) {
-                throw new RuntimeException("Failed to load " + tableName.toQualifiedName(), e);
+                String message = String.format(
+                        "Failed to load %s from %s",
+                        tableName.toQualifiedName(),
+                        dataFile.getFile()
+                );
+                throw new RuntimeException(message, e);
             }
         });
     }

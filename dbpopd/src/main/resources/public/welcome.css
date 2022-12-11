@@ -12,3 +12,9 @@
     font-size: 80%;
     margin-left: 50px;
 }
+
+.dataset-error>div {
+    padding-top: 8px;
+    font-family: monospace;
+    white-space: nowrap;
+}

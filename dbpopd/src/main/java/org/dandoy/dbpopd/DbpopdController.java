@@ -6,13 +6,15 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.http.exceptions.HttpStatusException;
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.utils.ApplicationException;
+import org.dandoy.dbpop.utils.ExceptionUtils;
 
 import javax.validation.Valid;
 import java.util.List;
 
 @Controller
+@Slf4j
 public class DbpopdController {
     private final DbpopdService dbpopdService;
 
@@ -26,8 +28,10 @@ public class DbpopdController {
     ) {
         try {
             return dbpopdService.populate(dataset);
-        } catch (ApplicationException e) {
-            throw new HttpStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (Exception e) {
+            log.error("Failed", e);
+            String message = String.join("\n", ExceptionUtils.getErrorMessages(e, ">"));
+            throw new HttpStatusException(HttpStatus.BAD_REQUEST, message);
         }
     }
 
