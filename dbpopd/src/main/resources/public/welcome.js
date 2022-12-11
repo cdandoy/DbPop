@@ -3,7 +3,8 @@ $(function () {
         let $datasetDiv = $(event.target).closest('[data-dataset]');
         let dataset = $datasetDiv.data('dataset');
         $('.button-load').attr('disabled', 'disabled');
-        $('.dataset-result').empty()
+        $('.dataset-result').empty();
+        $datasetDiv.find('.dataset-result')
             .append('<div><label>Loading</label></div>');
         $('.dataset-error').empty();
         $datasetDiv.find('.fa-play').hide();
