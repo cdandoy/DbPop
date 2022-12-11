@@ -112,7 +112,11 @@ public class Populator implements AutoCloseable {
                 for (DataFile dataFile : dataset.getDataFiles()) {
                     TableName tableName = dataFile.getTableName();
                     if (staticTableNames.contains(tableName)) {
-                        throw new RuntimeException("Table cannot be both in the static and in the " + datasetName + " datasets");
+                        throw new RuntimeException(String.format(
+                                "Table %s cannot be both in the static and in the %s datasets",
+                                tableName.toQualifiedName(),
+                                datasetName
+                        ));
                     }
                 }
             }

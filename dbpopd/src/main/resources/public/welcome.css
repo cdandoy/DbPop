@@ -1,3 +1,10 @@
+#datasets-tab-pane .button-load {
+    color: limegreen;
+}
+#datasets-tab-pane .button-load .fa-spinner {
+    display: none;
+}
+
 .datasets .title {
     justify-content: center;
     font-weight: bold;
@@ -13,8 +20,13 @@
     margin-left: 50px;
 }
 
-.dataset-error>div {
+.dataset-error > div {
     padding-top: 8px;
     font-family: monospace;
     white-space: nowrap;
+}
+
+#apidoc-tab-pane iframe {
+    width: 100%;
+    height: calc(100% - 300px);
 }
