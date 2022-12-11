@@ -5,7 +5,7 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.views.View;
 import lombok.Getter;
-import org.dandoy.dbpop.upload.Populator;
+import org.dandoy.dbpop.datasets.Datasets;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -15,22 +15,21 @@ import java.util.stream.Collectors;
 
 @Controller
 public class WelcomeController {
-    private final DbpopdService dbpopdService;
+    private final ConfigurationService configurationService;
 
-    public WelcomeController(DbpopdService dbpopdService) {
-        this.dbpopdService = dbpopdService;
+    public WelcomeController(ConfigurationService configurationService) {
+        this.configurationService = configurationService;
     }
 
     @Get(produces = "text/html")
     @View("welcome")
     public HttpResponse<Map<?, ?>> welcome() {
-        Populator populator = dbpopdService.getPopulator();
-        List<DatasetModel> datasetModels = populator.getDatasetsByName()
-                .values()
+        List<DatasetModel> datasetModels = Datasets.getDatasets(configurationService.getDatasetsDirectory())
                 .stream()
                 .map(it -> new DatasetModel(it.getName()))
                 .sorted(Comparator.comparing(it -> it.name))
                 .collect(Collectors.toCollection(ArrayList::new));
+
         if (datasetModels.removeIf(it -> it.name.equals("base"))) datasetModels.add(0, new DatasetModel("base"));
         datasetModels.removeIf(it -> it.name.equals("static"));
 

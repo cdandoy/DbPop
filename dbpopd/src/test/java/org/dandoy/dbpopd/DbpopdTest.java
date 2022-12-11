@@ -26,7 +26,7 @@ class DbpopdTest {
     @Test
     void testUpload() {
         List<String> dataset = List.of("base", "invoices", "invoice_details");
-        DbpopdService.PopulateResult result = dbpopdController.populate(dataset);
+        DbpopdController.PopulateResult result = dbpopdController.populate(dataset);
         /*
             customers.csv         3
             invoice_details.csv   7
