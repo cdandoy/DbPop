@@ -53,16 +53,57 @@ public class WelcomeController {
                 .map(Dataset::getName)
                 .toList();
 
-        List<DatasetStatus> datasetStatuses = datasets.stream()
-                .map(DatasetStatus::new)
-                .toList();
+        List<DatasetFileRow> datasetFileRows = new ArrayList<>();
+        for (Dataset dataset : datasets) {
+            boolean isFirst = true;
+            for (DataFile dataFile : dataset.getDataFiles()) {
+                File file = dataFile.getFile();
+                datasetFileRows.add(
+                        new DatasetFileRow(
+                                isFirst ? dataset.getName() : "",
+                                dataFile.getTableName().toQualifiedName(),
+                                file.length(),
+                                getCsvRowCount(file)
+                        )
+                );
+                isFirst = false;
+            }
+        }
 
         return HttpResponse.ok(
                 Map.of(
                         "datasetNames", datasetNames,
-                        "datasetStatuses", datasetStatuses
+                        "datasetFileRows", datasetFileRows
                 )
         );
+    }
+
+    private static Integer getCsvRowCount(File file) {
+        try (CSVParser csvParser = DbPopUtils.createCsvParser(file)) {
+            int rows = 0;
+            for (CSVRecord ignored : csvParser) {
+                rows++;
+            }
+            return rows;
+        } catch (IOException e) {
+            log.error("Failed to read " + file);
+            return null;
+        }
+    }
+
+    @Getter
+    public static class DatasetFileRow {
+        private final String datasetName;
+        private final String tableName;
+        private final Long fileSize;
+        private final Integer rows;
+
+        public DatasetFileRow(String datasetName, String tableName, Long fileSize, Integer rows) {
+            this.datasetName = datasetName;
+            this.tableName = tableName;
+            this.fileSize = fileSize;
+            this.rows = rows;
+        }
     }
 
     @Getter
