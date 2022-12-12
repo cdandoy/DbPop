@@ -125,8 +125,8 @@ public class SqlServerDatabase extends Database {
                                     "         LEFT JOIN sys.indexes i ON i.object_id = t.object_id\n" +
                                     "         LEFT JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id\n" +
                                     "         LEFT JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id\n" +
-                                    "WHERE i.type_desc IN ('NONCLUSTERED')\n" +
-                                    "  AND i.is_disabled = 0\n" +
+                                    "WHERE i.name IS NOT NULL\n" +
+                                    "  AND c.name IS NOT NULL\n" +
                                     "ORDER BY s.name, t.name, i.index_id, ic.key_ordinal")) {
                                 try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
                                     TableName tableName = new TableName(catalog, schema, table);

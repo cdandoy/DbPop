@@ -1,2 +1,14 @@
 ### populate
 GET http://localhost:8080/populate?dataset=invoices&dataset=invoice_details
+
+### /download
+POST http://localhost:8080/download
+Content-Type: application/json
+
+{
+  "dataset": "test_dataset",
+  "catalog": "master",
+  "schema": "dbo",
+  "table": "customers"
+}
+

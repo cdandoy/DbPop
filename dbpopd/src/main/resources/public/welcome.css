@@ -1,0 +1,32 @@
+#datasets-tab-pane .button-load {
+    color: limegreen;
+}
+#datasets-tab-pane .button-load .fa-spinner {
+    display: none;
+}
+
+.datasets .title {
+    justify-content: center;
+    font-weight: bold;
+    border-bottom-width: 2px;
+}
+
+.button-load:disabled {
+    border: 1px solid transparent;
+}
+
+.dataset-result, .dataset-error {
+    font-size: 80%;
+    margin-left: 50px;
+}
+
+.dataset-error > div {
+    padding-top: 8px;
+    font-family: monospace;
+    white-space: nowrap;
+}
+
+#apidoc-tab-pane iframe {
+    width: 100%;
+    height: calc(100% - 300px);
+}

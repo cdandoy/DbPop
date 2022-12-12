@@ -3,8 +3,8 @@ plugins {
     id("io.micronaut.application") version "3.6.2"
 }
 
-version = "0.1"
 group = "org.dandoy.dbpopd"
+version '0.0.6'
 
 repositories {
     mavenCentral()
@@ -16,6 +16,7 @@ dependencies {
     annotationProcessor("io.micronaut.openapi:micronaut-openapi")
     implementation("io.micronaut:micronaut-http-client")
     implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("io.micronaut.views:micronaut-views-freemarker")
     implementation("io.swagger.core.v3:swagger-annotations")
     implementation("jakarta.annotation:jakarta.annotation-api")
     compileOnly("org.projectlombok:lombok")
@@ -23,6 +24,8 @@ dependencies {
     implementation('org.slf4j:jcl-over-slf4j:2.0.3')
     implementation("io.micronaut:micronaut-validation")
     implementation project(":lib")
+    implementation 'org.apache.commons:commons-csv:1.9.0'
+    testImplementation 'commons-io:commons-io:2.11.0'
 }
 
 application {
@@ -35,7 +38,7 @@ java {
 
 dockerBuild {
     inputDir = project.projectDir
-    images = ["docker.io/cdandoy/dbpop:$project.version"]
+    images = ["docker.io/cdandoy/dbpop:$project.version","docker.io/cdandoy/dbpop:latest"]
 }
 
 graalvmNative.toolchainDetection = false

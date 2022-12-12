@@ -180,7 +180,7 @@ public abstract class Database implements AutoCloseable {
         return new DatabaseInserter(table, dataFileHeaders, sql);
     }
 
-    protected String quote(String s) {
+    public String quote(String s) {
         if (s.contains(identifierQuoteString)) {
             s = s.replace(identifierQuoteString, identifierQuoteString + identifierQuoteString);
         }

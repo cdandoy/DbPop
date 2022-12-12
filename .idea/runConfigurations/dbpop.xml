@@ -15,8 +15,8 @@
         <option name="portBindings">
           <list>
             <DockerPortBindingImpl>
-              <option name="containerPort" value="80" />
-              <option name="hostPort" value="80" />
+              <option name="containerPort" value="7104" />
+              <option name="hostPort" value="7104" />
             </DockerPortBindingImpl>
           </list>
         </option>
@@ -24,7 +24,7 @@
           <list>
             <DockerVolumeBindingImpl>
               <option name="containerPath" value="/var/opt/dbpop" />
-              <option name="hostPath" value="$PROJECT_DIR$\dbpopd\src\test\resources\docker_config" />
+              <option name="hostPath" value="$PROJECT_DIR$\docker\mssql" />
               <option name="readOnly" value="true" />
             </DockerVolumeBindingImpl>
           </list>

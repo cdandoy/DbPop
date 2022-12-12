@@ -6,7 +6,7 @@ import org.dandoy.dbpop.upload.Dataset;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.dandoy.dbpop.upload.Populator.STATIC;
+import static org.dandoy.dbpop.datasets.Datasets.STATIC;
 
 /**
  * A DatabasePreparationStrategy prepares the tables for deletion and insertion.

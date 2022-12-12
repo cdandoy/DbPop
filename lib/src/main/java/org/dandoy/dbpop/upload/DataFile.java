@@ -1,29 +1,14 @@
 package org.dandoy.dbpop.upload;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.fs.SimpleFileSystem;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.File;
 
+@Getter
+@AllArgsConstructor
 public class DataFile {
-    private final SimpleFileSystem simpleFileSystem;
+    private final File file;
     private final TableName tableName;
-
-    public DataFile(SimpleFileSystem simpleFileSystem, TableName tableName) {
-        this.simpleFileSystem = simpleFileSystem;
-        this.tableName = tableName;
-    }
-
-    public InputStream createInputStream() throws IOException {
-        return simpleFileSystem.createInputStream();
-    }
-
-    public SimpleFileSystem getSimpleFileSystem() {
-        return simpleFileSystem;
-    }
-
-    public TableName getTableName() {
-        return tableName;
-    }
 }

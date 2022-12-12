@@ -1,195 +1,97 @@
-# DbPop - Unit test your database
+# DbPop - The easiest way to populate your development database
 
 This utility allows you to quickly re-populate a development database to an initial state
 which opens the doors of fast and reliable functional tests.
 
 DbPop supports SQL Server and PostgreSQL, support for other databases will be added.
 
-DbPop can be invoked from the command line or be used as a dependency to load datasets.
-A dataset is a directory containing CSV files corresponding to your database tables.<br/>
+DbPop loads CSV files from your pre-defined datasets.<br/>
+All the datasets are under one directory which also contains a configuration file.<br/>
+Each dataset is structured like your databases: `catalog`/`schema`/`table.csv`
+
 For example:
 
 ```
-src
-+-- test
-     +-- resources 
-          +-- testdata
-               +-- base                                 - populates the base test data
-               |    +-- AdventureWorks
-               |         +-- HumanResources
-               |              |-- Department.csv        - data files to populate AdventureWorks.HumanResources.Department                                  
-               |              |-- Employee.csv          -                        AdventureWorks.HumanResources.Employee                              
-               |              +-- Shift.csv             -                        AdventureWorks.HumanResources.Shift                          
-               +-- ADV-7412                             - test data specific to ticket ADV-7412           
-                    +-- AdventureWorks
-                         +-- HumanResources
-                              +-- Employee.csv
++-- testdata
+   +-- static                               - The static dataset is only loaded once per session
+   |    +-- AdventureWorks
+   |         +-- HumanResources
+   |              |-- CreditCardTypes.csv
+   |              +-- Offices.csv
+   +-- base                                 - The base dataset is always reloaded
+   |    +-- AdventureWorks
+   |         +-- HumanResources
+   |              |-- Department.csv                           
+   |              |-- Employee.csv                     
+   |              +-- Shift.csv              
+   +-- ADV-7412                             - test data specific to ticket ADV-7412           
+   |    +-- AdventureWorks
+   |         +-- HumanResources
+   |              +-- Employee.csv
+   +-- dbpop.properties
 ```
 
-## Add DbPop to your build
+There are two special datasets:
+* **static**: This dataset is only loaded once per session.<br/>
+  It should contain the data that is never updated by your application.<br/>
+  This is where you would typically store lookup data. The static dataset cannot be loaded explicitely.
+* **base**: This dataset is always reloaded first when you load a dataset.<br/>
+  It should contain data that you want to always be available and that you want to build upon.<br/>
+  You may want for example to always have one customer, with one order and one invoice and another dataset could complete that data with a
+  return to test the processing of returns.<br/>
+  The base dataset can be loaded explicitely. Smaller applications may only need a base dataset. 
 
-Add the library to your dependencies via the [Maven package](https://mvnrepository.com/artifact/io.github.cdandoy/dbpop).
+In addition to the two special datasets, this example shows a dataset named ADV-7412, which would be the test data necessary to 
+reproduce a corresponding JIRA ticket. 
 
-Maven:
-
-```xml
-
-<dependency>
-    <groupId>io.github.cdandoy</groupId>
-    <artifactId>dbpop</artifactId>
-    <version>0.0.4</version>
-</dependency>
-```
-
-Gradle:
-
-```
-implementation 'io.github.cdandoy:dbpop:0.0.4'
-```
-
-## Invoke DbPop from your unit test:
-
-```java
-public class TestUsage {
-    private static Populator populator = Populator.builder()
-            .setPath("/testdata/")
-            .setConnection("jdbc:sqlserver://localhost", "sa", "password")
-            .build();
-
-    @Test
-    void testSomething() {
-        populator.load("base");
-        // Run a test
-    }
-
-    @Test
-    void testSomethingElse() {
-        populator.load("base");
-        // Run another test
-    }
-
-    // more tests...
-}
-```
-The populator will load the data from the resource /testdata/ in the classpath.
-You would typically store your datasets under `src/test/resources/testdata/...`
-## JDBC connection
-
-The JDBC connection can be built using the API or using a property file in your home directory, so you do not have to store a password in your source code
-
-* Linux: `~/.dbpop/dbpop.properties`
-* Windows: `C:\Users\<username>\.dbpop\dbpop.properties`
-
+The configuration file, `dbpop.properties`, contains the information to connect to the database.
+For example:
 ```properties
-# Default environment
-jdbcurl=jdbc:sqlserver://localhost
+jdbcurl=jdbc:sqlserver://mssql;database=tempdb;trustServerCertificate=true
 username=sa
-password=yourpassword
-
-# pgsql environment
-pgsql.jdbcurl=jdbc:postgresql://localhost:5432/yourdatabase
-pgsql.username=postgres
-pgsql.password=yourpassword
+password=tiger
 ```
 
-You use `setEnvironment("pgsql")` on the builder to point to the `pgsql` environment.
+[//]: # (TODO: We need to use environment variables for passwords, or at least describe how to use variables)
 
-## Dataset directory
+## Docker Compose
+The easiest way to set up DbPop is by using Docker Compose.
 
-If you do not specify a dataset directory, DbPop will use `./src/test/resources/datasets`
+The test data should be stored on your local host, probably under source control.<br/>
+A volume will be used to let the DbPop container access  the test data.<br/>
+Your database will also run in a docker image.
 
-Using dbpop.properties and the default path simplifies the construction of the `Populator`:
-
-```java
-public class TestUsage {
-    private static Populator populator = Populator.build();
-
-    @Test
-    void myTest() {
-        populator.load("base");
-        // Run a test
-    }
-}
+Example of docker-compose.yml:
 ```
-
-## Singleton Instance
-The `Populator` can hold a static singleton instance that can be retrived using `Populator.getInstance()`.
-You can set the singleton instance using `createSingletonInstance()` on the builder. Calling `getInstance()` without building a custom `Populator` returns a default instance.<br/>
-For example:
-
-```java
-Populator.builder()
-        .setEnvironment("mssql")
-        .setPath("/test_expressions")
-        .createSingletonInstance();
-
-Populator.getInstance().load("base");
+version: "3.9"
+services:
+  dbpop:
+    image: "cdandoy/dbpop"
+    environment:
+      - MICRONAUT_ENVIRONMENTS=docker
+    ports:
+      - "7104:7104"
+    volumes:
+      - c:/git/myapp/testdata:/var/opt/dbpop
+  mssql:
+    image: mcr.microsoft.com/mssql/server
+    ports:
+      - "1433:1433"
+    environment:
+      - SA_PASSWORD=tiger
+      - ACCEPT_EULA="Y"
 ```
+ 
+This example uses SQL Server, it assumes that your test data directory is stored in the local directory C:\git\myapp\testdata.<br/>
+Once the database is started, install your application schema into the database.<br/>
+Open a browser: http://localhost:7104/ <br/>
+You should see your dataset(s). The green button in front of the name is used to re-load that data.
 
-## Expressions
-DbPop supports expressions in the CSV file. The only expressions currently supported are related to dates and time.<br/>
-Examples:
-``` 
-id,date_created,name
-1,{{now - 3 days}},Banana
-2,{{yesterday}},Apple
-2,{{now + 1 minute}},Orange
-```
+## REST API
+While it is easier for a developer to use the user interface to reload the data during development, you may want to
+automate the test using the REST API.
 
+Resetting a dataset is as simple as hitting the URL: http://localhost:7104/populate?dataset=base
 
-## Invoke DbPop from the command line:
-
-DbPop can be invoked from the command line using the `download` command to download data from the database to CSV files or the `populate` command to upload CSV files into the database.<br/>
-
-Both operations require a database connection.<br/>
-`download` writes the output at the location specified by the `--directory` option.<br/>
-`populate` reads the input from the classpath relative to the `--path` option.
-
-```text
-Usage: DbPop [-hV] [COMMAND] [options]
-Commands:
-  help      Displays help information about the specified command
-  populate  Populates the database with the content of the CSV files in the specified datasets
-  download  Download data to CSV files
-Common options:
-  --path=<path>                 Dataset path, used in combination with populate
-                                Default: /testdata/
-  --directory=<directory>       Dataset directory, used in combination with download.
-                                Default: ./src/test/resources/testdata/
-  --environment=<environment>   dbpop.properties environment
-  -j, --jdbcurl=<dbUrl>         Database URL
-  -u, --username=<dbUser>       Database user
-  -p, --password=<dbPassword>   Database password
-```
-
-You can download individual tables, schemas, or whole databases.
-
-Examples:<br/>
-Download the content of the 3 tables (`actor`, `address`, `category`) to the corresponding CSV files in src/test/resources/testdata/.
-
-```text
-DbPop download\
-  --jdbcurl jdbc:sqlserver://localhost \
-  --username scott \
-  --password tiger \
-  sakila.dbo.actor sakila.dbo.address sakila.dbo.category
-```
-
-Download the content of the `sakila` database.
-
-```text
-DbPop download\
-  --jdbcurl jdbc:sqlserver://localhost \
-  --username scott \
-  --password tiger \
-  sakila
-```
-
-Upload the content of the `base` directory.
-
-```text
-DbPop populate base
-```
-
-
+You can specify multiple datasets on the same request: http://localhost:7104/populate?dataset=base&dataset=ADV-7412
 

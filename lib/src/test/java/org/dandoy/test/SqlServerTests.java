@@ -5,16 +5,20 @@ import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
+import org.dandoy.dbpop.utils.FileUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.*;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -32,7 +36,7 @@ public class SqlServerTests {
         assertThrows(RuntimeException.class, () -> {
             try (Populator ignored = Populator.builder()
                     .setEnvironment("mssql")
-                    .setPath("/test_no_datafiles/")
+                    .setDirectory("src/test/resources/test_no_datafiles/")
                     .build()) {
                 System.out.println("I should not be here");
             }
@@ -44,7 +48,7 @@ public class SqlServerTests {
         assertThrows(RuntimeException.class, () -> {
             try (Populator populator = Populator.builder()
                     .setEnvironment("mssql")
-                    .setPath("/tests/")
+                    .setDirectory("src/test/resources/tests/")
                     .build()) {
                 populator.load("test_1_1");
             }
@@ -56,7 +60,7 @@ public class SqlServerTests {
         RuntimeException runtimeException = assertThrows(RuntimeException.class, () -> {
             try (Populator ignored = Populator.builder()
                     .setEnvironment("mssql")
-                    .setPath("/test_bad_table")
+                    .setDirectory("src/test/resources/test_bad_table")
                     .build()) {
                 System.out.println("I should not be here");
             }
@@ -69,7 +73,7 @@ public class SqlServerTests {
     void testExpressions() {
         try (Populator populator = Populator.builder()
                 .setEnvironment("mssql")
-                .setPath("/test_expressions")
+                .setDirectory("src/test/resources/test_expressions")
                 .build()) {
             populator.load("base");
         }
@@ -79,7 +83,7 @@ public class SqlServerTests {
     void testSingleton() {
         Populator.builder()
                 .setEnvironment("mssql")
-                .setPath("/test_expressions")
+                .setDirectory("src/test/resources/test_expressions")
                 .createSingletonInstance();
 
         Populator.getInstance().load("base");
@@ -89,7 +93,7 @@ public class SqlServerTests {
     void mainTest() throws SQLException {
         try (Populator populator = Populator.builder()
                 .setEnvironment("mssql")
-                .setPath("/mssql")
+                .setDirectory("src/test/resources/mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
 
@@ -119,7 +123,7 @@ public class SqlServerTests {
         // product is in the static dataset and should only be loaded once per populator.
         try (Populator populator = Populator.builder()
                 .setEnvironment("mssql")
-                .setPath("/mssql")
+                .setDirectory("src/test/resources/mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
 
@@ -144,7 +148,7 @@ public class SqlServerTests {
         // A new populator will reset products
         try (Populator populator = Populator.builder()
                 .setEnvironment("mssql")
-                .setPath("/mssql")
+                .setDirectory("src/test/resources/mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
                 populator.load("base");
@@ -166,15 +170,25 @@ public class SqlServerTests {
         }
     }
 
+    private static File createGeneratedTestDirectory() {
+        try {
+            URL resource = SqlServerTests.class.getClassLoader().getResource("logback.xml");
+            URL generatedTestsUrl = new URL(resource, "generated_tests");
+            File dir = Paths.get(generatedTestsUrl.toURI()).toFile();
+            FileUtils.deleteRecursively(dir);
+            assertTrue(dir.mkdirs() || dir.isDirectory());
+            return dir;
+        } catch (MalformedURLException | URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     /**
      * This test only works when running from the IDE because it is too complicated to change the classpath
      */
     @Test
-    void testBinary() throws SQLException, MalformedURLException, URISyntaxException {
-        URL resource = getClass().getClassLoader().getResource("logback.xml");
-        URL generatedTestsUrl = new URL(resource, "generated_tests/");
-        File dir = Paths.get(generatedTestsUrl.toURI()).toFile();
-        assertTrue(dir.mkdirs() || dir.isDirectory());
+    void testBinary() throws SQLException {
+        File dir = createGeneratedTestDirectory();
         try (Downloader downloader = Downloader.builder()
                 .setEnvironment("mssql")
                 .setDirectory(dir)
@@ -182,11 +196,10 @@ public class SqlServerTests {
                 .build()) {
             Connection connection = downloader.getConnection();
 
-            // Creates and populates the test table
             try (Statement statement = connection.createStatement()) {
-                statement.execute("DROP TABLE IF EXISTS master.dbo.test_binary");
-                statement.execute("CREATE TABLE master.dbo.test_binary(id INT PRIMARY KEY, test_binary BINARY(32), test_blob VARBINARY(MAX))");
+                statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
             }
+
             try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO master.dbo.test_binary(id, test_binary, test_blob) VALUES (?,?,?)")) {
                 preparedStatement.setInt(1, 1);
                 preparedStatement.setBytes(2, "HELLOHELLOHELLOHELLOHELLOHELLOHE".getBytes());
@@ -203,11 +216,12 @@ public class SqlServerTests {
             try (Statement statement = connection.createStatement()) {
                 statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
             }
+            connection.commit();
         }
 
         try (Populator populator = Populator.builder()
                 .setEnvironment("mssql")
-                .setPath("generated_tests")
+                .setDirectory(dir)
                 .build()) {
 
             // Upload the data
@@ -232,7 +246,7 @@ public class SqlServerTests {
     void testLoadBinary() throws SQLException {
         try (Populator populator = Populator.builder()
                 .setEnvironment("mssql")
-                .setPath("mssql")
+                .setDirectory("src/test/resources/mssql")
                 .build()) {
 
             // Upload the data
@@ -250,6 +264,56 @@ public class SqlServerTests {
                     }
                 }
             }
+        }
+    }
+
+    @Test
+    void testAppend() throws SQLException, IOException {
+
+        // Load the default dataset
+        try (Populator populator = Populator.builder()
+                .setEnvironment("mssql")
+                .setDirectory("src/test/resources/mssql")
+                .build()) {
+            populator.load("base");
+        }
+
+        // Download it in a temp directory
+        File dir = createGeneratedTestDirectory();
+        try (Downloader downloader = Downloader.builder()
+                .setEnvironment("mssql")
+                .setDirectory(dir)
+                .setDataset("base")
+                .build()) {
+            downloader.download(new TableName("master", "dbo", "customers"));
+        }
+
+        // Insert a new customer
+        try (Populator populator = Populator.builder()
+                .setEnvironment("mssql")
+                .setDirectory(dir)
+                .build()) {
+            try (Connection connection = populator.createConnection()) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("INSERT INTO master.dbo.customers (name) VALUES ('HyperAir')");
+                }
+            }
+
+            // then download in append mode
+            try (Downloader downloader = Downloader.builder()
+                    .setEnvironment("mssql")
+                    .setDirectory(dir)
+                    .setDataset("base")
+                    .build()) {
+                // This is supposed to only download the new customer
+                downloader.download(new TableName("master", "dbo", "customers"));
+            }
+
+            List<String> lines = Files.readAllLines(new File(dir, "base/master/dbo/customers.csv").toPath());
+            assertEquals("customer_id,name", lines.get(0));                                     // Check that the first line is the header
+            assertEquals(1, lines.stream().filter(it -> it.contains("customer_id")).count());   // Check that we only have one header
+            assertEquals(1, lines.stream().filter(it -> it.contains("AirMethod")).count());     // Check that we still have the other customers
+            assertTrue(lines.get(lines.size() - 1).contains("HyperAir"));                       // Check that the last added line is our inserted customer
         }
     }
 }
