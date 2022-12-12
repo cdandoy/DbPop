@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.download.Where;
-import org.dandoy.dbpop.upload.Populator;
 import org.dandoy.dbpop.utils.ExceptionUtils;
 
 import javax.validation.Valid;
@@ -21,9 +20,11 @@ import java.util.Map;
 @Slf4j
 public class DbpopdController {
     private final ConfigurationService configurationService;
+    private final PopulatorHolder populatorHolder;
 
-    public DbpopdController(ConfigurationService configurationService) {
+    public DbpopdController(ConfigurationService configurationService, PopulatorHolder populatorHolder) {
         this.configurationService = configurationService;
+        this.populatorHolder = populatorHolder;
     }
 
     @Get("populate")
@@ -32,10 +33,7 @@ public class DbpopdController {
     ) {
         try {
             long t0 = System.currentTimeMillis();
-            int rows;
-            try (Populator populator = configurationService.createPopulator()) {
-                rows = populator.load(dataset);
-            }
+            int rows = populatorHolder.getPopulator().load(dataset);
             long t1 = System.currentTimeMillis();
             return new PopulateResult(rows, t1 - t0);
         } catch (Exception e) {
