@@ -67,8 +67,6 @@ version: "3.9"
 services:
   dbpop:
     image: "cdandoy/dbpop"
-    environment:
-      - MICRONAUT_ENVIRONMENTS=docker
     ports:
       - "7104:7104"
     volumes:

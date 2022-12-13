@@ -5,4 +5,4 @@ COPY build/docker/main/layers/classes /home/app/classes
 COPY build/docker/main/layers/resources /home/app/resources
 COPY build/docker/main/layers/application.jar /home/app/application.jar
 EXPOSE 7104
-ENTRYPOINT ["java", "-jar", "/home/app/application.jar"]
+ENTRYPOINT ["java", "-Dmicronaut.environments=docker", "-jar", "/home/app/application.jar"]
