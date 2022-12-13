@@ -3,6 +3,7 @@
     <deployment type="docker-image">
       <settings>
         <option name="imageTag" value="cdandoy/dbpop" />
+        <option name="attachToContainerNeeded" value="true" />
         <option name="containerName" value="dbpop" />
         <option name="portBindings">
           <list>
