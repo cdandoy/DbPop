@@ -105,39 +105,4 @@ public class WelcomeController {
             this.rows = rows;
         }
     }
-
-    @Getter
-    public static class DatasetStatus {
-        private final String name;
-        private final List<DatasetFileStatus> datasetFileStatuses;
-
-        public DatasetStatus(Dataset dataset) {
-            name = dataset.getName();
-            datasetFileStatuses = dataset.getDataFiles().stream()
-                    .map(DatasetFileStatus::new)
-                    .toList();
-        }
-    }
-
-    @Getter
-    public static class DatasetFileStatus {
-        private final long size;
-        private final int rows;
-        private final String tableName;
-
-        public DatasetFileStatus(DataFile dataFile) {
-            File file = dataFile.getFile();
-            size = file.length();
-            int rows = 0;
-            try (CSVParser csvParser = DbPopUtils.createCsvParser(file)) {
-                for (CSVRecord ignored : csvParser) {
-                    rows++;
-                }
-            } catch (IOException e) {
-                log.error("Failed to read " + file);
-            }
-            this.rows = rows;
-            tableName = dataFile.getTableName().toQualifiedName();
-        }
-    }
 }

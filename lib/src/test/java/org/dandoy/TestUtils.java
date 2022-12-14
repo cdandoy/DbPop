@@ -9,7 +9,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-@SuppressWarnings("unused")
 public class TestUtils {
     public static boolean hasSqlServer() {
         return LocalCredentials.from("mssql").dbUrl() != null;
@@ -17,18 +16,6 @@ public class TestUtils {
 
     public static boolean hasPostgres() {
         return LocalCredentials.from("pgsql").dbUrl() != null;
-    }
-
-    public static void deleteDirectory(File directoryToBeDeleted) {
-        File[] allContents = directoryToBeDeleted.listFiles();
-        if (allContents != null) {
-            for (File file : allContents) {
-                deleteDirectory(file);
-            }
-        }
-        if (!directoryToBeDeleted.delete()) {
-            throw new RuntimeException("Failed to delete " + directoryToBeDeleted);
-        }
     }
 
     public static void executeSqlScript(String environment, String path) {

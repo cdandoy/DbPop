@@ -52,7 +52,7 @@ public class Downloader implements AutoCloseable {
     private final Database database;
     private final PkReader pkReader;
 
-    private Downloader(Database database, File directory, PkReader pkReader) throws SQLException {
+    private Downloader(Database database, File directory, PkReader pkReader) {
         this.directory = directory;
         this.database = database;
         this.pkReader = pkReader;
