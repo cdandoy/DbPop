@@ -77,7 +77,7 @@ public class SqlServerDatabase extends Database {
                                     "FROM sys.schemas s\n" +
                                     "         JOIN sys.tables t ON t.schema_id = s.schema_id\n" +
                                     "         JOIN sys.columns c ON c.object_id = t.object_id\n" +
-                                    "         LEFT JOIN sys.types ty ON ty.system_type_id = c.system_type_id\n" +
+                                    "         LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id\n" +
                                     "ORDER BY s.name, t.name, c.column_id")) {
                                 try (TableCollector tableCollector = new TableCollector((schema, table, columns) -> {
                                     TableName tableName = new TableName(catalog, schema, table);
