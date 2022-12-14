@@ -1,6 +1,5 @@
 package org.dandoy;
 
-import lombok.Getter;
 import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
 
@@ -14,7 +13,6 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@Getter
 public record LocalCredentials(String dbUrl, String dbUser, String dbPassword) {
 
     public static LocalCredentials from(String env) {
