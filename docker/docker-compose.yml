@@ -4,8 +4,15 @@ services:
     image: "cdandoy/dbpop"
     ports:
       - "7104:7104"
+      - "5005:5005"
     volumes:
       - ./mssql:/var/opt/dbpop
+    environment:
+      - DBPOP_JDBCURL=jdbc:sqlserver://mssql;database=tempdb;trustServerCertificate=true
+      - DBPOP_USERNAME=sa
+      - DBPOP_PASSWORD=${DB_PASS}
+    depends_on:
+      - mssql
   mssql:
     image: mcr.microsoft.com/mssql/server
     ports:
