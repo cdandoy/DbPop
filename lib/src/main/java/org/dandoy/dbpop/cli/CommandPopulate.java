@@ -42,8 +42,9 @@ public class CommandPopulate implements Callable<Integer> {
             long t0 = System.currentTimeMillis();
             int rowCount;
             try (Populator populator = Populator.builder()
-                    .setEnvironment(standardOptions.environment)
-                    .setConnection(databaseOptions)
+                    .setDbUrl(databaseOptions.dbUrl)
+                    .setDbUser(databaseOptions.dbUser)
+                    .setDbPassword(databaseOptions.dbPassword)
                     .setDirectory(directory)
                     .build()) {
                 rowCount = populator.load(this.datasets);
@@ -54,17 +55,6 @@ public class CommandPopulate implements Callable<Integer> {
         } catch (Exception e) {
             log.error("Internal error", e);
             return 1;
-        }
-    }
-
-    private void printCauses(Throwable t) {
-        StringBuilder indent = new StringBuilder();
-        while (t != null) {
-            if (t.getMessage() != null) {
-                log.error(indent + t.getMessage());
-                indent.append("  ");
-            }
-            t = t.getCause();
         }
     }
 }

@@ -35,8 +35,9 @@ public class CommandDownload implements Callable<Integer> {
     @Override
     public Integer call() {
         try (Downloader downloader = Downloader.builder()
-                .setEnvironment(standardOptions.environment)
-                .setConnection(databaseOptions)
+                .setDbUrl(databaseOptions.dbUrl)
+                .setDbUser(databaseOptions.dbUser)
+                .setDbPassword(databaseOptions.dbPassword)
                 .setDirectory(directory)
                 .setDataset(dataset)
                 .build()) {
