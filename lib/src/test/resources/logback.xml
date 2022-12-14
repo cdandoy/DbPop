@@ -7,6 +7,6 @@
 
     <root level="info">
         <appender-ref ref="STDOUT"/>
-        <logger name="io.micronaut.runtime.Micronaut" level="ERROR"/>
     </root>
+    <logger name="ch.qos.logback" level="WARN"/>
 </configuration>
