@@ -1,5 +1,6 @@
 package org.dandoy.dbpop;
 
+import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.BeforeAll;
@@ -16,10 +17,18 @@ import static org.dandoy.test.SqlServerTests.assertCount;
 
 @EnabledIf("org.dandoy.TestUtils#hasSqlServer")
 public class DbPopTests {
-    private static final List<String> args = Arrays.asList(
-            "populate",
-            "--directory", "./src/test/resources/mssql"
-    );
+    private static final List<String> args;
+
+    static {
+        LocalCredentials localCredentials = LocalCredentials.from("mssql");
+        args = Arrays.asList(
+                "populate",
+                "--jdbcurl", localCredentials.dbUrl(),
+                "--username", localCredentials.dbUser(),
+                "--password", localCredentials.dbPassword(),
+                "--directory", "./src/test/resources/mssql"
+        );
+    }
 
     @BeforeAll
     static void beforeAll() {
@@ -28,8 +37,8 @@ public class DbPopTests {
 
     @Test
     void testDbPopMain() throws SQLException {
-        try (Populator populator = Populator.builder()
-                .setEnvironment("mssql")
+        try (Populator populator = LocalCredentials
+                .mssqlPopulator()
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {

@@ -13,7 +13,7 @@ class ExceptionUtilsTest {
         try {
             doit1();
         } catch (Exception e) {
-            e.printStackTrace(System.out); // I want to see the expection but not in red
+//            e.printStackTrace();
 
             {
                 System.out.println("---No indentation");

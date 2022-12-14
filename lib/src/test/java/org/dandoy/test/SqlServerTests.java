@@ -1,6 +1,7 @@
 package org.dandoy.test;
 
 import lombok.extern.slf4j.Slf4j;
+import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.Downloader;
@@ -34,8 +35,8 @@ public class SqlServerTests {
     @Test
     void noCsvFiles() {
         assertThrows(RuntimeException.class, () -> {
-            try (Populator ignored = Populator.builder()
-                    .setEnvironment("mssql")
+            try (Populator ignored = LocalCredentials
+                    .mssqlPopulator()
                     .setDirectory("src/test/resources/test_no_datafiles/")
                     .build()) {
                 System.out.println("I should not be here");
@@ -46,8 +47,8 @@ public class SqlServerTests {
     @Test
     void datasetNotFound() {
         assertThrows(RuntimeException.class, () -> {
-            try (Populator populator = Populator.builder()
-                    .setEnvironment("mssql")
+            try (Populator populator = LocalCredentials
+                    .mssqlPopulator()
                     .setDirectory("src/test/resources/tests/")
                     .build()) {
                 populator.load("test_1_1");
@@ -58,8 +59,8 @@ public class SqlServerTests {
     @Test
     void tableDoesNotExist() {
         RuntimeException runtimeException = assertThrows(RuntimeException.class, () -> {
-            try (Populator ignored = Populator.builder()
-                    .setEnvironment("mssql")
+            try (Populator ignored = LocalCredentials
+                    .mssqlPopulator()
                     .setDirectory("src/test/resources/test_bad_table")
                     .build()) {
                 System.out.println("I should not be here");
@@ -71,8 +72,8 @@ public class SqlServerTests {
 
     @Test
     void testExpressions() {
-        try (Populator populator = Populator.builder()
-                .setEnvironment("mssql")
+        try (Populator populator = LocalCredentials
+                .mssqlPopulator()
                 .setDirectory("src/test/resources/test_expressions")
                 .build()) {
             populator.load("base");
@@ -81,8 +82,8 @@ public class SqlServerTests {
 
     @Test
     void testSingleton() {
-        Populator.builder()
-                .setEnvironment("mssql")
+        LocalCredentials
+                .mssqlPopulator()
                 .setDirectory("src/test/resources/test_expressions")
                 .createSingletonInstance();
 
@@ -91,8 +92,8 @@ public class SqlServerTests {
 
     @Test
     void mainTest() throws SQLException {
-        try (Populator populator = Populator.builder()
-                .setEnvironment("mssql")
+        try (Populator populator = LocalCredentials
+                .mssqlPopulator()
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
@@ -121,8 +122,8 @@ public class SqlServerTests {
     @Test
     void testStatic() throws SQLException {
         // product is in the static dataset and should only be loaded once per populator.
-        try (Populator populator = Populator.builder()
-                .setEnvironment("mssql")
+        try (Populator populator = LocalCredentials
+                .mssqlPopulator()
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
@@ -146,8 +147,8 @@ public class SqlServerTests {
         }
 
         // A new populator will reset products
-        try (Populator populator = Populator.builder()
-                .setEnvironment("mssql")
+        try (Populator populator = LocalCredentials
+                .mssqlPopulator()
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {
@@ -189,8 +190,8 @@ public class SqlServerTests {
     @Test
     void testBinary() throws SQLException {
         File dir = createGeneratedTestDirectory();
-        try (Downloader downloader = Downloader.builder()
-                .setEnvironment("mssql")
+        try (Downloader downloader = LocalCredentials
+                .mssqlDownloader()
                 .setDirectory(dir)
                 .setDataset("base")
                 .build()) {
@@ -219,8 +220,8 @@ public class SqlServerTests {
             connection.commit();
         }
 
-        try (Populator populator = Populator.builder()
-                .setEnvironment("mssql")
+        try (Populator populator =LocalCredentials
+                .mssqlPopulator()
                 .setDirectory(dir)
                 .build()) {
 
@@ -244,8 +245,8 @@ public class SqlServerTests {
 
     @Test
     void testLoadBinary() throws SQLException {
-        try (Populator populator = Populator.builder()
-                .setEnvironment("mssql")
+        try (Populator populator = LocalCredentials
+                    .mssqlPopulator()
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
 
@@ -271,8 +272,8 @@ public class SqlServerTests {
     void testAppend() throws SQLException, IOException {
 
         // Load the default dataset
-        try (Populator populator = Populator.builder()
-                .setEnvironment("mssql")
+        try (Populator populator = LocalCredentials
+                    .mssqlPopulator()
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
             populator.load("base");
@@ -280,8 +281,8 @@ public class SqlServerTests {
 
         // Download it in a temp directory
         File dir = createGeneratedTestDirectory();
-        try (Downloader downloader = Downloader.builder()
-                .setEnvironment("mssql")
+        try (Downloader downloader = LocalCredentials
+                .mssqlDownloader()
                 .setDirectory(dir)
                 .setDataset("base")
                 .build()) {
@@ -289,8 +290,8 @@ public class SqlServerTests {
         }
 
         // Insert a new customer
-        try (Populator populator = Populator.builder()
-                .setEnvironment("mssql")
+        try (Populator populator = LocalCredentials
+                .mssqlPopulator()
                 .setDirectory(dir)
                 .build()) {
             try (Connection connection = populator.createConnection()) {
@@ -300,8 +301,8 @@ public class SqlServerTests {
             }
 
             // then download in append mode
-            try (Downloader downloader = Downloader.builder()
-                    .setEnvironment("mssql")
+            try (Downloader downloader = LocalCredentials
+                    .mssqlDownloader()
                     .setDirectory(dir)
                     .setDataset("base")
                     .build()) {

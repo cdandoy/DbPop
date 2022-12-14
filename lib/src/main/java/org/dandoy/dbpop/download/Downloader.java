@@ -2,14 +2,16 @@ package org.dandoy.dbpop.download;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
+import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.upload.Dataset;
-import org.dandoy.dbpop.upload.DefaultBuilder;
 import org.dandoy.dbpop.utils.DbPopUtils;
 
 import java.io.File;
@@ -350,13 +352,26 @@ public class Downloader implements AutoCloseable {
         return new File(dir, tableName.getTable() + ".csv");
     }
 
-    public static class Builder extends DefaultBuilder<Builder, Downloader> {
+    @Getter
+    @Setter
+    @Accessors(chain = true)
+    public static class Builder {
+        private String dbUrl;
+        private String dbUser;
+        private String dbPassword;
         private File directory;
         private String dataset;
 
-        @Override
         public Downloader build() {
             return Downloader.build(this);
+        }
+
+        public ConnectionBuilder getConnectionBuilder() {
+            return new UrlConnectionBuilder(
+                    getDbUrl(),
+                    getDbUser(),
+                    getDbPassword()
+            );
         }
 
         public File getDirectory() {

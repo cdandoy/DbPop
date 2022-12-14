@@ -1,8 +1,6 @@
 package org.dandoy;
 
 import org.apache.commons.io.IOUtils;
-import org.dandoy.dbpop.upload.Populator;
-import org.dandoy.dbpop.utils.Env;
 import org.dandoy.test.SqlServerTests;
 
 import java.io.*;
@@ -10,33 +8,15 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.Objects;
 
-/**
- * Used by JUnit: <pre>@EnabledIf("org.dandoy.TestUtils#hasDatabaseSetup")</pre>
- */
 @SuppressWarnings("unused")
 public class TestUtils {
-    private static final Env env = Objects.requireNonNull(Env.createEnv());
-
-    public static boolean hasDatabaseSetup() {
-        return env.getString("jdbcurl").startsWith("jdbc:");
-    }
-
-    public static boolean isSqlServer() {
-        return env.environment(null).getString("jdbcurl").startsWith("jdbc:sqlserver:");
-    }
-
     public static boolean hasSqlServer() {
-        return env.environment("mssql").getString("jdbcurl").startsWith("jdbc:sqlserver:");
-    }
-
-    public static boolean isPostgres() {
-        return env.environment(null).getString("jdbcurl").startsWith("jdbc:postgresql:");
+        return LocalCredentials.from("mssql").dbUrl() != null;
     }
 
     public static boolean hasPostgres() {
-        return env.environment("pgsql").getString("jdbcurl").startsWith("jdbc:postgresql:");
+        return LocalCredentials.from("pgsql").dbUrl() != null;
     }
 
     public static void deleteDirectory(File directoryToBeDeleted) {
@@ -52,8 +32,9 @@ public class TestUtils {
     }
 
     public static void executeSqlScript(String environment, String path) {
-        try (Connection connection = Populator.builder()
-                .setEnvironment(environment)
+        try (Connection connection = LocalCredentials
+                .from(environment)
+                .populator()
                 .getConnectionBuilder()
                 .createConnection()) {
             try (InputStream resourceAsStream = SqlServerTests.class.getResourceAsStream(path)) {
@@ -62,6 +43,8 @@ public class TestUtils {
                     String sql = IOUtils.toString(reader);
                     try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
                         preparedStatement.execute();
+                    } catch (SQLException e) {
+                        throw new RuntimeException("Failed to execute \n%s".formatted(sql), e);
                     }
                 }
             }
