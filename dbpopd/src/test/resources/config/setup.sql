@@ -31,10 +31,3 @@ CREATE TABLE invoice_details
     invoice_id        INT NOT NULL REFERENCES invoices,
     product_id        INT NOT NULL REFERENCES products
 );
-
-CREATE TABLE master.dbo.test_binary
-(
-    id          INT PRIMARY KEY,
-    test_binary BINARY(32),
-    test_blob   VARBINARY(MAX)
-)

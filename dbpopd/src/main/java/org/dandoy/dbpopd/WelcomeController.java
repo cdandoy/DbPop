@@ -4,7 +4,6 @@ import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.views.View;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -25,9 +24,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class WelcomeController {
     private final ConfigurationService configurationService;
+    private final SqlSetupService sqlSetupService;
 
-    public WelcomeController(ConfigurationService configurationService) {
+    public WelcomeController(ConfigurationService configurationService,
+                             SqlSetupService sqlSetupService) {
         this.configurationService = configurationService;
+        this.sqlSetupService = sqlSetupService;
     }
 
     @Get(produces = "text/html")
@@ -70,10 +72,17 @@ public class WelcomeController {
             }
         }
 
+        SqlSetupStatus sqlSetupStatus = new SqlSetupStatus(
+                sqlSetupService.isLoading(),
+                sqlSetupService.isLoaded(),
+                sqlSetupService.getErrorMessage()
+        );
+
         return HttpResponse.ok(
                 Map.of(
                         "datasetNames", datasetNames,
-                        "datasetFileRows", datasetFileRows
+                        "datasetFileRows", datasetFileRows,
+                        "sqlSetupStatus", sqlSetupStatus
                 )
         );
     }
@@ -91,18 +100,9 @@ public class WelcomeController {
         }
     }
 
-    @Getter
-    public static class DatasetFileRow {
-        private final String datasetName;
-        private final String tableName;
-        private final Long fileSize;
-        private final Integer rows;
+    public record DatasetFileRow(String datasetName, String tableName, Long fileSize, Integer rows) {
+    }
 
-        public DatasetFileRow(String datasetName, String tableName, Long fileSize, Integer rows) {
-            this.datasetName = datasetName;
-            this.tableName = tableName;
-            this.fileSize = fileSize;
-            this.rows = rows;
-        }
+    public record SqlSetupStatus(boolean loading, boolean loaded, String errorMessage) {
     }
 }

@@ -2,11 +2,16 @@ $(function () {
     $('.button-load').click(function (event) {
         let $datasetDiv = $(event.target).closest('[data-dataset]');
         let dataset = $datasetDiv.data('dataset');
-        $('.button-load').attr('disabled', 'disabled');
+
+        // Clear the output messages
         $('.dataset-result').empty();
         $datasetDiv.find('.dataset-result')
             .append('<div><label>Loading</label></div>');
         $('.dataset-error').empty();
+
+        // Hide all the buttons except ours, make it spin
+        $('.button-load').css('visibility', 'hidden');
+        $datasetDiv.find('.button-load').css('visibility', 'inherit');
         $datasetDiv.find('.fa-play').hide();
         $datasetDiv.find('.fa-spinner').css('display', 'inherit');
         $.ajax({
@@ -45,7 +50,7 @@ $(function () {
             .always(function () {
                 $datasetDiv.find('.fa-play').show();
                 $datasetDiv.find('.fa-spinner').hide();
-                $('.button-load').attr('disabled', null);
+                $('.button-load').css('visibility', 'inherit');
             });
     })
 });
