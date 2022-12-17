@@ -37,13 +37,13 @@ public class PostgresDatabase extends Database {
         try {
             checkCatalog(catalog);
 
-            try (PreparedStatement preparedStatement = connection.prepareStatement("\n" +
-                    "SELECT table_catalog,\n" +
-                    "       table_schema,\n" +
-                    "       table_name\n" +
-                    "FROM information_schema.tables t\n" +
-                    "WHERE table_type = 'BASE TABLE'\n" +
-                    "  AND table_schema = ?")) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT table_catalog,
+                           table_schema,
+                           table_name
+                    FROM information_schema.tables t
+                    WHERE table_type = 'BASE TABLE'
+                      AND table_schema = ?""")) {
                 preparedStatement.setString(1, schema);
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
                     Collection<TableName> ret = new ArrayList<>();
@@ -71,17 +71,17 @@ public class PostgresDatabase extends Database {
             Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
             Map<TableName, List<Index>> indexes = new HashMap<>();
             String catalog = connection.getCatalog();
-            try (PreparedStatement preparedStatement = connection.prepareStatement("" +
-                    "SELECT table_schema,\n" +
-                    "       table_name,\n" +
-                    "       column_name,\n" +
-                    "       is_identity,\n" +
-                    "       c.data_type,\n" +
-                    "       c.numeric_scale,\n" +
-                    "       c.is_nullable\n" +
-                    "FROM information_schema.columns c\n" +
-                    "WHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n" +
-                    "ORDER BY table_catalog, table_schema, table_name, ordinal_position")) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT table_schema,
+                           table_name,
+                           column_name,
+                           is_identity,
+                           c.data_type,
+                           c.numeric_scale,
+                           c.is_nullable
+                    FROM information_schema.columns c
+                    WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
+                    ORDER BY table_catalog, table_schema, table_name, ordinal_position""")) {
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
                     try (TableCollector tableCollector = new TableCollector((schema, table, columns) -> {
                         TableName tableName = new TableName(catalog, schema, table);
@@ -114,21 +114,21 @@ public class PostgresDatabase extends Database {
             }
 
             // Collects the indexes
-            try (PreparedStatement preparedStatement = connection.prepareStatement("" +
-                    "SELECT s.nspname       AS schema_name,\n" +
-                    "       t.relname       AS table_name,\n" +
-                    "       i.relname       AS index_name,\n" +
-                    "       c.attname       AS column_name,\n" +
-                    "       ix.indisunique  AS is_unique,\n" +
-                    "       ix.indisprimary AS is_primary_key\n" +
-                    "FROM pg_catalog.pg_class t\n" +
-                    "         JOIN pg_catalog.pg_namespace s ON s.oid = t.relnamespace\n" +
-                    "         JOIN pg_catalog.pg_index ix ON t.oid = ix.indrelid\n" +
-                    "         JOIN pg_catalog.pg_class i ON i.oid = ix.indexrelid\n" +
-                    "         JOIN pg_catalog.pg_attribute c ON c.attrelid = t.oid\n" +
-                    "WHERE c.attnum = ANY (ix.indkey)\n" +
-                    "  AND t.relkind = 'r'\n" +
-                    "ORDER BY t.relname, i.relname, c.attnum")) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT s.nspname       AS schema_name,
+                           t.relname       AS table_name,
+                           i.relname       AS index_name,
+                           c.attname       AS column_name,
+                           ix.indisunique  AS is_unique,
+                           ix.indisprimary AS is_primary_key
+                    FROM pg_catalog.pg_class t
+                             JOIN pg_catalog.pg_namespace s ON s.oid = t.relnamespace
+                             JOIN pg_catalog.pg_index ix ON t.oid = ix.indrelid
+                             JOIN pg_catalog.pg_class i ON i.oid = ix.indexrelid
+                             JOIN pg_catalog.pg_attribute c ON c.attrelid = t.oid
+                    WHERE c.attnum = ANY (ix.indkey)
+                      AND t.relkind = 'r'
+                    ORDER BY t.relname, i.relname, c.attnum""")) {
                 try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
                     TableName tableName = new TableName(catalog, schema, table);
                     if (datasetTableNames.contains(tableName)) {
@@ -151,31 +151,30 @@ public class PostgresDatabase extends Database {
                 }
             }
             // Collects the foreign keys
-            try (PreparedStatement preparedStatement = connection.prepareStatement("" +
-                    "WITH unnested_confkey AS (SELECT oid, UNNEST(confkey) AS confkey\n" +
-                    "                          FROM pg_constraint),\n" +
-                    "     unnested_conkey AS (SELECT oid, UNNEST(conkey) AS conkey\n" +
-                    "                         FROM pg_constraint)\n" +
-                    "SELECT c.conname                      AS constraint_name,\n" +
-                    "       s.nspname                      AS constraint_schema,\n" +
-                    "       t.relname                      AS constraint_table,\n" +
-                    "       col.attname                    AS constraint_column,\n" +
-                    "       PG_GET_CONSTRAINTDEF(conf.oid) AS constraint_def,\n" +
-                    "       rs.nspname                     AS referenced_schema,\n" +
-                    "       rt.relname                     AS referenced_table,\n" +
-                    "       rf.attname                   " +
-                    "  AS referenced_column\n" +
-                    "FROM pg_constraint c\n" +
-                    "         JOIN unnested_conkey con ON c.oid = con.oid\n" +
-                    "         JOIN pg_class t ON t.oid = c.conrelid\n" +
-                    "         JOIN pg_catalog.pg_namespace s ON s.oid = t.relnamespace\n" +
-                    "         JOIN pg_attribute col ON (col.attrelid = t.oid AND col.attnum = con.conkey)\n" +
-                    "         JOIN pg_class rt ON c.confrelid = rt.oid\n" +
-                    "         JOIN pg_catalog.pg_namespace rs ON rs.oid = rt.relnamespace\n" +
-                    "         JOIN unnested_confkey conf ON c.oid = conf.oid\n" +
-                    "         JOIN pg_attribute rf ON (rf.attrelid = c.confrelid AND rf.attnum = conf.confkey)\n" +
-                    "WHERE c.contype = 'f'\n" +
-                    "ORDER BY c.conname, s.nspname, t.relname")) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    WITH unnested_confkey AS (SELECT oid, UNNEST(confkey) AS confkey
+                                              FROM pg_constraint),
+                         unnested_conkey AS (SELECT oid, UNNEST(conkey) AS conkey
+                                             FROM pg_constraint)
+                    SELECT c.conname                      AS constraint_name,
+                           s.nspname                      AS constraint_schema,
+                           t.relname                      AS constraint_table,
+                           col.attname                    AS constraint_column,
+                           PG_GET_CONSTRAINTDEF(conf.oid) AS constraint_def,
+                           rs.nspname                     AS referenced_schema,
+                           rt.relname                     AS referenced_table,
+                           rf.attname                     AS referenced_column
+                    FROM pg_constraint c
+                             JOIN unnested_conkey con ON c.oid = con.oid
+                             JOIN pg_class t ON t.oid = c.conrelid
+                             JOIN pg_catalog.pg_namespace s ON s.oid = t.relnamespace
+                             JOIN pg_attribute col ON (col.attrelid = t.oid AND col.attnum = con.conkey)
+                             JOIN pg_class rt ON c.confrelid = rt.oid
+                             JOIN pg_catalog.pg_namespace rs ON rs.oid = rt.relnamespace
+                             JOIN unnested_confkey conf ON c.oid = conf.oid
+                             JOIN pg_attribute rf ON (rf.attrelid = c.confrelid AND rf.attnum = conf.confkey)
+                    WHERE c.contype = 'f'
+                    ORDER BY c.conname, s.nspname, t.relname""")) {
                 try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, constraintDef, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
                     TableName pkTableName = new TableName(catalog, pkSchema, pkTable);
                     TableName fkTableName = new TableName(catalog, fkSchema, fkTable);

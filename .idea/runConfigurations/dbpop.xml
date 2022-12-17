@@ -2,16 +2,9 @@
   <configuration default="false" name="dbpop" type="docker-deploy" factoryName="docker-image" server-name="Docker">
     <deployment type="docker-image">
       <settings>
-        <option name="imageTag" value="cdandoy/dbpop:0.1" />
+        <option name="imageTag" value="cdandoy/dbpop" />
+        <option name="attachToContainerNeeded" value="true" />
         <option name="containerName" value="dbpop" />
-        <option name="envVars">
-          <list>
-            <DockerEnvVarImpl>
-              <option name="name" value="MICRONAUT_ENVIRONMENTS" />
-              <option name="value" value="docker" />
-            </DockerEnvVarImpl>
-          </list>
-        </option>
         <option name="portBindings">
           <list>
             <DockerPortBindingImpl>

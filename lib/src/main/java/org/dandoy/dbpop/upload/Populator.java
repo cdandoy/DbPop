@@ -1,6 +1,8 @@
 package org.dandoy.dbpop.upload;
 
 import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -62,8 +64,7 @@ public class Populator implements AutoCloseable {
     }
 
     static synchronized void setInstance(Populator instance) {
-        if (INSTANCE instanceof CloseShieldPopulator) {
-            CloseShieldPopulator closeShieldPopulator = (CloseShieldPopulator) INSTANCE;
+        if (INSTANCE instanceof CloseShieldPopulator closeShieldPopulator) {
             closeShieldPopulator.doClose();
         }
         INSTANCE = instance;
@@ -248,27 +249,26 @@ public class Populator implements AutoCloseable {
     /**
      * Populator builder
      */
-    public static class Builder extends DefaultBuilder<Builder, Populator> {
+    @Getter
+    @Setter
+    @Accessors(chain = true)
+    public static class Builder {
+        private String dbUrl;
+        private String dbUser;
+        private String dbPassword;
         private File directory;
 
         private Builder() {
         }
 
-        /**
-         * For example:
-         * <pre>
-         * path/
-         *   base/
-         *     AdventureWorks/
-         *       HumanResources/
-         *         Department.csv
-         *         Employee.csv
-         *         Shift.csv
-         * </pre>
-         *
-         * @param directory The directory that holds the datasets
-         * @return this
-         */
+        public ConnectionBuilder getConnectionBuilder() {
+            return new UrlConnectionBuilder(
+                    getDbUrl(),
+                    getDbUser(),
+                    getDbPassword()
+            );
+        }
+
         public Builder setDirectory(String directory) {
             return setDirectory(new File(directory));
         }

@@ -66,19 +66,19 @@ public class SqlServerDatabase extends Database {
                         if (catalogs.contains(catalog)) {
                             statement.execute("USE " + catalog);
                             // Collects the tables and columns
-                            try (PreparedStatement tablesStatement = connection.prepareStatement("" +
-                                    "SELECT s.name       AS s,\n" +
-                                    "       t.name       AS t,\n" +
-                                    "       c.name       AS c,\n" +
-                                    "       c.is_nullable,\n" +
-                                    "       c.is_identity,\n" +
-                                    "       ty.name      AS type_name,\n" +
-                                    "       ty.precision AS type_precision\n" +
-                                    "FROM sys.schemas s\n" +
-                                    "         JOIN sys.tables t ON t.schema_id = s.schema_id\n" +
-                                    "         JOIN sys.columns c ON c.object_id = t.object_id\n" +
-                                    "         LEFT JOIN sys.types ty ON ty.system_type_id = c.system_type_id\n" +
-                                    "ORDER BY s.name, t.name, c.column_id")) {
+                            try (PreparedStatement tablesStatement = connection.prepareStatement("""
+                                    SELECT s.name       AS s,
+                                           t.name       AS t,
+                                           c.name       AS c,
+                                           c.is_nullable,
+                                           c.is_identity,
+                                           ty.name      AS type_name,
+                                           ty.precision AS type_precision
+                                    FROM sys.schemas s
+                                             JOIN sys.tables t ON t.schema_id = s.schema_id
+                                             JOIN sys.columns c ON c.object_id = t.object_id
+                                             LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                                    ORDER BY s.name, t.name, c.column_id""")) {
                                 try (TableCollector tableCollector = new TableCollector((schema, table, columns) -> {
                                     TableName tableName = new TableName(catalog, schema, table);
                                     if (datasetTableNames.contains(tableName)) {
@@ -113,21 +113,22 @@ public class SqlServerDatabase extends Database {
                                 }
                             }
                             // Collects the indexes
-                            try (PreparedStatement preparedStatement = connection.prepareStatement("\n" +
-                                    "SELECT s.name AS s,\n" +
-                                    "       t.name AS t,\n" +
-                                    "       i.name AS i,\n" +
-                                    "       i.is_unique,\n" +
-                                    "       i.is_primary_key,\n" +
-                                    "       c.name AS c\n" +
-                                    "FROM sys.schemas s\n" +
-                                    "         JOIN sys.tables t ON t.schema_id = s.schema_id\n" +
-                                    "         LEFT JOIN sys.indexes i ON i.object_id = t.object_id\n" +
-                                    "         LEFT JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id\n" +
-                                    "         LEFT JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id\n" +
-                                    "WHERE i.name IS NOT NULL\n" +
-                                    "  AND c.name IS NOT NULL\n" +
-                                    "ORDER BY s.name, t.name, i.index_id, ic.key_ordinal")) {
+                            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+
+                                    SELECT s.name AS s,
+                                           t.name AS t,
+                                           i.name AS i,
+                                           i.is_unique,
+                                           i.is_primary_key,
+                                           c.name AS c
+                                    FROM sys.schemas s
+                                             JOIN sys.tables t ON t.schema_id = s.schema_id
+                                             LEFT JOIN sys.indexes i ON i.object_id = t.object_id
+                                             LEFT JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
+                                             LEFT JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
+                                    WHERE i.name IS NOT NULL
+                                      AND c.name IS NOT NULL
+                                    ORDER BY s.name, t.name, i.index_id, ic.key_ordinal""")) {
                                 try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
                                     TableName tableName = new TableName(catalog, schema, table);
                                     if (datasetTableNames.contains(tableName)) {
@@ -150,23 +151,24 @@ public class SqlServerDatabase extends Database {
                                 }
                             }
                             // Collects the foreign keys
-                            try (PreparedStatement preparedStatement = connection.prepareStatement("\n" +
-                                    "SELECT s.name   AS s,\n" +
-                                    "       t.name   AS t,\n" +
-                                    "       fk.name  AS fk_name,\n" +
-                                    "       m_c.name AS col,\n" +
-                                    "       r_s.name AS ref_schema,\n" +
-                                    "       r_t.name AS ref_table,\n" +
-                                    "       o_c.name AS rec_col\n" +
-                                    "FROM sys.schemas s\n" +
-                                    "         JOIN sys.tables t ON t.schema_id = s.schema_id\n" +
-                                    "         JOIN sys.foreign_keys fk ON fk.parent_object_id = t.object_id\n" +
-                                    "         JOIN sys.tables r_t ON r_t.object_id = fk.referenced_object_id\n" +
-                                    "         JOIN sys.schemas r_s ON r_s.schema_id = r_t.schema_id\n" +
-                                    "         JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id\n" +
-                                    "         JOIN sys.columns o_c ON o_c.object_id = fkc.referenced_object_id AND o_c.column_id = fkc.referenced_column_id\n" +
-                                    "         JOIN sys.columns m_c ON m_c.object_id = fkc.parent_object_id AND m_c.column_id = fkc.parent_column_id\n" +
-                                    "ORDER BY fk.name, s.name, t.name, m_c.column_id")) {
+                            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+
+                                    SELECT s.name   AS s,
+                                           t.name   AS t,
+                                           fk.name  AS fk_name,
+                                           m_c.name AS col,
+                                           r_s.name AS ref_schema,
+                                           r_t.name AS ref_table,
+                                           o_c.name AS rec_col
+                                    FROM sys.schemas s
+                                             JOIN sys.tables t ON t.schema_id = s.schema_id
+                                             JOIN sys.foreign_keys fk ON fk.parent_object_id = t.object_id
+                                             JOIN sys.tables r_t ON r_t.object_id = fk.referenced_object_id
+                                             JOIN sys.schemas r_s ON r_s.schema_id = r_t.schema_id
+                                             JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+                                             JOIN sys.columns o_c ON o_c.object_id = fkc.referenced_object_id AND o_c.column_id = fkc.referenced_column_id
+                                             JOIN sys.columns m_c ON m_c.object_id = fkc.parent_object_id AND m_c.column_id = fkc.parent_column_id
+                                    ORDER BY fk.name, s.name, t.name, m_c.column_id""")) {
                                 try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, constraintDef, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
                                     TableName pkTableName = new TableName(catalog, pkSchema, pkTable);
                                     TableName fkTableName = new TableName(catalog, fkSchema, fkTable);

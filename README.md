@@ -1,3 +1,4 @@
+
 # DbPop - The easiest way to populate your development database
 
 This utility allows you to quickly re-populate a development database to an initial state
@@ -28,7 +29,8 @@ For example:
    |    +-- AdventureWorks
    |         +-- HumanResources
    |              +-- Employee.csv
-   +-- dbpop.properties
+   |-- dbpop.properties
+   +-- setup.sql
 ```
 
 There are two special datasets:
@@ -44,15 +46,8 @@ There are two special datasets:
 In addition to the two special datasets, this example shows a dataset named ADV-7412, which would be the test data necessary to 
 reproduce a corresponding JIRA ticket. 
 
-The configuration file, `dbpop.properties`, contains the information to connect to the database.
-For example:
-```properties
-jdbcurl=jdbc:sqlserver://mssql;database=tempdb;trustServerCertificate=true
-username=sa
-password=tiger
-```
-
-[//]: # (TODO: We need to use environment variables for passwords, or at least describe how to use variables)
+### setup.sql
+The optional setup.sql file can be used to set up your database, for example for creating the tables, indexes, ...</br>
 
 ## Docker Compose
 The easiest way to set up DbPop is by using Docker Compose.
@@ -67,12 +62,16 @@ version: "3.9"
 services:
   dbpop:
     image: "cdandoy/dbpop"
-    environment:
-      - MICRONAUT_ENVIRONMENTS=docker
     ports:
       - "7104:7104"
     volumes:
-      - c:/git/myapp/testdata:/var/opt/dbpop
+      - c:/git/myapp/dbpop:/var/opt/dbpop
+    environment:
+      - DBPOP_JDBCURL=jdbc:sqlserver://mssql;database=tempdb;trustServerCertificate=true
+      - DBPOP_USERNAME=sa
+      - DBPOP_PASSWORD=tiger
+    depends_on:
+      - mssql
   mssql:
     image: mcr.microsoft.com/mssql/server
     ports:
@@ -81,10 +80,9 @@ services:
       - SA_PASSWORD=tiger
       - ACCEPT_EULA="Y"
 ```
- 
-This example uses SQL Server, it assumes that your test data directory is stored in the local directory C:\git\myapp\testdata.<br/>
-Once the database is started, install your application schema into the database.<br/>
-Open a browser: http://localhost:7104/ <br/>
+
+This example uses SQL Server, it assumes that your data directory is stored in the local directory C:\git\myapp\dbpop.<br/>
+Once the database is started, open a browser: http://localhost:7104/ <br/>
 You should see your dataset(s). The green button in front of the name is used to re-load that data.
 
 ## REST API

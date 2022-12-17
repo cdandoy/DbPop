@@ -80,7 +80,7 @@ public class Datasets {
         Set<TableName> databaseTableNames = databaseTables.stream().map(Table::getTableName).collect(Collectors.toSet());
         List<TableName> missingTables = datasetTableNames.stream()
                 .filter(tableName -> !databaseTableNames.contains(tableName))
-                .collect(Collectors.toList());
+                .toList();
         if (!missingTables.isEmpty()) {
             DataFile badDataFile = allDatasets.stream()
                     .flatMap(dataset -> dataset.getDataFiles().stream())

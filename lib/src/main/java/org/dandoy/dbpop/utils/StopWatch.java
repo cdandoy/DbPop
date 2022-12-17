@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public class StopWatch implements AutoCloseable {
     private static final Map<String, Record> records = new HashMap<>();
@@ -29,7 +28,7 @@ public class StopWatch implements AutoCloseable {
                         String.valueOf(entry.getValue().nbrCalls),
                         String.valueOf(entry.getValue().timeInMillis / 1_000_000 / entry.getValue().nbrCalls)
                 })
-                .collect(Collectors.toList());
+                .toList();
         int len0 = strings.stream().mapToInt(value -> value[0].length()).max().orElse(0);
         int len1 = strings.stream().mapToInt(value -> value[1].length()).max().orElse(0);
         int len2 = strings.stream().mapToInt(value -> value[2].length()).max().orElse(0);

@@ -8,10 +8,10 @@ import java.util.Base64;
 import java.util.Date;
 
 public abstract class ColumnType {
-    public static ColumnType VARCHAR = new ColumnType() {
+    public static final ColumnType VARCHAR = new ColumnType() {
     };
 
-    public static ColumnType INTEGER = new ColumnType() {
+    public static final ColumnType INTEGER = new ColumnType() {
         @Override
         public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) throws SQLException {
             if (input == null) {
@@ -22,7 +22,7 @@ public abstract class ColumnType {
         }
     };
 
-    public static ColumnType BIG_DECIMAL = new ColumnType() {
+    public static final ColumnType BIG_DECIMAL = new ColumnType() {
         @Override
         public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) throws SQLException {
             if (input == null) {
@@ -33,7 +33,7 @@ public abstract class ColumnType {
         }
     };
 
-    public static ColumnType TIMESTAMP = new ColumnType() {
+    public static final ColumnType TIMESTAMP = new ColumnType() {
         @Override
         public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) throws SQLException {
             SimpleDateFormat format_10 = new SimpleDateFormat("yyyy-MM-dd");
@@ -62,7 +62,7 @@ public abstract class ColumnType {
             }
         }
     };
-    public static ColumnType TIME = new ColumnType() {
+    public static final ColumnType TIME = new ColumnType() {
         @Override
         public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) throws SQLException {
             SimpleDateFormat format_8 = new SimpleDateFormat("HH:mm:ss");
@@ -88,7 +88,7 @@ public abstract class ColumnType {
             }
         }
     };
-    public static ColumnType DATE = new ColumnType() {
+    public static final ColumnType DATE = new ColumnType() {
         @Override
         public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) throws SQLException {
             SimpleDateFormat format_10 = new SimpleDateFormat("yyyy-MM-dd");
@@ -111,7 +111,7 @@ public abstract class ColumnType {
         }
     };
 
-    public static ColumnType BINARY = new ColumnType() {
+    public static final ColumnType BINARY = new ColumnType() {
         @Override
         public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) throws SQLException {
             if (input == null) {
@@ -123,7 +123,7 @@ public abstract class ColumnType {
         }
     };
 
-    public static ColumnType INVALID = new ColumnType() {
+    public static final ColumnType INVALID = new ColumnType() {
         @Override
         public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) {
             throw new RuntimeException("Cannot load this data type");

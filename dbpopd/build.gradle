@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "org.dandoy.dbpopd"
-version '0.0.6'
+version '0.0.7'
 
 repositories {
     mavenCentral()
@@ -51,5 +51,13 @@ micronaut {
     }
 }
 
+task versionTxt()  {
+    doLast {
+        def file = new File(buildDir, "resources/main/version.txt")
+        file.getParentFile().mkdirs()
+        file.text = "app.version=$version\n"
+    }
+}
 
+compileJava.finalizedBy versionTxt
 

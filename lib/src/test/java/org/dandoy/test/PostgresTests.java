@@ -1,5 +1,6 @@
 package org.dandoy.test;
 
+import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,8 +23,8 @@ public class PostgresTests {
 
     @Test
     void mainTest() throws SQLException {
-        try (Populator populator = Populator.builder()
-                .setEnvironment("pgsql")
+        try (Populator populator = LocalCredentials
+                .pgsqlPopulator()
                 .setDirectory("src/test/resources/pgsql")
                 .build()) {
             try (Connection connection = populator.createConnection()) {

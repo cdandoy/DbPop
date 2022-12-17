@@ -14,7 +14,6 @@ import org.dandoy.dbpop.utils.DbPopUtils;
 
 import java.io.IOException;
 import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -97,7 +96,7 @@ public class PkReader {
     interface PkInfo {
         void addRow(List<String> row);
 
-        List<Integer> toPositions(ResultSetMetaData metaData) throws SQLException;
+        List<Integer> toPositions(ResultSetMetaData metaData);
 
         boolean containsRow(List<String> row);
     }

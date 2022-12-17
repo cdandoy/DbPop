@@ -8,7 +8,7 @@ plugins {
 }
 
 group 'io.github.cdandoy'
-version '0.0.6'
+version '0.0.7'
 
 repositories {
     mavenCentral()
@@ -31,14 +31,14 @@ dependencies {
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
 
     shadowJar {
-        implementation 'com.microsoft.sqlserver:mssql-jdbc:11.2.1.jre8'
+        implementation 'com.microsoft.sqlserver:mssql-jdbc:11.2.1.jre17'
         implementation 'org.postgresql:postgresql:42.5.0'
     }
 }
 
 java {
-    sourceCompatibility = JavaVersion.toVersion("1.8")
-    targetCompatibility = JavaVersion.toVersion("1.8")
+    sourceCompatibility = JavaVersion.toVersion("17")
+    targetCompatibility = JavaVersion.toVersion("17")
 }
 
 test {

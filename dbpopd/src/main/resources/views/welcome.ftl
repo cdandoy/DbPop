@@ -1,5 +1,6 @@
 <#-- @ftlvariable name="datasetNames" type="java.util.List<java.lang.String>" -->
 <#-- @ftlvariable name="datasetFileRows" type="java.util.List<org.dandoy.dbpopd.WelcomeController.DatasetFileRow>" -->
+<#-- @ftlvariable name="sqlSetupStatus" type="org.dandoy.dbpopd.WelcomeController.SqlSetupStatus" -->
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -45,6 +46,12 @@
         <p class="lead">The easiest way to populate your development database.</p>
     </div>
 
+    <#if !sqlSetupStatus.loaded()>
+        <div class="mb-4"><i class="fa fa-fw fa-spinner fa-spin"></i> setup.sql loading...</div>
+    <#elseif sqlSetupStatus.errorMessage()??>
+        <pre class="mb-4 alert alert-danger" role="alert">${sqlSetupStatus.errorMessage()}</pre>
+    </#if>
+
     <ul class="nav nav-tabs" id="myTab" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="datasets-tab" data-bs-toggle="tab" data-bs-target="#datasets-tab-pane" type="button" role="tab" aria-controls="datasets-tab-pane" aria-selected="true">Datasets</button>
@@ -85,28 +92,28 @@
                     <th>Table</th>
                     <th>Rows</th>
                     <th>Size</th>
-<#--
-                    <th style="width: 1px"></th>
--->
+                    <#--
+                                        <th style="width: 1px"></th>
+                    -->
                 </tr>
                 </thead>
                 <tbody>
                 <#list datasetFileRows as datasetFileRow>
                     <tr>
-                        <td>${datasetFileRow.datasetName}</td>
-                        <td>${datasetFileRow.tableName}</td>
-                        <td>${datasetFileRow.rows}</td>
-                        <td>${datasetFileRow.fileSize}</td>
-<#--
-                        <td style="white-space: nowrap">
-                            <a href="#" class="btn btn-xs">
-                                <i class="fa fa-download"></i>
-                            </a>
-                            <a href="#" class="btn btn-xs">
-                                <i class="fa fa-eye"></i>
-                            </a>
-                        </td>
--->
+                        <td>${datasetFileRow.datasetName()}</td>
+                        <td>${datasetFileRow.tableName()}</td>
+                        <td>${datasetFileRow.rows()}</td>
+                        <td>${datasetFileRow.fileSize()}</td>
+                        <#--
+                                                <td style="white-space: nowrap">
+                                                    <a href="#" class="btn btn-xs">
+                                                        <i class="fa fa-download"></i>
+                                                    </a>
+                                                    <a href="#" class="btn btn-xs">
+                                                        <i class="fa fa-eye"></i>
+                                                    </a>
+                                                </td>
+                        -->
                     </tr>
                 </#list>
                 </tbody>

@@ -43,38 +43,22 @@ public class ExpressionParser {
     }
 
     private Optional<LocalDateTime> toLocalDateTime(String s) {
-        switch (s) {
-            case "yesterday":
-                return Optional.of(LocalDateTime.now().minusDays(1));
-            case "now":
-            case "today":
-                return Optional.of(LocalDateTime.now());
-            case "tomorrow":
-                return Optional.of(LocalDateTime.now().plusDays(1));
-            default:
-                return Optional.empty();
-        }
+        return switch (s) {
+            case "yesterday" -> Optional.of(LocalDateTime.now().minusDays(1));
+            case "now", "today" -> Optional.of(LocalDateTime.now());
+            case "tomorrow" -> Optional.of(LocalDateTime.now().plusDays(1));
+            default -> Optional.empty();
+        };
     }
 
     private LocalDateTime adjust(LocalDateTime localDateTime, int dir, long nbr, String unit) {
-        switch (unit) {
-            case "minute":
-            case "minutes":
-                return localDateTime.plusMinutes(dir * nbr);
-            case "hour":
-            case "hours":
-                return localDateTime.plusHours(dir * nbr);
-            case "day":
-            case "days":
-                return localDateTime.plusDays(dir * nbr);
-            case "month":
-            case "months":
-                return localDateTime.plusMonths(dir * nbr);
-            case "year":
-            case "years":
-                return localDateTime.plusYears(dir * nbr);
-            default:
-                throw new RuntimeException("Unexpected unit " + unit);
-        }
+        return switch (unit) {
+            case "minute", "minutes" -> localDateTime.plusMinutes(dir * nbr);
+            case "hour", "hours" -> localDateTime.plusHours(dir * nbr);
+            case "day", "days" -> localDateTime.plusDays(dir * nbr);
+            case "month", "months" -> localDateTime.plusMonths(dir * nbr);
+            case "year", "years" -> localDateTime.plusYears(dir * nbr);
+            default -> throw new RuntimeException("Unexpected unit " + unit);
+        };
     }
 }
