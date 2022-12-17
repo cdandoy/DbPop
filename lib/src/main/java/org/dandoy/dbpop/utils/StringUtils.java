@@ -18,4 +18,11 @@ public class StringUtils {
         ret.add(sb.toString());
         return ret;
     }
+
+    public static String removeEnd(String s, String end) {
+        if (s.endsWith(end)) {
+            return s.substring(0, s.length() - end.length());
+        }
+        return s;
+    }
 }
