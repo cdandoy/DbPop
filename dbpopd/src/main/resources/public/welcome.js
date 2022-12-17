@@ -8,7 +8,7 @@ $(function () {
             .append('<div><label>Loading</label></div>');
         $('.dataset-error').empty();
         $datasetDiv.find('.fa-play').hide();
-        $datasetDiv.find('.fa-spinner').show();
+        $datasetDiv.find('.fa-spinner').css('display', 'inherit');
         $.ajax({
             url: "/populate?dataset=" + dataset,
         })
