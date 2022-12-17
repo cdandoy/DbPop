@@ -3,6 +3,7 @@ package org.dandoy.dbpopd;
 import io.micronaut.context.annotation.Property;
 import jakarta.inject.Singleton;
 import lombok.Getter;
+import org.dandoy.dbpop.database.UrlConnectionBuilder;
 import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
 
@@ -10,13 +11,15 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Properties;
 
 @Singleton
 public class ConfigurationService {
     private static final String PROP_FILE_NAME = "dbpop.properties";
     @Getter
-    private final File datasetsDirectory;
+    private final File configurationDir;
     private final String jdbcurl;
     private final String username;
     private final String password;
@@ -24,13 +27,16 @@ public class ConfigurationService {
     public ConfigurationService(
             @SuppressWarnings("MnInjectionPoints") @Property(name = "dbpopd.configuration.path") String configurationPath
     ) {
-        File configurationDir = new File(configurationPath);
+        configurationDir = new File(configurationPath);
         File configurationFile = new File(configurationDir, PROP_FILE_NAME);
         Properties properties = getConfigurationProperties(configurationFile);
         jdbcurl = getValidProperty(configurationFile, properties, "jdbcurl", "DBPOP_JDBCURL");
         username = getValidProperty(configurationFile, properties, "username", "DBPOP_USERNAME");
         password = getValidProperty(configurationFile, properties, "password", "DBPOP_PASSWORD");
-        datasetsDirectory = new File(configurationDir, "datasets");
+    }
+
+    public File getDatasetsDirectory() {
+        return new File(configurationDir, "datasets");
     }
 
     private static String getValidProperty(File configurationFile, Properties properties, String propertyName, String environmentVariableName) {
@@ -55,17 +61,22 @@ public class ConfigurationService {
         return properties;
     }
 
+    public Connection createConnection() throws SQLException {
+        // I am not happy with this
+        return new UrlConnectionBuilder(jdbcurl, username, password).createConnection();
+    }
+
     public Populator createPopulator() {
         return Populator.builder()
                 .setDbUrl(jdbcurl)
                 .setDbUser(username)
                 .setDbPassword(password)
-                .setDirectory(datasetsDirectory)
+                .setDirectory(getDatasetsDirectory())
                 .build();
     }
 
     public Downloader.Builder createDownloadBuilder() {
         return Downloader.builder()
-                .setDirectory(datasetsDirectory);
+                .setDirectory(getDatasetsDirectory());
     }
 }
