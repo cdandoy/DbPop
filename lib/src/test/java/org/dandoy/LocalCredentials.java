@@ -8,6 +8,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -64,6 +67,10 @@ public record LocalCredentials(String dbUrl, String dbUser, String dbPassword) {
 
     public static Populator.Builder pgsqlPopulator() {
         return from("pgsql").populator();
+    }
+
+    public Connection createConnection() throws SQLException {
+        return DriverManager.getConnection(dbUrl, dbUser, dbPassword);
     }
 
     public Populator.Builder populator() {

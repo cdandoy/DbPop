@@ -77,7 +77,7 @@ public class Datasets {
      * @param databaseTables    the tables found in the database that are in the data sets
      */
     public static void validateAllTablesExist(List<Dataset> allDatasets, Set<TableName> datasetTableNames, Collection<Table> databaseTables) {
-        Set<TableName> databaseTableNames = databaseTables.stream().map(Table::getTableName).collect(Collectors.toSet());
+        Set<TableName> databaseTableNames = databaseTables.stream().map(Table::tableName).collect(Collectors.toSet());
         List<TableName> missingTables = datasetTableNames.stream()
                 .filter(tableName -> !databaseTableNames.contains(tableName))
                 .toList();

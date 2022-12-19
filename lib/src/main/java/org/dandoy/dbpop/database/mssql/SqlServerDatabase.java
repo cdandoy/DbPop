@@ -58,6 +58,7 @@ public class SqlServerDatabase extends Database {
         Map<TableName, List<Column>> tableColumns = new HashMap<>();
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
         Map<TableName, List<Index>> indexes = new HashMap<>();
+        Map<TableName, PrimaryKey> primaryKeyMap = new HashMap<>();
         try (PreparedStatement databasesStatement = connection.prepareStatement("SELECT name FROM sys.databases WHERE name NOT IN ('tempdb')")) {
             try (Statement statement = connection.createStatement()) {
                 try (ResultSet databaseResultSet = databasesStatement.executeQuery()) {
@@ -96,7 +97,7 @@ public class SqlServerDatabase extends Database {
                                                 boolean identity = tablesResultSet.getBoolean("is_identity");
                                                 String typeName = tablesResultSet.getString("type_name");
                                                 int typePrecision = tablesResultSet.getInt("type_precision");
-                                                ColumnType columnType = getColumnType(typeName, typePrecision);
+                                                ColumnType columnType = ColumnType.getColumnType(typeName, typePrecision);
                                                 tableCollector.push(
                                                         schema,
                                                         table,
@@ -134,6 +135,9 @@ public class SqlServerDatabase extends Database {
                                     if (datasetTableNames.contains(tableName)) {
                                         Index index = new Index(name, tableName, unique, primaryKey, columns);
                                         indexes.computeIfAbsent(tableName, it -> new ArrayList<>()).add(index);
+                                        if (primaryKey) {
+                                            primaryKeyMap.put(tableName, new PrimaryKey(name, columns));
+                                        }
                                     }
                                 })) {
                                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -208,11 +212,15 @@ public class SqlServerDatabase extends Database {
             throw new RuntimeException(e);
         }
         return tableColumns.entrySet().stream()
-                .map(entry -> new Table(
-                        entry.getKey(),
-                        entry.getValue(),
-                        indexes.computeIfAbsent(entry.getKey(), tableName -> Collections.emptyList()),
-                        foreignKeys.computeIfAbsent(entry.getKey(), tableName -> Collections.emptyList()))
+                .map(entry -> {
+                            TableName tableName = entry.getKey();
+                            return new Table(
+                                    tableName,
+                                    entry.getValue(),
+                                    indexes.computeIfAbsent(tableName, it -> Collections.emptyList()),
+                                    primaryKeyMap.get(tableName),
+                                    foreignKeys.computeIfAbsent(tableName, it -> Collections.emptyList()));
+                        }
                 )
                 .collect(Collectors.toList());
     }
@@ -233,36 +241,6 @@ public class SqlServerDatabase extends Database {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static ColumnType getColumnType(String typeName, int typePrecision) {
-        if ("varchar".equals(typeName)) return ColumnType.VARCHAR;
-        if ("nvarchar".equals(typeName)) return ColumnType.VARCHAR;
-        if ("int".equals(typeName)) return ColumnType.INTEGER;
-        if ("smallint".equals(typeName)) return ColumnType.INTEGER;
-        if ("tinyint".equals(typeName)) return ColumnType.INTEGER;
-        if ("bigint".equals(typeName)) return ColumnType.BIG_DECIMAL;
-        if ("money".equals(typeName)) return ColumnType.BIG_DECIMAL;
-        if ("text".equals(typeName)) return ColumnType.VARCHAR;
-        if ("decimal".equals(typeName)) return typePrecision > 0 ? ColumnType.BIG_DECIMAL : ColumnType.INTEGER;
-        if ("float".equals(typeName)) return typePrecision > 0 ? ColumnType.BIG_DECIMAL : ColumnType.INTEGER;
-        if ("numeric".equals(typeName)) return typePrecision > 0 ? ColumnType.BIG_DECIMAL : ColumnType.INTEGER;
-        if ("date".equals(typeName)) return ColumnType.DATE;
-        if ("datetime".equals(typeName)) return ColumnType.TIMESTAMP;
-        if ("datetime2".equals(typeName)) return ColumnType.TIMESTAMP;
-        if ("time".equals(typeName)) return ColumnType.TIME;
-        if ("binary".equals(typeName)) return ColumnType.BINARY;
-        if ("bit".equals(typeName)) return ColumnType.INTEGER;
-        if ("char".equals(typeName)) return ColumnType.VARCHAR;
-        if ("nchar".equals(typeName)) return ColumnType.VARCHAR;
-        if ("sysname".equals(typeName)) return ColumnType.VARCHAR;
-        if ("image".equals(typeName)) return ColumnType.BINARY;
-        if ("varbinary".equals(typeName)) return ColumnType.BINARY;
-        if ("geometry".equals(typeName)) return ColumnType.INVALID;
-        if ("geography".equals(typeName)) return ColumnType.INVALID;
-        if ("hierarchyid".equals(typeName)) return ColumnType.INVALID;
-        if ("uniqueidentifier".equals(typeName)) return ColumnType.VARCHAR;
-        throw new RuntimeException("Unexpected type: " + typeName);
     }
 
     private void identityInsert(TableName tableName, boolean enable) {
@@ -307,8 +285,8 @@ public class SqlServerDatabase extends Database {
         SqlServerDatabaseInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
             super(table, dataFileHeaders, sql);
 
-            this.tableName = table.getTableName();
-            identity = table.getColumns().stream().anyMatch(Column::isAutoIncrement);
+            this.tableName = table.tableName();
+            identity = table.columns().stream().anyMatch(Column::isAutoIncrement);
             if (identity) {
                 identityInsert(this.tableName, true);
             }

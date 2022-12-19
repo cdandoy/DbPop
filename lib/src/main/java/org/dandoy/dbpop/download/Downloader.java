@@ -211,7 +211,7 @@ public class Downloader implements AutoCloseable {
     private List<ColumnWhere> getColumnWheres(TableName tableName, List<Where> wheres) {
         Collection<Table> tables = database.getTables(Collections.singleton(tableName));
         if (tables.isEmpty()) throw new RuntimeException("Table does not exist: " + tableName.toQualifiedName());
-        Map<String, Column> columnMap = tables.iterator().next().getColumns().stream().
+        Map<String, Column> columnMap = tables.iterator().next().columns().stream().
                 collect(Collectors.toMap(
                         Column::getName,
                         Function.identity()

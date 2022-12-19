@@ -70,6 +70,7 @@ public class PostgresDatabase extends Database {
             Map<TableName, List<Column>> tableColumns = new HashMap<>();
             Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
             Map<TableName, List<Index>> indexes = new HashMap<>();
+            Map<TableName, PrimaryKey> primaryKeyMap = new HashMap<>();
             String catalog = connection.getCatalog();
             try (PreparedStatement preparedStatement = connection.prepareStatement("""
                     SELECT table_schema,
@@ -134,6 +135,9 @@ public class PostgresDatabase extends Database {
                     if (datasetTableNames.contains(tableName)) {
                         Index index = new Index(name, tableName, unique, primaryKey, columns);
                         indexes.computeIfAbsent(tableName, it -> new ArrayList<>()).add(index);
+                        if (primaryKey) {
+                            primaryKeyMap.put(tableName, new PrimaryKey(name, columns));
+                        }
                     }
                 })) {
                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -208,11 +212,15 @@ public class PostgresDatabase extends Database {
             }
 
             return tableColumns.entrySet().stream()
-                    .map(entry -> new Table(
-                            entry.getKey(),
-                            entry.getValue(),
-                            indexes.computeIfAbsent(entry.getKey(), tableName -> Collections.emptyList()),
-                            foreignKeys.computeIfAbsent(entry.getKey(), tableName -> Collections.emptyList()))
+                    .map(entry -> {
+                                TableName tableName = entry.getKey();
+                                return new Table(
+                                        tableName,
+                                        entry.getValue(),
+                                        indexes.computeIfAbsent(tableName, it -> Collections.emptyList()),
+                                        primaryKeyMap.get(tableName),
+                                        foreignKeys.computeIfAbsent(tableName, it -> Collections.emptyList()));
+                            }
                     )
                     .collect(Collectors.toList());
         } catch (SQLException e) {

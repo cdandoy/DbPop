@@ -36,7 +36,7 @@ public class PkReader {
 
         Datasets.validateAllTablesExist(datasets, tableNames, databaseTables);
 
-        Map<TableName, Table> tablesByName = databaseTables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
+        Map<TableName, Table> tablesByName = databaseTables.stream().collect(Collectors.toMap(Table::tableName, Function.identity()));
         PkReader pkReader = new PkReader();
         for (Dataset dataset : datasets) {
             for (DataFile dataFile : dataset.getDataFiles()) {
@@ -49,7 +49,7 @@ public class PkReader {
     }
 
     private void readDataFile(DataFile dataFile, Table table) {
-        Optional<List<String>> optionalPkColumns = table.getIndexes().stream()
+        Optional<List<String>> optionalPkColumns = table.indexes().stream()
                 .filter(Index::isPrimaryKey)
                 .map(Index::getColumns)
                 .findFirst();
