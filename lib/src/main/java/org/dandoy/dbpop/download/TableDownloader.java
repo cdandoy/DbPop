@@ -98,11 +98,8 @@ public class TableDownloader implements AutoCloseable {
     }
 
     private void consumeResultSet(CSVPrinter csvPrinter, ResultSet resultSet) {
-        if (tablePrimaryKeys != null) {
-            if (!tablePrimaryKeys.addPrimaryKey(resultSet)) {
-                return;
-            }
-        }
+        if (isExistingPk(resultSet)) return;
+
         try {
             for (TableExecutor.SelectedColumn selectedColumn : selectedColumns) {
                 if (selectedColumn != null) {
@@ -126,6 +123,14 @@ public class TableDownloader implements AutoCloseable {
         } catch (SQLException | IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Checks if the PK in the ResultSet has already been downloaded
+     */
+    private boolean isExistingPk(ResultSet resultSet) {
+        if (tablePrimaryKeys == null) return false;
+        return !tablePrimaryKeys.addPrimaryKey(resultSet);
     }
 
     private void downloadClob(ResultSet resultSet, CSVPrinter csvPrinter, String columnName, int jdbcPos) throws SQLException, IOException {

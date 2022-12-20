@@ -191,6 +191,7 @@ public class SqlServerTests {
     @Test
     void testBinary() throws SQLException {
         File dir = createGeneratedTestDirectory();
+        TestUtils.delete(dir);
         try (Connection connection = LocalCredentials.from("mssql").createConnection()) {
             try (Database database = Database.createDatabase(connection)) {
                 try (TableDownloader tableDownloader = TableDownloader.builder()
@@ -273,6 +274,10 @@ public class SqlServerTests {
 
     @Test
     void testAppend() throws SQLException, IOException {
+        File dir = createGeneratedTestDirectory();
+        File customerCsv = new File(dir, "base/master/dbo/customers.csv");
+        TestUtils.delete(dir);
+
         try (Connection connection = LocalCredentials.from("mssql").createConnection()) {
             try (Database database = Database.createDatabase(connection)) {
                 // Load the default dataset
@@ -284,7 +289,6 @@ public class SqlServerTests {
                 }
 
                 // Download it in a temp directory
-                File dir = createGeneratedTestDirectory();
                 try (TableDownloader tableDownloader = TableDownloader.builder()
                         .setDatabase(database)
                         .setDatasetsDirectory(dir)
@@ -293,6 +297,8 @@ public class SqlServerTests {
                         .build()) {
                     tableDownloader.download();
                 }
+
+                assertEquals(4, Files.readAllLines(customerCsv.toPath()).size()); // Only the header
 
                 // Insert a new customer
                 try (Statement statement = connection.createStatement()) {
@@ -309,7 +315,7 @@ public class SqlServerTests {
                     // This is supposed to only download the new customer
                     tableDownloader.download();
                 }
-                List<String> lines = Files.readAllLines(new File(dir, "base/master/dbo/customers.csv").toPath());
+                List<String> lines = Files.readAllLines(customerCsv.toPath());
                 assertEquals("customer_id,name", lines.get(0));                                     // Check that the first line is the header
                 assertEquals(1, lines.stream().filter(it -> it.contains("customer_id")).count());   // Check that we only have one header
                 assertEquals(1, lines.stream().filter(it -> it.contains("AirMethod")).count());     // Check that we still have the other customers
