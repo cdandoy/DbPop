@@ -39,4 +39,16 @@ public class TestUtils {
             throw new RuntimeException(e);
         }
     }
+
+    public static void delete(File file) {
+        File[] files = file.listFiles();
+        if (files != null) {
+            for (File f : files) {
+                delete(f);
+            }
+        }
+        if (!file.delete() && file.exists()) {
+            throw new RuntimeException("Failed to delete " + file);
+        }
+    }
 }

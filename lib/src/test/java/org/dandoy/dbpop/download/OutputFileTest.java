@@ -1,12 +1,11 @@
-package org.dandoy.dbpop.download2;
+package org.dandoy.dbpop.download;
 
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.download.OutputFile;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class OutputFileTest {
     @Test

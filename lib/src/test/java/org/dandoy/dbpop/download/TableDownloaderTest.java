@@ -1,9 +1,9 @@
-package org.dandoy.dbpop.download2;
+package org.dandoy.dbpop.download;
 
 import org.dandoy.LocalCredentials;
+import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.download.TableDownloader;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -16,8 +16,12 @@ import java.util.Set;
 
 @EnabledIf("org.dandoy.TestUtils#hasSqlServer")
 class TableDownloaderTest {
+    private static final File TEST_DIR = new File("src/test/resources/mssql/download");
+
     @Test
     void testByPrimaryKey() throws SQLException {
+        TestUtils.delete(TEST_DIR);
+
         File datasetsDirectory = new File("src/test/resources/mssql");
         LocalCredentials localCredentials = LocalCredentials.from("mssql");
         try (Populator populator = localCredentials.populator()
@@ -41,11 +45,13 @@ class TableDownloaderTest {
                 tableDownloader.download(pks);
             }
         }
+        TestUtils.delete(TEST_DIR);
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     @Test
     void testFull() throws SQLException {
+        TestUtils.delete(TEST_DIR);
         File datasetsDirectory = new File("src/test/resources/mssql");
         new File(datasetsDirectory, "download/master/dbo/invoices.csv").delete();
         LocalCredentials localCredentials = LocalCredentials.from("mssql");
@@ -67,5 +73,6 @@ class TableDownloaderTest {
                 tableDownloader.download();
             }
         }
+        TestUtils.delete(TEST_DIR);
     }
 }
