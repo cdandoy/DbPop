@@ -1,5 +1,8 @@
 package org.dandoy.dbpop.download2;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.dandoy.dbpop.database.Database;
@@ -16,10 +19,9 @@ import java.util.List;
 import java.util.Set;
 
 import static org.dandoy.dbpop.download2.TableExecutor.SelectedColumn;
-import static org.dandoy.dbpop.download2.TableExecutor.createTableExecutor;
 
 @Slf4j
-public class TableDownloader {
+public class TableDownloader implements AutoCloseable {
     private static final int MAX_LENGTH = 1024 * 32;
     private final TableName tableName;
     private final OutputFile outputFile;
@@ -27,7 +29,7 @@ public class TableDownloader {
     private final TableExecutor tableExecutor;
     private final List<SelectedColumn> selectedColumns;
 
-    public TableDownloader(TableName tableName, OutputFile outputFile, TablePrimaryKeys tablePrimaryKeys, TableExecutor tableExecutor, List<SelectedColumn> selectedColumns) {
+    private TableDownloader(TableName tableName, OutputFile outputFile, TablePrimaryKeys tablePrimaryKeys, TableExecutor tableExecutor, List<SelectedColumn> selectedColumns) {
         this.tableName = tableName;
         this.outputFile = outputFile;
         this.tablePrimaryKeys = tablePrimaryKeys;
@@ -35,10 +37,14 @@ public class TableDownloader {
         this.selectedColumns = selectedColumns;
     }
 
-    public static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName) {
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, boolean byPrimaryKey) {
         OutputFile outputFile = OutputFile.createOutputFile(datasetsDirectory, dataset, tableName);
         Table table = database.getTable(tableName);
-        TableExecutor tableExecutor = createTableExecutor(database, table);
+        TableExecutor tableExecutor = TableExecutor.createTableExecutor(database, table, byPrimaryKey);
         List<SelectedColumn> selectedColumns = tableExecutor.getSelectedColumns();
         TablePrimaryKeys tablePrimaryKeys = TablePrimaryKeys.createTablePrimaryKeys(datasetsDirectory, dataset, table, selectedColumns);
 
@@ -66,38 +72,60 @@ public class TableDownloader {
         return ret;
     }
 
+    @Override
+    public void close() {
+        tableExecutor.close();
+    }
+
+    /**
+     * Download by primary keys
+     */
     public void download(Set<List<Object>> pks) {
         try (CSVPrinter csvPrinter = outputFile.createCsvPrinter()) {
-            tableExecutor.execute(pks, resultSet -> {
-                if (tablePrimaryKeys != null) {
-                    if (!tablePrimaryKeys.addPrimaryKey(resultSet)) {
-                        return;
-                    }
-                }
-                for (SelectedColumn selectedColumn : selectedColumns) {
-                    try {
-                        if (selectedColumn != null) {
-                            Integer integer = selectedColumn.columnType().toSqlType();
-                            String columnName = selectedColumn.name();
-                            int jdbcPos = selectedColumn.jdbcPos();
-                            if (integer == Types.CLOB) {
-                                downloadClob(resultSet, csvPrinter, columnName, jdbcPos);
-                            } else if (integer == Types.BLOB) {
-                                downloadBlob(resultSet, csvPrinter, columnName, jdbcPos);
-                            } else if (selectedColumn.binary()) {
-                                downloadBinary(resultSet, csvPrinter, columnName, jdbcPos);
-                            } else {
-                                downloadString(resultSet, csvPrinter, columnName, jdbcPos);
-                            }
-                        } else {
-                            csvPrinter.print(null);
-                        }
-                    } catch (SQLException | IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            });
+            tableExecutor.execute(pks, resultSet -> consumeResultSet(csvPrinter, resultSet));
         } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Download the whole table
+     */
+    public void download() {
+        try (CSVPrinter csvPrinter = outputFile.createCsvPrinter()) {
+            tableExecutor.execute(resultSet -> consumeResultSet(csvPrinter, resultSet));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void consumeResultSet(CSVPrinter csvPrinter, ResultSet resultSet) {
+        if (tablePrimaryKeys != null) {
+            if (!tablePrimaryKeys.addPrimaryKey(resultSet)) {
+                return;
+            }
+        }
+        try {
+            for (SelectedColumn selectedColumn : selectedColumns) {
+                if (selectedColumn != null) {
+                    Integer integer = selectedColumn.columnType().toSqlType();
+                    String columnName = selectedColumn.name();
+                    int jdbcPos = selectedColumn.jdbcPos();
+                    if (integer == Types.CLOB) {
+                        downloadClob(resultSet, csvPrinter, columnName, jdbcPos);
+                    } else if (integer == Types.BLOB) {
+                        downloadBlob(resultSet, csvPrinter, columnName, jdbcPos);
+                    } else if (selectedColumn.binary()) {
+                        downloadBinary(resultSet, csvPrinter, columnName, jdbcPos);
+                    } else {
+                        downloadString(resultSet, csvPrinter, columnName, jdbcPos);
+                    }
+                } else {
+                    csvPrinter.print(null);
+                }
+            }
+            csvPrinter.println();
+        } catch (SQLException | IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -177,5 +205,29 @@ public class TableDownloader {
                 length / 1024
         );
         csvPrinter.print(null);
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true)
+    public static class Builder {
+        private Database database;
+        private File datasetsDirectory;
+        private String dataset;
+        private TableName tableName;
+        private boolean byPrimaryKey;
+
+        public Builder setByPrimaryKey() {
+            return setByPrimaryKey(true);
+        }
+
+        public TableDownloader build() {
+            if (database == null) throw new RuntimeException("database not set");
+            if (datasetsDirectory == null) throw new RuntimeException("datasetsDirectory not set");
+            if (dataset == null) throw new RuntimeException("dataset not set");
+            if (tableName == null) throw new RuntimeException("tableName not set");
+
+            return createTableDownloader(database, datasetsDirectory, dataset, tableName, byPrimaryKey);
+        }
     }
 }

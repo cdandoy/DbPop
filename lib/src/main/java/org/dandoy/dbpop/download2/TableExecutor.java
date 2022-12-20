@@ -10,53 +10,81 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class TableExecutor {
+public class TableExecutor implements AutoCloseable{
     private final Database database;
+    private final String sql;
     private final PreparedStatement preparedStatement;
     private final int batchSize;
-    private final List<ColumnType> columnTypes;
+    private final List<ColumnType> pkColumnTypes;
+    private final boolean byPrimaryKey;
 
-    private TableExecutor(Database database, PreparedStatement preparedStatement, int batchSize, List<ColumnType> columnTypes) {
+    private TableExecutor(Database database, String sql, PreparedStatement preparedStatement, int batchSize, List<ColumnType> pkColumnTypes, boolean byPrimaryKey) {
         this.database = database;
+        this.sql = sql;
         this.preparedStatement = preparedStatement;
         this.batchSize = batchSize;
-        this.columnTypes = columnTypes;
+        this.pkColumnTypes = pkColumnTypes;
+        this.byPrimaryKey = byPrimaryKey;
     }
 
-    public static TableExecutor createTableExecutor(Database database, Table table) {
-        List<String> pkColumnNames = table.primaryKey().columns();
-        String pkWhereClause = pkColumnNames.stream()
-                .map("(%s = ?)"::formatted)
-                .collect(Collectors.joining(" AND "));
-        int batchSize = 2000 / pkColumnNames.size();
-        String whereClause = Stream.generate(() -> pkWhereClause)
-                .limit(batchSize)
-                .collect(Collectors.joining("\nOR "));
-        String sql = ("""
-                SELECT *
-                FROM %s
-                WHERE %s""").formatted(
-                database.quote(table.tableName()),
-                whereClause
-        );
-        List<ColumnType> columnTypes = pkColumnNames.stream().map(it -> table.getColumn(it).getColumnType()).toList();
+    public static TableExecutor createTableExecutor(Database database, Table table, boolean byPrimaryKey) {
+        String sql = ("SELECT *\nFROM %s").formatted(database.quote(table.tableName()));
+        int batchSize = Integer.MAX_VALUE;
+        List<ColumnType> pkColumnTypes = null;
+        if (byPrimaryKey) {
+            List<String> pkColumnNames = table.primaryKey().columns();
+            String pkWhereClause = pkColumnNames.stream()
+                    .map("(%s = ?)"::formatted)
+                    .collect(Collectors.joining(" AND "));
+            batchSize = 2000 / pkColumnNames.size();
+            String whereClause = Stream.generate(() -> pkWhereClause)
+                    .limit(batchSize)
+                    .collect(Collectors.joining("\nOR "));
+            sql = sql + "\nWHERE " + whereClause;
+            pkColumnTypes = pkColumnNames.stream().map(it -> table.getColumn(it).getColumnType()).toList();
+        }
         Connection connection = database.getConnection();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(sql);
-            return new TableExecutor(database, preparedStatement, batchSize, columnTypes);
+            return new TableExecutor(database, sql, preparedStatement, batchSize, pkColumnTypes, byPrimaryKey);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to execute " + sql, e);
         }
     }
 
+    @Override
+    public void close()  {
+        try {
+            preparedStatement.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void execute(Set<List<Object>> pks, Consumer<ResultSet> consumer) {
         try {
-            List<List<Object>> pks2 = new LinkedList<>(pks);
-            while (!pks2.isEmpty()) {
-                int split = Math.min(batchSize, pks2.size());
-                List<List<Object>> todo = pks2.subList(0, split);
-                pks2 = pks2.subList(split, pks2.size());
-                executeSublist(todo, consumer);
+            if (byPrimaryKey) {
+                List<List<Object>> pks2 = new LinkedList<>(pks);
+                while (!pks2.isEmpty()) {
+                    int split = Math.min(batchSize, pks2.size());
+                    List<List<Object>> todo = pks2.subList(0, split);
+                    pks2 = pks2.subList(split, pks2.size());
+                    executeSublist(todo, consumer);
+                }
+            } else {
+                execute(consumer);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void execute(Consumer<ResultSet> consumer) {
+        if (byPrimaryKey) throw new RuntimeException("execute(Consumer) only handles full downloads");
+
+        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            while (resultSet.next()) {
+                consumer.accept(resultSet);
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -71,7 +99,7 @@ public class TableExecutor {
             }
         }
         while (jdbcPos <= batchSize) {
-            for (ColumnType columnType : columnTypes) {
+            for (ColumnType columnType : pkColumnTypes) {
                 preparedStatement.setObject(jdbcPos++, columnType.toSqlType());
             }
         }
@@ -100,7 +128,7 @@ public class TableExecutor {
                 ret.add(new SelectedColumn(i + 1, columnName, columnType, binary));
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to get the metadata of " + sql, e);
         }
         return ret;
     }

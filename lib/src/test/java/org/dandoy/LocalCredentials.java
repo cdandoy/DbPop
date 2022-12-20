@@ -1,6 +1,5 @@
 package org.dandoy;
 
-import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
 
 import java.io.BufferedReader;
@@ -61,10 +60,6 @@ public record LocalCredentials(String dbUrl, String dbUser, String dbPassword) {
         return from("mssql").populator();
     }
 
-    public static Downloader.Builder mssqlDownloader() {
-        return from("mssql").downloader();
-    }
-
     public static Populator.Builder pgsqlPopulator() {
         return from("pgsql").populator();
     }
@@ -80,10 +75,4 @@ public record LocalCredentials(String dbUrl, String dbUser, String dbPassword) {
                 .setDbPassword(dbPassword);
     }
 
-    public Downloader.Builder downloader() {
-        return Downloader.builder()
-                .setDbUrl(dbUrl)
-                .setDbUser(dbUser)
-                .setDbPassword(dbPassword);
-    }
 }

@@ -3,8 +3,9 @@ package org.dandoy.test;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
+import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.download.Downloader;
+import org.dandoy.dbpop.download2.TableDownloader;
 import org.dandoy.dbpop.upload.Populator;
 import org.dandoy.dbpop.utils.FileUtils;
 import org.junit.jupiter.api.BeforeAll;
@@ -190,46 +191,48 @@ public class SqlServerTests {
     @Test
     void testBinary() throws SQLException {
         File dir = createGeneratedTestDirectory();
-        try (Downloader downloader = LocalCredentials
-                .mssqlDownloader()
-                .setDirectory(dir)
-                .setDataset("base")
-                .build()) {
-            Connection connection = downloader.getConnection();
+        try (Connection connection = LocalCredentials.from("mssql").createConnection()) {
+            try (Database database = Database.createDatabase(connection)) {
+                try (TableDownloader tableDownloader = TableDownloader.builder()
+                        .setDatabase(database)
+                        .setDatasetsDirectory(dir)
+                        .setDataset("base")
+                        .setTableName(new TableName("master", "dbo", "test_binary"))
+                        .build()) {
+                    try (Statement statement = connection.createStatement()) {
+                        statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
+                    }
 
-            try (Statement statement = connection.createStatement()) {
-                statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
+                    try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO master.dbo.test_binary(id, test_binary, test_blob) VALUES (?,?,?)")) {
+                        preparedStatement.setInt(1, 1);
+                        preparedStatement.setBytes(2, "HELLOHELLOHELLOHELLOHELLOHELLOHE".getBytes());
+                        Blob blob = connection.createBlob();
+                        blob.setBytes(1, "HELLO\0WORLD".getBytes());
+                        preparedStatement.setBlob(3, blob);
+                        preparedStatement.executeUpdate();
+                    }
+
+                    // Download the data
+                    tableDownloader.download();
+
+                    // Don't leave that data behind
+                    try (Statement statement = connection.createStatement()) {
+                        statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
+                    }
+                    connection.commit();
+
+                }
             }
 
-            try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO master.dbo.test_binary(id, test_binary, test_blob) VALUES (?,?,?)")) {
-                preparedStatement.setInt(1, 1);
-                preparedStatement.setBytes(2, "HELLOHELLOHELLOHELLOHELLOHELLOHE".getBytes());
-                Blob blob = connection.createBlob();
-                blob.setBytes(1, "HELLO\0WORLD".getBytes());
-                preparedStatement.setBlob(3, blob);
-                preparedStatement.executeUpdate();
-            }
+            try (Populator populator = LocalCredentials
+                    .mssqlPopulator()
+                    .setDirectory(dir)
+                    .build()) {
 
-            // Download the data
-            downloader.download(new TableName("master", "dbo", "test_binary"));
+                // Upload the data
+                populator.load("base");
 
-            // Don't leave that data behind
-            try (Statement statement = connection.createStatement()) {
-                statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
-            }
-            connection.commit();
-        }
-
-        try (Populator populator =LocalCredentials
-                .mssqlPopulator()
-                .setDirectory(dir)
-                .build()) {
-
-            // Upload the data
-            populator.load("base");
-
-            // Verify
-            try (Connection connection = populator.createConnection()) {
+                // Verify
                 try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM master.dbo.test_binary")) {
                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
                         assertTrue(resultSet.next());
@@ -246,7 +249,7 @@ public class SqlServerTests {
     @Test
     void testLoadBinary() throws SQLException {
         try (Populator populator = LocalCredentials
-                    .mssqlPopulator()
+                .mssqlPopulator()
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
 
@@ -270,51 +273,48 @@ public class SqlServerTests {
 
     @Test
     void testAppend() throws SQLException, IOException {
+        try (Connection connection = LocalCredentials.from("mssql").createConnection()) {
+            try (Database database = Database.createDatabase(connection)) {
+                // Load the default dataset
+                try (Populator populator = LocalCredentials
+                        .mssqlPopulator()
+                        .setDirectory("src/test/resources/mssql")
+                        .build()) {
+                    populator.load("base");
+                }
 
-        // Load the default dataset
-        try (Populator populator = LocalCredentials
-                    .mssqlPopulator()
-                .setDirectory("src/test/resources/mssql")
-                .build()) {
-            populator.load("base");
-        }
+                // Download it in a temp directory
+                File dir = createGeneratedTestDirectory();
+                try (TableDownloader tableDownloader = TableDownloader.builder()
+                        .setDatabase(database)
+                        .setDatasetsDirectory(dir)
+                        .setDataset("base")
+                        .setTableName(new TableName("master", "dbo", "customers"))
+                        .build()) {
+                    tableDownloader.download();
+                }
 
-        // Download it in a temp directory
-        File dir = createGeneratedTestDirectory();
-        try (Downloader downloader = LocalCredentials
-                .mssqlDownloader()
-                .setDirectory(dir)
-                .setDataset("base")
-                .build()) {
-            downloader.download(new TableName("master", "dbo", "customers"));
-        }
-
-        // Insert a new customer
-        try (Populator populator = LocalCredentials
-                .mssqlPopulator()
-                .setDirectory(dir)
-                .build()) {
-            try (Connection connection = populator.createConnection()) {
+                // Insert a new customer
                 try (Statement statement = connection.createStatement()) {
                     statement.execute("INSERT INTO master.dbo.customers (name) VALUES ('HyperAir')");
                 }
-            }
 
-            // then download in append mode
-            try (Downloader downloader = LocalCredentials
-                    .mssqlDownloader()
-                    .setDirectory(dir)
-                    .setDataset("base")
-                    .build()) {
-                // This is supposed to only download the new customer
-                downloader.download(new TableName("master", "dbo", "customers"));
+                // then download in append mode
+                try (TableDownloader tableDownloader = TableDownloader.builder()
+                        .setDatabase(database)
+                        .setDatasetsDirectory(dir)
+                        .setDataset("base")
+                        .setTableName(new TableName("master", "dbo", "customers"))
+                        .build()) {
+                    // This is supposed to only download the new customer
+                    tableDownloader.download();
+                }
+                List<String> lines = Files.readAllLines(new File(dir, "base/master/dbo/customers.csv").toPath());
+                assertEquals("customer_id,name", lines.get(0));                                     // Check that the first line is the header
+                assertEquals(1, lines.stream().filter(it -> it.contains("customer_id")).count());   // Check that we only have one header
+                assertEquals(1, lines.stream().filter(it -> it.contains("AirMethod")).count());     // Check that we still have the other customers
+                assertTrue(lines.get(lines.size() - 1).contains("HyperAir"));                       // Check that the last added line is our inserted customer
             }
-
-            List<String> lines = Files.readAllLines(new File(dir, "base/master/dbo/customers.csv").toPath());
-            assertEquals("customer_id,name", lines.get(0));                                     // Check that the first line is the header
-            assertEquals(1, lines.stream().filter(it -> it.contains("customer_id")).count());   // Check that we only have one header
-            assertEquals(1, lines.stream().filter(it -> it.contains("AirMethod")).count());     // Check that we still have the other customers
-            assertTrue(lines.get(lines.size() - 1).contains("HyperAir"));                       // Check that the last added line is our inserted customer
         }
     }
 }
