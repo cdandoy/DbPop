@@ -1,4 +1,4 @@
-package org.dandoy.dbpop.download2;
+package org.dandoy.dbpop.download;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -18,8 +18,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 
-import static org.dandoy.dbpop.download2.TableExecutor.SelectedColumn;
-
 @Slf4j
 public class TableDownloader implements AutoCloseable {
     private static final int MAX_LENGTH = 1024 * 32;
@@ -27,9 +25,9 @@ public class TableDownloader implements AutoCloseable {
     private final OutputFile outputFile;
     private final TablePrimaryKeys tablePrimaryKeys;
     private final TableExecutor tableExecutor;
-    private final List<SelectedColumn> selectedColumns;
+    private final List<TableExecutor.SelectedColumn> selectedColumns;
 
-    private TableDownloader(TableName tableName, OutputFile outputFile, TablePrimaryKeys tablePrimaryKeys, TableExecutor tableExecutor, List<SelectedColumn> selectedColumns) {
+    private TableDownloader(TableName tableName, OutputFile outputFile, TablePrimaryKeys tablePrimaryKeys, TableExecutor tableExecutor, List<TableExecutor.SelectedColumn> selectedColumns) {
         this.tableName = tableName;
         this.outputFile = outputFile;
         this.tablePrimaryKeys = tablePrimaryKeys;
@@ -45,7 +43,7 @@ public class TableDownloader implements AutoCloseable {
         OutputFile outputFile = OutputFile.createOutputFile(datasetsDirectory, dataset, tableName);
         Table table = database.getTable(tableName);
         TableExecutor tableExecutor = TableExecutor.createTableExecutor(database, table, byPrimaryKey);
-        List<SelectedColumn> selectedColumns = tableExecutor.getSelectedColumns();
+        List<TableExecutor.SelectedColumn> selectedColumns = tableExecutor.getSelectedColumns();
         TablePrimaryKeys tablePrimaryKeys = TablePrimaryKeys.createTablePrimaryKeys(datasetsDirectory, dataset, table, selectedColumns);
 
         if (outputFile.isNewFile()) {
@@ -57,11 +55,11 @@ public class TableDownloader implements AutoCloseable {
         return new TableDownloader(tableName, outputFile, tablePrimaryKeys, tableExecutor, selectedColumns);
     }
 
-    private static List<SelectedColumn> filterSelectedColumns(List<SelectedColumn> selectedColumns, List<String> headers) {
-        List<SelectedColumn> ret = new ArrayList<>();
+    private static List<TableExecutor.SelectedColumn> filterSelectedColumns(List<TableExecutor.SelectedColumn> selectedColumns, List<String> headers) {
+        List<TableExecutor.SelectedColumn> ret = new ArrayList<>();
         for (String header : headers) {
-            SelectedColumn found = null;
-            for (SelectedColumn selectedColumn : selectedColumns) {
+            TableExecutor.SelectedColumn found = null;
+            for (TableExecutor.SelectedColumn selectedColumn : selectedColumns) {
                 if (header.equals(selectedColumn.asHeaderName())) {
                     found = selectedColumn;
                     break;
@@ -106,7 +104,7 @@ public class TableDownloader implements AutoCloseable {
             }
         }
         try {
-            for (SelectedColumn selectedColumn : selectedColumns) {
+            for (TableExecutor.SelectedColumn selectedColumn : selectedColumns) {
                 if (selectedColumn != null) {
                     Integer integer = selectedColumn.columnType().toSqlType();
                     String columnName = selectedColumn.name();

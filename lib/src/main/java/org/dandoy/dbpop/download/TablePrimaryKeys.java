@@ -1,9 +1,10 @@
-package org.dandoy.dbpop.download2;
+package org.dandoy.dbpop.download;
 
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.PrimaryKey;
 import org.dandoy.dbpop.database.Table;
+import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.utils.DbPopUtils;
 
 import java.io.File;
@@ -32,8 +33,8 @@ public class TablePrimaryKeys {
                 .map(columnName -> TableExecutor.SelectedColumn.findByName(selectedColumns, columnName))
                 .toList();
 
-        readPrimaryKeys(pkValues, datasetsDirectory, table, "static");
-        readPrimaryKeys(pkValues, datasetsDirectory, table, "base");
+        readPrimaryKeys(pkValues, datasetsDirectory, table, Datasets.STATIC);
+        readPrimaryKeys(pkValues, datasetsDirectory, table, Datasets.BASE);
         readPrimaryKeys(pkValues, datasetsDirectory, table, dataset);
         return new TablePrimaryKeys(pkValues, selectedPkColumns);
     }

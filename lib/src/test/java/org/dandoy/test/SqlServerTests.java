@@ -5,7 +5,7 @@ import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.download2.TableDownloader;
+import org.dandoy.dbpop.download.TableDownloader;
 import org.dandoy.dbpop.upload.Populator;
 import org.dandoy.dbpop.utils.FileUtils;
 import org.junit.jupiter.api.BeforeAll;

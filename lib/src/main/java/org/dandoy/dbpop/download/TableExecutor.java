@@ -1,4 +1,4 @@
-package org.dandoy.dbpop.download2;
+package org.dandoy.dbpop.download;
 
 import org.dandoy.dbpop.database.ColumnType;
 import org.dandoy.dbpop.database.Database;

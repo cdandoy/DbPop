@@ -3,7 +3,7 @@ package org.dandoy.dbpop.cli;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.download2.TableDownloader;
+import org.dandoy.dbpop.download.TableDownloader;
 import org.dandoy.dbpop.utils.StringUtils;
 
 import java.io.File;
@@ -21,9 +21,6 @@ import static picocli.CommandLine.*;
 public class CommandDownload implements Callable<Integer> {
     @Mixin
     private DatabaseOptions databaseOptions;
-
-    @Mixin
-    private StandardOptions standardOptions;
 
     @Option(names = {"-d", "--directory"}, description = "Dataset Directory")
     File directory;

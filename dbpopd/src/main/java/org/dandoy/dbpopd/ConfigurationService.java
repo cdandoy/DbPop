@@ -4,7 +4,6 @@ import io.micronaut.context.annotation.Property;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
-import org.dandoy.dbpop.download.Downloader;
 import org.dandoy.dbpop.upload.Populator;
 
 import java.io.BufferedReader;
@@ -73,10 +72,5 @@ public class ConfigurationService {
                 .setDbPassword(password)
                 .setDirectory(getDatasetsDirectory())
                 .build();
-    }
-
-    public Downloader.Builder createDownloadBuilder() {
-        return Downloader.builder()
-                .setDirectory(getDatasetsDirectory());
     }
 }

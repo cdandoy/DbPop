@@ -1,4 +1,4 @@
-package org.dandoy.dbpop.download2;
+package org.dandoy.dbpop.download;
 
 import lombok.Getter;
 import org.apache.commons.csv.CSVFormat;

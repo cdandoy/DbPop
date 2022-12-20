@@ -3,6 +3,7 @@ package org.dandoy.dbpop.download2;
 import org.dandoy.LocalCredentials;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.download.TableDownloader;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;

@@ -1,6 +1,7 @@
 package org.dandoy.dbpop.download2;
 
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.download.OutputFile;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;

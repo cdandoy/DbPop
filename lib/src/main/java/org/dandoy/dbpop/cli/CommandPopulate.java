@@ -27,9 +27,6 @@ public class CommandPopulate implements Callable<Integer> {
     @Mixin
     private DatabaseOptions databaseOptions;
 
-    @Mixin
-    private StandardOptions standardOptions;
-
     @Option(names = {"-d", "--directory"}, description = "Dataset directory")
     String directory;
 
