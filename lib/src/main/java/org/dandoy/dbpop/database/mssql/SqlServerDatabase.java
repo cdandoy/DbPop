@@ -266,9 +266,7 @@ public class SqlServerDatabase extends Database {
             }
             // Collects the indexes
             try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                    SELECT s.name AS s,
-                           t.name AS t,
-                           i.name AS i,
+                    SELECT i.name AS i,
                            i.is_unique,
                            i.is_primary_key,
                            c.name AS c
@@ -294,8 +292,8 @@ public class SqlServerDatabase extends Database {
                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
                         while (resultSet.next()) {
                             indexCollector.push(
-                                    resultSet.getString("s"),
-                                    resultSet.getString("t"),
+                                    tableName.getSchema(),
+                                    tableName.getTable(),
                                     resultSet.getString("i"),
                                     resultSet.getBoolean("is_unique"),
                                     resultSet.getBoolean("is_primary_key"),
@@ -307,9 +305,7 @@ public class SqlServerDatabase extends Database {
             }
             // Collects the foreign keys
             try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                    SELECT s.name   AS s,
-                           t.name   AS t,
-                           fk.name  AS fk_name,
+                    SELECT fk.name  AS fk_name,
                            m_c.name AS col,
                            r_s.name AS ref_schema,
                            r_t.name AS ref_table,
@@ -328,8 +324,8 @@ public class SqlServerDatabase extends Database {
                 preparedStatement.setString(1, tableName.getSchema());
                 preparedStatement.setString(2, tableName.getTable());
                 try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, constraintDef, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
-                    TableName fkTableName = new TableName(tableName.getCatalog(), fkSchema, fkTable);
-                    ForeignKey foreignKey = new ForeignKey(constraint, null, tableName, pkColumns, fkTableName, fkColumns);
+                    TableName pkTableName = new TableName(tableName.getCatalog(), pkSchema, pkTable);
+                    ForeignKey foreignKey = new ForeignKey(constraint, null, pkTableName, pkColumns, tableName, fkColumns);
                     foreignKeys.add(foreignKey);
                 })) {
                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -337,8 +333,8 @@ public class SqlServerDatabase extends Database {
                             foreignKeyCollector.push(
                                     resultSet.getString("fk_name"),
                                     null,
-                                    resultSet.getString("s"),
-                                    resultSet.getString("t"),
+                                    tableName.getSchema(),
+                                    tableName.getTable(),
                                     resultSet.getString("col"),
                                     resultSet.getString("ref_schema"),
                                     resultSet.getString("ref_table"),
@@ -358,6 +354,65 @@ public class SqlServerDatabase extends Database {
                 primaryKeys.isEmpty() ? null : primaryKeys.get(0),
                 foreignKeys
         );
+    }
+
+    @Override
+    public List<ForeignKey> getRelatedForeignKeys(TableName tableName) {
+        try {
+            List<ForeignKey> foreignKeys = new ArrayList<>();
+            use(tableName.getCatalog());
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT s.name   AS s,
+                           t.name   AS t,
+                           fk.name  AS fk_name,
+                           m_c.name AS col,
+                           o_c.name AS rec_col
+                    FROM sys.schemas s
+                             JOIN sys.tables t ON t.schema_id = s.schema_id
+                             JOIN sys.foreign_keys fk ON fk.parent_object_id = t.object_id
+                             JOIN sys.tables r_t ON r_t.object_id = fk.referenced_object_id
+                             JOIN sys.schemas r_s ON r_s.schema_id = r_t.schema_id
+                             JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+                             JOIN sys.columns o_c ON o_c.object_id = fkc.referenced_object_id AND o_c.column_id = fkc.referenced_column_id
+                             JOIN sys.columns m_c ON m_c.object_id = fkc.parent_object_id AND m_c.column_id = fkc.parent_column_id
+                    WHERE r_s.name = ?
+                      AND r_t.name = ?
+                    ORDER BY fk.name, s.name, t.name, m_c.column_id
+                    """)) {
+                preparedStatement.setString(1, tableName.getSchema());
+                preparedStatement.setString(2, tableName.getTable());
+                try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, constraintDef, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
+                    TableName pkTableName = new TableName(tableName.getCatalog(), pkSchema, pkTable);
+                    TableName fkTableName = new TableName(tableName.getCatalog(), fkSchema, fkTable);
+                    foreignKeys.add(new ForeignKey(
+                            constraint,
+                            null,
+                            pkTableName,
+                            pkColumns,
+                            fkTableName,
+                            fkColumns
+                    ));
+                })) {
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            foreignKeyCollector.push(
+                                    resultSet.getString("fk_name"),
+                                    null,
+                                    resultSet.getString("s"),
+                                    resultSet.getString("t"),
+                                    resultSet.getString("col"),
+                                    tableName.getSchema(),
+                                    tableName.getTable(),
+                                    resultSet.getString("rec_col")
+                            );
+                        }
+                    }
+                }
+            }
+            return foreignKeys;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public List<String> getSchemas(String catalog) {

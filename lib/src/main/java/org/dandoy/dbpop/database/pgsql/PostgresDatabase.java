@@ -317,8 +317,6 @@ public class PostgresDatabase extends Database {
                          unnested_conkey AS (SELECT oid, UNNEST(conkey) AS conkey
                                              FROM pg_constraint)
                     SELECT c.conname                      AS constraint_name,
-                           s.nspname                      AS constraint_schema,
-                           t.relname                      AS constraint_table,
                            col.attname                    AS constraint_column,
                            PG_GET_CONSTRAINTDEF(conf.oid) AS constraint_def,
                            rs.nspname                     AS referenced_schema,
@@ -356,8 +354,8 @@ public class PostgresDatabase extends Database {
                             foreignKeyCollector.push(
                                     resultSet.getString("constraint_name"),
                                     resultSet.getString("constraint_def"),
-                                    resultSet.getString("constraint_schema"),
-                                    resultSet.getString("constraint_table"),
+                                    tableName.getSchema(),
+                                    tableName.getTable(),
                                     resultSet.getString("constraint_column"),
                                     resultSet.getString("referenced_schema"),
                                     resultSet.getString("referenced_table"),
@@ -374,6 +372,72 @@ public class PostgresDatabase extends Database {
                     indexes,
                     primaryKeys.isEmpty() ? null : primaryKeys.get(0),
                     foreignKeys);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public List<ForeignKey> getRelatedForeignKeys(TableName tableName) {
+        List<ForeignKey> foreignKeys = new ArrayList<>();
+        checkCatalog(tableName.getCatalog());
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                WITH unnested_confkey AS (SELECT oid, UNNEST(confkey) AS confkey
+                                          FROM pg_constraint),
+                     unnested_conkey AS (SELECT oid, UNNEST(conkey) AS conkey
+                                         FROM pg_constraint)
+                SELECT c.conname                      AS constraint_name,
+                       s.nspname                      AS constraint_schema,
+                       t.relname                      AS constraint_table,
+                       col.attname                    AS constraint_column,
+                       PG_GET_CONSTRAINTDEF(conf.oid) AS constraint_def,
+                       rs.nspname                     AS referenced_schema,
+                       rt.relname                     AS referenced_table,
+                       rf.attname                     AS referenced_column
+                FROM pg_constraint c
+                         JOIN unnested_conkey con ON c.oid = con.oid
+                         JOIN pg_class t ON t.oid = c.conrelid
+                         JOIN pg_catalog.pg_namespace s ON s.oid = t.relnamespace
+                         JOIN pg_attribute col ON (col.attrelid = t.oid AND col.attnum = con.conkey)
+                         JOIN pg_class rt ON c.confrelid = rt.oid
+                         JOIN pg_catalog.pg_namespace rs ON rs.oid = rt.relnamespace
+                         JOIN unnested_confkey conf ON c.oid = conf.oid
+                         JOIN pg_attribute rf ON (rf.attrelid = c.confrelid AND rf.attnum = conf.confkey)
+                WHERE c.contype = 'f'
+                  AND rs.nspname = ?
+                  AND rt.relname = ?
+                ORDER BY c.conname, s.nspname, t.relname
+                """)) {
+            preparedStatement.setString(1, tableName.getSchema());
+            preparedStatement.setString(2, tableName.getTable());
+            try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, constraintDef, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
+                TableName pkTableName = new TableName(tableName.getCatalog(), pkSchema, pkTable);
+                TableName fkTableName = new TableName(tableName.getCatalog(), fkSchema, fkTable);
+                foreignKeys.add(new ForeignKey(
+                        constraint,
+                        constraintDef,
+                        pkTableName,
+                        pkColumns,
+                        fkTableName,
+                        fkColumns
+                ));
+            })) {
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        foreignKeyCollector.push(
+                                resultSet.getString("constraint_name"),
+                                resultSet.getString("constraint_def"),
+                                resultSet.getString("constraint_schema"),
+                                resultSet.getString("constraint_table"),
+                                resultSet.getString("constraint_column"),
+                                resultSet.getString("referenced_schema"),
+                                resultSet.getString("referenced_table"),
+                                resultSet.getString("referenced_column")
+                        );
+                    }
+                }
+            }
+            return foreignKeys;
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

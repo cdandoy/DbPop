@@ -78,6 +78,8 @@ public abstract class Database implements AutoCloseable {
 
     public abstract Table getTable(TableName tableName);
 
+    public abstract List<ForeignKey> getRelatedForeignKeys(TableName tableName);
+
     public List<String> getSchemas(String catalog) {
         try {
             DatabaseMetaData metaData = connection.getMetaData();
@@ -119,8 +121,9 @@ public abstract class Database implements AutoCloseable {
                 );
             } else {
                 executeSql(
-                        "ALTER TABLE %s ADD %s",
+                        "ALTER TABLE %s ADD CONSTRAINT %s %s",
                         quote(foreignKey.getFkTableName()),
+                        foreignKey.getName(),
                         constraintDef
                 );
             }

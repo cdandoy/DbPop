@@ -16,19 +16,35 @@ public class PgSqlTests {
         LocalCredentials localCredentials = LocalCredentials.from("pgsql");
         try (Connection connection = localCredentials.createConnection()) {
             try (Database database = Database.createDatabase(connection)) {
-                Table table = database.getTable(new TableName("dbpop", "public", "invoices"));
-                assertNotNull(table);
-                assertEquals(3, table.columns().size());
-                assertEquals(
-                        List.of("invoice_id", "customer_id", "invoice_date"),
-                        table.columns().stream().map(Column::getName).toList()
-                );
-                assertEquals(1, table.indexes().size());
-                assertEquals("invoices_pkey", table.indexes().get(0).getName());
-                assertEquals("invoice_id", table.indexes().get(0).getColumns().get(0));
-                assertNotNull(table.primaryKey());
-                assertEquals(1, table.foreignKeys().size());
-                assertEquals("invoices_customer_id_fkey", table.foreignKeys().get(0).getName());
+                TableName invoices = new TableName("dbpop", "public", "invoices");
+                TableName customers = new TableName("dbpop", "public", "customers");
+                Table table = database.getTable(invoices);
+                {
+                    assertNotNull(table);
+                    assertEquals(3, table.columns().size());
+                    assertEquals(
+                            List.of("invoice_id", "customer_id", "invoice_date"),
+                            table.columns().stream().map(Column::getName).toList()
+                    );
+                    assertEquals(1, table.indexes().size());
+                    assertNotNull(table.indexes().get(0).getName());
+                    assertEquals("invoice_id", table.indexes().get(0).getColumns().get(0));
+                    assertNotNull(table.primaryKey());
+                    assertEquals(1, table.foreignKeys().size());
+                    assertEquals("customer_id", table.foreignKeys().get(0).getPkColumns().get(0));
+                    assertEquals("customers", table.foreignKeys().get(0).getPkTableName().getTable());
+                    assertEquals("invoices", table.foreignKeys().get(0).getFkTableName().getTable());
+                    assertNotNull(table.foreignKeys().get(0).getName());
+                }
+
+                List<ForeignKey> relatedForeignKeys = database.getRelatedForeignKeys(customers);
+                {
+                    assertEquals(1, relatedForeignKeys.size());
+                    ForeignKey foreignKey = relatedForeignKeys.get(0);
+                    assertEquals("invoices_customers_fk", foreignKey.getName());
+                    assertEquals("customers", foreignKey.getPkTableName().getTable());
+                    assertEquals("invoices", foreignKey.getFkTableName().getTable());
+                }
             }
         }
     }
