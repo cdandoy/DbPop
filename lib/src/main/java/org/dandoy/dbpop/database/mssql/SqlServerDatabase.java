@@ -225,6 +225,141 @@ public class SqlServerDatabase extends Database {
                 .collect(Collectors.toList());
     }
 
+    @SuppressWarnings("DuplicatedCode")
+    @Override
+    public Table getTable(TableName tableName) {
+        List<Column> tableColumns = new ArrayList<>();
+        List<ForeignKey> foreignKeys = new ArrayList<>();
+        List<Index> indexes = new ArrayList<>();
+        List<PrimaryKey> primaryKeys = new ArrayList<>();
+        try {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("USE " + tableName.getCatalog());
+            }
+            // Collects the tables and columns
+            try (PreparedStatement tablesStatement = connection.prepareStatement("""
+                    SELECT c.name       AS c,
+                           c.is_nullable,
+                           c.is_identity,
+                           ty.name      AS type_name,
+                           ty.precision AS type_precision
+                    FROM sys.schemas s
+                             JOIN sys.tables t ON t.schema_id = s.schema_id
+                             JOIN sys.columns c ON c.object_id = t.object_id
+                             LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                    WHERE s.name = ?
+                      AND t.name = ?
+                    ORDER BY s.name, t.name, c.column_id""")) {
+                tablesStatement.setString(1, tableName.getSchema());
+                tablesStatement.setString(2, tableName.getTable());
+                try (ResultSet tablesResultSet = tablesStatement.executeQuery()) {
+                    while (tablesResultSet.next()) {
+                        String column = tablesResultSet.getString("c");
+                        boolean nullable = tablesResultSet.getBoolean("is_nullable");
+                        boolean identity = tablesResultSet.getBoolean("is_identity");
+                        String typeName = tablesResultSet.getString("type_name");
+                        int typePrecision = tablesResultSet.getInt("type_precision");
+                        ColumnType columnType = ColumnType.getColumnType(typeName, typePrecision);
+                        tableColumns.add(new Column(column, columnType, nullable, identity));
+                    }
+                }
+            }
+            // Collects the indexes
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT s.name AS s,
+                           t.name AS t,
+                           i.name AS i,
+                           i.is_unique,
+                           i.is_primary_key,
+                           c.name AS c
+                    FROM sys.schemas s
+                             JOIN sys.tables t ON t.schema_id = s.schema_id
+                             LEFT JOIN sys.indexes i ON i.object_id = t.object_id
+                             LEFT JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
+                             LEFT JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
+                    WHERE i.name IS NOT NULL
+                      AND c.name IS NOT NULL
+                      AND s.name = ?
+                      AND t.name = ?
+                    ORDER BY s.name, t.name, i.index_id, ic.key_ordinal""")) {
+                preparedStatement.setString(1, tableName.getSchema());
+                preparedStatement.setString(2, tableName.getTable());
+                try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
+                    Index index = new Index(name, tableName, unique, primaryKey, columns);
+                    indexes.add(index);
+                    if (primaryKey) {
+                        primaryKeys.add(new PrimaryKey(name, columns));
+                    }
+                })) {
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            indexCollector.push(
+                                    resultSet.getString("s"),
+                                    resultSet.getString("t"),
+                                    resultSet.getString("i"),
+                                    resultSet.getBoolean("is_unique"),
+                                    resultSet.getBoolean("is_primary_key"),
+                                    resultSet.getString("c")
+                            );
+                        }
+                    }
+                }
+            }
+            // Collects the foreign keys
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT s.name   AS s,
+                           t.name   AS t,
+                           fk.name  AS fk_name,
+                           m_c.name AS col,
+                           r_s.name AS ref_schema,
+                           r_t.name AS ref_table,
+                           o_c.name AS rec_col
+                    FROM sys.schemas s
+                             JOIN sys.tables t ON t.schema_id = s.schema_id
+                             JOIN sys.foreign_keys fk ON fk.parent_object_id = t.object_id
+                             JOIN sys.tables r_t ON r_t.object_id = fk.referenced_object_id
+                             JOIN sys.schemas r_s ON r_s.schema_id = r_t.schema_id
+                             JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+                             JOIN sys.columns o_c ON o_c.object_id = fkc.referenced_object_id AND o_c.column_id = fkc.referenced_column_id
+                             JOIN sys.columns m_c ON m_c.object_id = fkc.parent_object_id AND m_c.column_id = fkc.parent_column_id
+                    WHERE s.name = ?
+                      AND t.name = ?
+                    ORDER BY fk.name, s.name, t.name, m_c.column_id""")) {
+                preparedStatement.setString(1, tableName.getSchema());
+                preparedStatement.setString(2, tableName.getTable());
+                try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, constraintDef, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
+                    TableName fkTableName = new TableName(tableName.getCatalog(), fkSchema, fkTable);
+                    ForeignKey foreignKey = new ForeignKey(constraint, null, tableName, pkColumns, fkTableName, fkColumns);
+                    foreignKeys.add(foreignKey);
+                })) {
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            foreignKeyCollector.push(
+                                    resultSet.getString("fk_name"),
+                                    null,
+                                    resultSet.getString("s"),
+                                    resultSet.getString("t"),
+                                    resultSet.getString("col"),
+                                    resultSet.getString("ref_schema"),
+                                    resultSet.getString("ref_table"),
+                                    resultSet.getString("rec_col")
+                            );
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return new Table(
+                tableName,
+                tableColumns,
+                indexes,
+                primaryKeys.isEmpty() ? null : primaryKeys.get(0),
+                foreignKeys
+        );
+    }
+
     public List<String> getSchemas(String catalog) {
         String sql = String.format("SELECT name FROM %s.sys.schemas", quote(catalog));
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {

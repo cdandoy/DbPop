@@ -76,14 +76,7 @@ public abstract class Database implements AutoCloseable {
 
     public abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
 
-    /**
-     * TODO: Implement for each database
-     */
-    public Table getTable(TableName tableName) {
-        Collection<Table> tables = getTables(Collections.singleton(tableName));
-        Iterator<Table> iterator = tables.iterator();
-        return iterator.hasNext() ? iterator.next() : null;
-    }
+    public abstract Table getTable(TableName tableName);
 
     public List<String> getSchemas(String catalog) {
         try {
