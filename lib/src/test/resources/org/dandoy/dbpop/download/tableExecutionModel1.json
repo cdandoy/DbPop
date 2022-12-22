@@ -1,0 +1,35 @@
+{
+  "tableName": {
+    "catalog": "master",
+    "schema": "dbo",
+    "table": "invoices"
+  },
+  "constraints": [
+    {
+      "name": "invoices_customers_fk",
+      "parentTable": {
+        "catalog": "master",
+        "schema": "dbo",
+        "table": "customers"
+      },
+      "childTable": {
+        "catalog": "master",
+        "schema": "dbo",
+        "table": "invoices"
+      }
+    },
+    {
+      "name": "invoice_details_invoices_fk",
+      "parentTable": {
+        "catalog": "master",
+        "schema": "dbo",
+        "table": "invoices"
+      },
+      "childTable": {
+        "catalog": "master",
+        "schema": "dbo",
+        "table": "invoice_details"
+      }
+    }
+  ]
+}
