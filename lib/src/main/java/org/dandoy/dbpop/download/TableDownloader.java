@@ -13,10 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Slf4j
 public class TableDownloader implements AutoCloseable {
@@ -39,10 +36,10 @@ public class TableDownloader implements AutoCloseable {
         return new Builder();
     }
 
-    private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, boolean byPrimaryKey) {
+    private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, List<String> filteredColumns) {
         OutputFile outputFile = OutputFile.createOutputFile(datasetsDirectory, dataset, tableName);
         Table table = database.getTable(tableName);
-        TableExecutor tableExecutor = TableExecutor.createTableExecutor(database, table, byPrimaryKey);
+        TableExecutor tableExecutor = TableExecutor.createTableExecutor(database, table, filteredColumns);
         List<TableExecutor.SelectedColumn> selectedColumns = tableExecutor.getSelectedColumns();
         TablePrimaryKeys tablePrimaryKeys = TablePrimaryKeys.createTablePrimaryKeys(datasetsDirectory, dataset, table, selectedColumns);
 
@@ -91,7 +88,7 @@ public class TableDownloader implements AutoCloseable {
      */
     public void download() {
         try (CSVPrinter csvPrinter = outputFile.createCsvPrinter()) {
-            tableExecutor.execute(resultSet -> consumeResultSet(csvPrinter, resultSet));
+            tableExecutor.execute(Collections.emptySet(), resultSet -> consumeResultSet(csvPrinter, resultSet));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -218,11 +215,7 @@ public class TableDownloader implements AutoCloseable {
         private File datasetsDirectory;
         private String dataset;
         private TableName tableName;
-        private boolean byPrimaryKey;
-
-        public Builder setByPrimaryKey() {
-            return setByPrimaryKey(true);
-        }
+        private List<String> filteredColumns = Collections.emptyList();
 
         public TableDownloader build() {
             if (database == null) throw new RuntimeException("database not set");
@@ -230,7 +223,7 @@ public class TableDownloader implements AutoCloseable {
             if (dataset == null) throw new RuntimeException("dataset not set");
             if (tableName == null) throw new RuntimeException("tableName not set");
 
-            return createTableDownloader(database, datasetsDirectory, dataset, tableName, byPrimaryKey);
+            return createTableDownloader(database, datasetsDirectory, dataset, tableName, filteredColumns);
         }
     }
 }

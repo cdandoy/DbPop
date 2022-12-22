@@ -3,6 +3,7 @@ package org.dandoy.dbpop.download;
 import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.Test;
@@ -33,12 +34,50 @@ class TableDownloaderTest {
         try (Connection connection = localCredentials.createConnection()) {
             Database database = Database.createDatabase(connection);
             String dataset = "download";
+            TableName tableName = new TableName("master", "dbo", "invoices");
+            Table table = database.getTable(tableName);
             try (TableDownloader tableDownloader = TableDownloader.builder()
                     .setDatabase(database)
                     .setDatasetsDirectory(datasetsDirectory)
                     .setDataset(dataset)
-                    .setTableName(new TableName("master", "dbo", "invoices"))
-                    .setByPrimaryKey()
+                    .setTableName(tableName)
+                    .setFilteredColumns(table.primaryKey().columns())
+                    .build()) {
+
+                Set<List<Object>> pks = Set.of(List.of(1001), List.of(1002));
+                tableDownloader.download(pks);
+            }
+        }
+        TestUtils.delete(TEST_DIR);
+    }
+
+    @Test
+    void testByForeignKey() throws SQLException {
+        TestUtils.delete(TEST_DIR);
+
+        File datasetsDirectory = new File("src/test/resources/mssql");
+        LocalCredentials localCredentials = LocalCredentials.from("mssql");
+        try (Populator populator = localCredentials.populator()
+                .setDirectory(datasetsDirectory)
+                .build()) {
+            populator.load("invoices");
+        }
+
+        try (Connection connection = localCredentials.createConnection()) {
+            Database database = Database.createDatabase(connection);
+            String dataset = "download";
+            TableName invoices = new TableName("master", "dbo", "invoices");
+            TableName invoiceDetails = new TableName("master", "dbo", "invoice_details");
+            Table table = database.getTable(invoiceDetails);
+            List<String> fkColumns = table.foreignKeys().stream()
+                    .filter(it -> it.getPkTableName().equals(invoices)).findFirst().orElseThrow()
+                    .getFkColumns();
+            try (TableDownloader tableDownloader = TableDownloader.builder()
+                    .setDatabase(database)
+                    .setDatasetsDirectory(datasetsDirectory)
+                    .setDataset(dataset)
+                    .setTableName(invoiceDetails)
+                    .setFilteredColumns(fkColumns)
                     .build()) {
 
                 Set<List<Object>> pks = Set.of(List.of(1001), List.of(1002));
