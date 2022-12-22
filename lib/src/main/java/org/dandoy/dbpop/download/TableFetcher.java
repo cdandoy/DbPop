@@ -10,14 +10,14 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class TableExecutor implements AutoCloseable {
+public class TableFetcher implements AutoCloseable {
     private final Database database;
     private final String sql;
     private final PreparedStatement preparedStatement;
     private final int batchSize;
     private final List<ColumnType> pkColumnTypes;
 
-    private TableExecutor(Database database, String sql, PreparedStatement preparedStatement, int batchSize, List<ColumnType> pkColumnTypes) {
+    private TableFetcher(Database database, String sql, PreparedStatement preparedStatement, int batchSize, List<ColumnType> pkColumnTypes) {
         this.database = database;
         this.sql = sql;
         this.preparedStatement = preparedStatement;
@@ -25,7 +25,7 @@ public class TableExecutor implements AutoCloseable {
         this.pkColumnTypes = pkColumnTypes;
     }
 
-    public static TableExecutor createTableExecutor(Database database, Table table, List<String> filteredColumns) {
+    public static TableFetcher createTableExecutor(Database database, Table table, List<String> filteredColumns) {
         String sql = ("SELECT *\nFROM %s").formatted(database.quote(table.tableName()));
         int batchSize = Integer.MAX_VALUE;
         List<ColumnType> pkColumnTypes = null;
@@ -43,7 +43,7 @@ public class TableExecutor implements AutoCloseable {
         Connection connection = database.getConnection();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(sql);
-            return new TableExecutor(database, sql, preparedStatement, batchSize, pkColumnTypes);
+            return new TableFetcher(database, sql, preparedStatement, batchSize, pkColumnTypes);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to execute " + sql, e);
         }
@@ -118,21 +118,5 @@ public class TableExecutor implements AutoCloseable {
             throw new RuntimeException("Failed to get the metadata of " + sql, e);
         }
         return ret;
-    }
-
-    public record SelectedColumn(int jdbcPos, String name, ColumnType columnType, boolean binary) {
-        public String asHeaderName() {
-            if (binary) return name + "*b64";
-            return name;
-        }
-
-        public static SelectedColumn findByName(Collection<SelectedColumn> selectedColumns, String columnName) {
-            for (SelectedColumn selectedColumn : selectedColumns) {
-                if (columnName.equals(selectedColumn.name)) {
-                    return selectedColumn;
-                }
-            }
-            return null;
-        }
     }
 }

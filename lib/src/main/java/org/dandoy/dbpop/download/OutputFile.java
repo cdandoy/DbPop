@@ -44,8 +44,8 @@ public class OutputFile {
         }
     }
 
-    public void setColumns(List<TableExecutor.SelectedColumn> selectedColumns) {
-        headers = selectedColumns.stream().map(TableExecutor.SelectedColumn::asHeaderName).toList();
+    public void setColumns(List<SelectedColumn> selectedColumns) {
+        headers = selectedColumns.stream().map(SelectedColumn::asHeaderName).toList();
     }
 
     public CSVPrinter createCsvPrinter() throws IOException {

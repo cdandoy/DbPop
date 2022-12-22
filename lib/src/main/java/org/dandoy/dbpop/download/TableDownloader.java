@@ -21,14 +21,14 @@ public class TableDownloader implements AutoCloseable {
     private final TableName tableName;
     private final OutputFile outputFile;
     private final TablePrimaryKeys tablePrimaryKeys;
-    private final TableExecutor tableExecutor;
-    private final List<TableExecutor.SelectedColumn> selectedColumns;
+    private final TableFetcher tableFetcher;
+    private final List<SelectedColumn> selectedColumns;
 
-    private TableDownloader(TableName tableName, OutputFile outputFile, TablePrimaryKeys tablePrimaryKeys, TableExecutor tableExecutor, List<TableExecutor.SelectedColumn> selectedColumns) {
+    private TableDownloader(TableName tableName, OutputFile outputFile, TablePrimaryKeys tablePrimaryKeys, TableFetcher tableFetcher, List<SelectedColumn> selectedColumns) {
         this.tableName = tableName;
         this.outputFile = outputFile;
         this.tablePrimaryKeys = tablePrimaryKeys;
-        this.tableExecutor = tableExecutor;
+        this.tableFetcher = tableFetcher;
         this.selectedColumns = selectedColumns;
     }
 
@@ -39,8 +39,8 @@ public class TableDownloader implements AutoCloseable {
     private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, List<String> filteredColumns) {
         OutputFile outputFile = OutputFile.createOutputFile(datasetsDirectory, dataset, tableName);
         Table table = database.getTable(tableName);
-        TableExecutor tableExecutor = TableExecutor.createTableExecutor(database, table, filteredColumns);
-        List<TableExecutor.SelectedColumn> selectedColumns = tableExecutor.getSelectedColumns();
+        TableFetcher tableFetcher = TableFetcher.createTableExecutor(database, table, filteredColumns);
+        List<SelectedColumn> selectedColumns = tableFetcher.getSelectedColumns();
         TablePrimaryKeys tablePrimaryKeys = TablePrimaryKeys.createTablePrimaryKeys(datasetsDirectory, dataset, table, selectedColumns);
 
         if (outputFile.isNewFile()) {
@@ -49,14 +49,14 @@ public class TableDownloader implements AutoCloseable {
             selectedColumns = filterSelectedColumns(selectedColumns, outputFile.getHeaders());
         }
 
-        return new TableDownloader(tableName, outputFile, tablePrimaryKeys, tableExecutor, selectedColumns);
+        return new TableDownloader(tableName, outputFile, tablePrimaryKeys, tableFetcher, selectedColumns);
     }
 
-    private static List<TableExecutor.SelectedColumn> filterSelectedColumns(List<TableExecutor.SelectedColumn> selectedColumns, List<String> headers) {
-        List<TableExecutor.SelectedColumn> ret = new ArrayList<>();
+    private static List<SelectedColumn> filterSelectedColumns(List<SelectedColumn> selectedColumns, List<String> headers) {
+        List<SelectedColumn> ret = new ArrayList<>();
         for (String header : headers) {
-            TableExecutor.SelectedColumn found = null;
-            for (TableExecutor.SelectedColumn selectedColumn : selectedColumns) {
+            SelectedColumn found = null;
+            for (SelectedColumn selectedColumn : selectedColumns) {
                 if (header.equals(selectedColumn.asHeaderName())) {
                     found = selectedColumn;
                     break;
@@ -69,7 +69,7 @@ public class TableDownloader implements AutoCloseable {
 
     @Override
     public void close() {
-        tableExecutor.close();
+        tableFetcher.close();
     }
 
     /**
@@ -77,7 +77,7 @@ public class TableDownloader implements AutoCloseable {
      */
     public void download(Set<List<Object>> pks) {
         try (CSVPrinter csvPrinter = outputFile.createCsvPrinter()) {
-            tableExecutor.execute(pks, resultSet -> consumeResultSet(csvPrinter, resultSet));
+            tableFetcher.execute(pks, resultSet -> consumeResultSet(csvPrinter, resultSet));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -88,7 +88,7 @@ public class TableDownloader implements AutoCloseable {
      */
     public void download() {
         try (CSVPrinter csvPrinter = outputFile.createCsvPrinter()) {
-            tableExecutor.execute(Collections.emptySet(), resultSet -> consumeResultSet(csvPrinter, resultSet));
+            tableFetcher.execute(Collections.emptySet(), resultSet -> consumeResultSet(csvPrinter, resultSet));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -98,7 +98,7 @@ public class TableDownloader implements AutoCloseable {
         if (isExistingPk(resultSet)) return;
 
         try {
-            for (TableExecutor.SelectedColumn selectedColumn : selectedColumns) {
+            for (SelectedColumn selectedColumn : selectedColumns) {
                 if (selectedColumn != null) {
                     Integer integer = selectedColumn.columnType().toSqlType();
                     String columnName = selectedColumn.name();

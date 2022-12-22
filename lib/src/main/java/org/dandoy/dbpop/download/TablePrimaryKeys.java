@@ -18,19 +18,19 @@ import java.util.Set;
 
 public class TablePrimaryKeys {
     private final Set<List<String>> pkValues;
-    private final List<TableExecutor.SelectedColumn> selectedPkColumns;
+    private final List<SelectedColumn> selectedPkColumns;
 
-    private TablePrimaryKeys(Set<List<String>> pkValues, List<TableExecutor.SelectedColumn> selectedPkColumns) {
+    private TablePrimaryKeys(Set<List<String>> pkValues, List<SelectedColumn> selectedPkColumns) {
         this.pkValues = pkValues;
         this.selectedPkColumns = selectedPkColumns;
     }
 
-    public static TablePrimaryKeys createTablePrimaryKeys(File datasetsDirectory, String dataset, Table table, List<TableExecutor.SelectedColumn> selectedColumns) {
+    public static TablePrimaryKeys createTablePrimaryKeys(File datasetsDirectory, String dataset, Table table, List<SelectedColumn> selectedColumns) {
         PrimaryKey primaryKey = table.primaryKey();
         if (primaryKey == null) return null;
         Set<List<String>> pkValues = new HashSet<>();
-        List<TableExecutor.SelectedColumn> selectedPkColumns = primaryKey.columns().stream()
-                .map(columnName -> TableExecutor.SelectedColumn.findByName(selectedColumns, columnName))
+        List<SelectedColumn> selectedPkColumns = primaryKey.columns().stream()
+                .map(columnName -> SelectedColumn.findByName(selectedColumns, columnName))
                 .toList();
 
         readPrimaryKeys(pkValues, datasetsDirectory, table, Datasets.STATIC);
@@ -64,7 +64,7 @@ public class TablePrimaryKeys {
         return pkValues.add(pkRow);
     }
 
-    private static String toPkString(ResultSet resultSet, TableExecutor.SelectedColumn selectedPkColumn) {
+    private static String toPkString(ResultSet resultSet, SelectedColumn selectedPkColumn) {
         try {
             return resultSet.getString(selectedPkColumn.jdbcPos());
         } catch (SQLException e) {
