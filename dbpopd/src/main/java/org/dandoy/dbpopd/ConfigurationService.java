@@ -1,5 +1,6 @@
 package org.dandoy.dbpopd;
 
+import io.micronaut.context.annotation.Context;
 import io.micronaut.context.annotation.Property;
 import jakarta.inject.Singleton;
 import lombok.Getter;
@@ -15,18 +16,24 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 @Singleton
+@Context
 public class ConfigurationService {
     private static final String PROP_FILE_NAME = "dbpop.properties";
     @Getter
     private final File configurationDir;
+    @Getter
+    private final String mode;
     private final String jdbcurl;
     private final String username;
     private final String password;
 
+    @SuppressWarnings("MnInjectionPoints")
     public ConfigurationService(
-            @SuppressWarnings("MnInjectionPoints") @Property(name = "dbpopd.configuration.path") String configurationPath
+            @Property(name = "dbpopd.configuration.path") String configurationPath,
+            @Property(name = "dbpopd.mode") String mode
     ) {
         configurationDir = new File(configurationPath);
+        this.mode = mode;
         File configurationFile = new File(configurationDir, PROP_FILE_NAME);
         Properties properties = getConfigurationProperties(configurationFile);
         jdbcurl = getValidProperty(configurationFile, properties, "jdbcurl", "DBPOP_JDBCURL");

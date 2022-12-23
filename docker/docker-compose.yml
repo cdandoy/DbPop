@@ -11,6 +11,7 @@ services:
       - DBPOP_JDBCURL=jdbc:sqlserver://mssql;database=tempdb;trustServerCertificate=true
       - DBPOP_USERNAME=sa
       - DBPOP_PASSWORD=${DB_PASS}
+      - DBPOP_MODE=populate
     depends_on:
       - mssql
   mssql:

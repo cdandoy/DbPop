@@ -21,12 +21,14 @@ import static org.junit.jupiter.api.Assertions.*;
 class DbpopdTest {
 
     @Inject
-    DbpopdController dbpopdController;
+    PopulateController populateController;
+    @Inject
+    DownloadController downloadController;
 
     @Test
     void testUpload() {
         List<String> dataset = List.of("base", "invoices", "invoice_details");
-        DbpopdController.PopulateResult result = dbpopdController.populate(dataset);
+        PopulateController.PopulateResult result = populateController.populate(dataset);
         /*
             customers.csv         3
             invoice_details.csv   7
@@ -39,7 +41,7 @@ class DbpopdTest {
 
     @Test
     void testDownload() throws IOException {
-        dbpopdController.populate(singletonList("customers_1000"));
+        populateController.populate(singletonList("customers_1000"));
 
         File dir = new File("src/test/resources/config/datasets/test_dataset/");
         File file = new File(dir, "/master/dbo/customers.csv");
@@ -61,7 +63,7 @@ class DbpopdTest {
                         DownloadRequest.class);
         assertNotNull(downloadRequest);
 
-        dbpopdController.download(downloadRequest);
+        downloadController.download(downloadRequest);
 
         assertTrue(file.exists());
         assertEquals(2, readLines(file, UTF_8).size());

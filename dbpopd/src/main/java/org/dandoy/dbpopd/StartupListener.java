@@ -11,14 +11,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class StartupListener {
     private final EmbeddedServer embeddedServer;
+    private final ConfigurationService configurationService;
 
-    public StartupListener(@Nullable EmbeddedServer embeddedServer) {
+    public StartupListener(@Nullable EmbeddedServer embeddedServer, ConfigurationService configurationService) {
         this.embeddedServer = embeddedServer;
+        this.configurationService = configurationService;
     }
 
     @EventListener
     public void onStartupEvent(StartupEvent event) {
         long started = System.currentTimeMillis();
+        log.info("Running in \"{}\" mode", configurationService.getMode());
         if (embeddedServer != null) {
             log.info(
                     "Startup completed in {}ms. Server Running: http://localhost:{}/",
