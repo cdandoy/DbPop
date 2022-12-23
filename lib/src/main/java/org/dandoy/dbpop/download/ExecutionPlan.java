@@ -49,7 +49,11 @@ public class ExecutionPlan implements AutoCloseable {
         tableDownloader.download(pks);
     }
 
-    public void build(TableName tableName, List<String> filteredColumns) {
+    public void build(
+            @NotNull TableName tableName,
+            @NotNull TableExecutionModel tableExecutionModel,
+            @NotNull List<String> filteredColumns
+    ) {
         processed.add(tableName);
         Table table = database.getTable(tableName);
 
@@ -63,53 +67,67 @@ public class ExecutionPlan implements AutoCloseable {
         List<SelectedColumn> selectedColumns = tableDownloader.getSelectedColumns();
         List<SelectedColumn> filterSelectedColumns = filteredColumns.stream().map(it -> SelectedColumn.findByName(selectedColumns, it)).toList();
         ExecutionNode executionNode = new ExecutionNode(table.tableName(), tableDownloader, filterSelectedColumns);
-        addLookupNodes(executionNode, table);
-        addDataNodes(executionNode, table);
+        addLookupNodes(tableExecutionModel, executionNode, table);
+        addDataNodes(tableExecutionModel, executionNode, table);
+        checkConstraintsEmpty(tableExecutionModel, tableName);
     }
 
-    private ExecutionNode buildData(TableName tableName, List<String> filteredColumns, List<SelectedColumn> pkSelectedColumns) {
+    private ExecutionNode buildData(TableExecutionModel tableExecutionModel, TableName tableName, List<String> filteredColumns, List<SelectedColumn> pkSelectedColumns) {
         Table table = database.getTable(tableName);
 
         ExecutionNode executionNode = createExecutionNode(table, filteredColumns, pkSelectedColumns);
-        addLookupNodes(executionNode, table);
-        addDataNodes(executionNode, table);
-
+        addLookupNodes(tableExecutionModel, executionNode, table);
+        addDataNodes(tableExecutionModel, executionNode, table);
+        checkConstraintsEmpty(tableExecutionModel, tableName);
         return executionNode;
     }
 
-    private ExecutionNode buildLookup(TableName tableName, List<String> pkColumns, List<SelectedColumn> fkSelectedColumns) {
+    private static void checkConstraintsEmpty(TableExecutionModel tableExecutionModel, TableName tableName) {
+        if (!tableExecutionModel.getConstraints().isEmpty()) {
+            throw new RuntimeException("Constraints not found: %s:%s".formatted(tableName, tableExecutionModel.getConstraints().stream().map(TableExecutionModel::getConstraintName).toList()));
+        }
+    }
+
+    private ExecutionNode buildLookup(TableExecutionModel tableExecutionModel, TableName tableName, List<String> pkColumns, List<SelectedColumn> fkSelectedColumns) {
         Table table = database.getTable(tableName);
 
         ExecutionNode executionNode = createExecutionNode(table, pkColumns, fkSelectedColumns);
-        addLookupNodes(executionNode, table);
+        addLookupNodes(tableExecutionModel, executionNode, table);
+        checkConstraintsEmpty(tableExecutionModel, tableName);
 
         return executionNode;
     }
 
-    private void addDataNodes(ExecutionNode parentExecutionNode, Table table) {
+    private void addDataNodes(TableExecutionModel parentTableExecutionModel, ExecutionNode parentExecutionNode, Table table) {
         // If we are on "invoices", fetch "invoice_details"
         for (ForeignKey foreignKey : database.getRelatedForeignKeys(table.tableName())) {
-            TableName fkTableName = foreignKey.getFkTableName();
-            if (processed.add(fkTableName)) {
-                List<String> pkColumns = foreignKey.getPkColumns();
-                List<String> fkColumns = foreignKey.getFkColumns();
-                List<SelectedColumn> pkSelectedColumns = SelectedColumn.findByName(parentExecutionNode.getSelectedColumns(), pkColumns);
-                ExecutionNode childExecutionNode = buildData(fkTableName, fkColumns, pkSelectedColumns);
-                parentExecutionNode.addExecutionNode(childExecutionNode);
+            TableExecutionModel tableExecutionModel = parentTableExecutionModel.removeTableExecutionModel(foreignKey.getName());
+            if (tableExecutionModel != null) {
+                TableName fkTableName = foreignKey.getFkTableName();
+                if (processed.add(fkTableName)) {
+                    List<String> pkColumns = foreignKey.getPkColumns();
+                    List<String> fkColumns = foreignKey.getFkColumns();
+                    List<SelectedColumn> pkSelectedColumns = SelectedColumn.findByName(parentExecutionNode.getSelectedColumns(), pkColumns);
+                    ExecutionNode childExecutionNode = buildData(tableExecutionModel, fkTableName, fkColumns, pkSelectedColumns);
+                    parentExecutionNode.addExecutionNode(childExecutionNode);
+                }
             }
         }
     }
 
-    private void addLookupNodes(ExecutionNode parentExecutionNode, Table table) {
+    private void addLookupNodes(TableExecutionModel parentTableExecutionModel, ExecutionNode parentExecutionNode, Table table) {
         // If we are on "invoices", fetch "customers"
         for (ForeignKey foreignKey : table.foreignKeys()) {
-            TableName pkTableName = foreignKey.getPkTableName();
-            if (processed.add(pkTableName)) {
-                List<String> pkColumns = foreignKey.getPkColumns(); // customers.customer_id
-                List<String> fkColumns = foreignKey.getFkColumns(); // invoices.customer_id
-                List<SelectedColumn> fkSelectedColumns = SelectedColumn.findByName(parentExecutionNode.getSelectedColumns(), fkColumns);
-                ExecutionNode childExecutionNode = buildLookup(pkTableName, pkColumns, fkSelectedColumns);
-                parentExecutionNode.addExecutionNode(childExecutionNode);
+            TableExecutionModel tableExecutionModel = parentTableExecutionModel.removeTableExecutionModel(foreignKey.getName());
+            if (tableExecutionModel != null) {
+                TableName pkTableName = foreignKey.getPkTableName();
+                if (processed.add(pkTableName)) {
+                    List<String> pkColumns = foreignKey.getPkColumns(); // customers.customer_id
+                    List<String> fkColumns = foreignKey.getFkColumns(); // invoices.customer_id
+                    List<SelectedColumn> fkSelectedColumns = SelectedColumn.findByName(parentExecutionNode.getSelectedColumns(), fkColumns);
+                    ExecutionNode childExecutionNode = buildLookup(tableExecutionModel, pkTableName, pkColumns, fkSelectedColumns);
+                    parentExecutionNode.addExecutionNode(childExecutionNode);
+                }
             }
         }
     }
