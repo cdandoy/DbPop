@@ -15,10 +15,10 @@ class TableExecutionModelTest {
         URL url = getClass().getResource("fullTableExecutionModel1.json");
         TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
         assertNotNull(tableExecutionModel);
-        assertEquals(2, tableExecutionModel.getConstraints().size());
-        assertEquals("invoices_customers_fk", tableExecutionModel.getConstraints().get(0).getConstraintName());
-        assertEquals("invoice_details_invoices_fk", tableExecutionModel.getConstraints().get(1).getConstraintName());
-        assertEquals(1, tableExecutionModel.getConstraints().get(1).getConstraints().size());
-        assertEquals("invoice_details_products_fk", tableExecutionModel.getConstraints().get(1).getConstraints().get(0).getConstraintName());
+        assertEquals(2, tableExecutionModel.constraints().size());
+        assertEquals("invoices_customers_fk", tableExecutionModel.constraints().get(0).constraintName());
+        assertEquals("invoice_details_invoices_fk", tableExecutionModel.constraints().get(1).constraintName());
+        assertEquals(1, tableExecutionModel.constraints().get(1).constraints().size());
+        assertEquals("invoice_details_products_fk", tableExecutionModel.constraints().get(1).constraints().get(0).constraintName());
     }
 }

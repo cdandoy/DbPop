@@ -83,8 +83,8 @@ public class ExecutionPlan implements AutoCloseable {
     }
 
     private static void checkConstraintsEmpty(TableExecutionModel tableExecutionModel, TableName tableName) {
-        if (!tableExecutionModel.getConstraints().isEmpty()) {
-            throw new RuntimeException("Constraints not found: %s:%s".formatted(tableName, tableExecutionModel.getConstraints().stream().map(TableExecutionModel::getConstraintName).toList()));
+        if (!tableExecutionModel.constraints().isEmpty()) {
+            throw new RuntimeException("Constraints not found: %s:%s".formatted(tableName, tableExecutionModel.constraints().stream().map(TableExecutionModel::constraintName).toList()));
         }
     }
 

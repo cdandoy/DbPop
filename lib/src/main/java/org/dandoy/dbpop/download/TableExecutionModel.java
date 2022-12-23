@@ -2,20 +2,11 @@ package org.dandoy.dbpop.download;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.experimental.Accessors;
 
 import java.util.Collections;
 import java.util.List;
 
-@Getter
-@Setter
-@Accessors(chain = true)
-public class TableExecutionModel {
-    private final String constraintName;
-    private final List<TableExecutionModel> constraints;
-
+public record TableExecutionModel(String constraintName, List<TableExecutionModel> constraints) {
     @JsonCreator
     public TableExecutionModel(
             @JsonProperty("constraintName") String constraintName,
@@ -28,7 +19,7 @@ public class TableExecutionModel {
     public TableExecutionModel removeTableExecutionModel(String constraintName) {
         for (int i = constraints.size() - 1; i >= 0; i--) {
             TableExecutionModel constraint = constraints.get(i);
-            if (constraintName.equals(constraint.getConstraintName())) {
+            if (constraintName.equals(constraint.constraintName())) {
                 constraints.remove(i);
                 return constraint;
             }
