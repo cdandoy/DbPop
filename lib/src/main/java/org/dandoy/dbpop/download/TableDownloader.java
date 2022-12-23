@@ -14,22 +14,29 @@ import java.io.IOException;
 import java.io.Reader;
 import java.sql.*;
 import java.util.*;
+import java.util.function.Consumer;
 
 @Slf4j
 public class TableDownloader implements AutoCloseable {
     private static final int MAX_LENGTH = 1024 * 32;
     private final TableName tableName;
-    private final OutputFile outputFile;
     private final TablePrimaryKeys tablePrimaryKeys;
     private final TableFetcher tableFetcher;
+    private final CSVPrinter csvPrinter;
     private final List<SelectedColumn> selectedColumns;
+    private final List<Consumer<ResultSet>> consumers = new ArrayList<>();
 
     private TableDownloader(TableName tableName, OutputFile outputFile, TablePrimaryKeys tablePrimaryKeys, TableFetcher tableFetcher, List<SelectedColumn> selectedColumns) {
         this.tableName = tableName;
-        this.outputFile = outputFile;
         this.tablePrimaryKeys = tablePrimaryKeys;
         this.tableFetcher = tableFetcher;
         this.selectedColumns = selectedColumns;
+        try {
+            csvPrinter = outputFile.createCsvPrinter();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        consumers.add(this::consumeResultSet);
     }
 
     public static Builder builder() {
@@ -69,33 +76,56 @@ public class TableDownloader implements AutoCloseable {
 
     @Override
     public void close() {
+        try {
+            csvPrinter.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         tableFetcher.close();
+    }
+
+    @Override
+    public String toString() {
+        return "TableDownloader{" +
+               "tableName=" + tableName +
+               '}';
+    }
+
+    public void addConsumer(Consumer<ResultSet> consumer) {
+        consumers.add(consumer);
+    }
+
+    public List<SelectedColumn> getSelectedColumns() {
+        return tableFetcher.getSelectedColumns();
     }
 
     /**
      * Download by primary keys
      */
     public void download(Set<List<Object>> pks) {
-        try (CSVPrinter csvPrinter = outputFile.createCsvPrinter()) {
-            tableFetcher.execute(pks, resultSet -> consumeResultSet(csvPrinter, resultSet));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        tableFetcher.execute(pks, this::dispatchResultSet);
     }
 
     /**
      * Download the whole table
      */
     public void download() {
-        try (CSVPrinter csvPrinter = outputFile.createCsvPrinter()) {
-            tableFetcher.execute(Collections.emptySet(), resultSet -> consumeResultSet(csvPrinter, resultSet));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        tableFetcher.execute(Collections.emptySet(), this::dispatchResultSet);
+    }
+
+    private void dispatchResultSet(ResultSet resultSet) {
+        for (Consumer<ResultSet> consumer : consumers) {
+            consumer.accept(resultSet);
         }
     }
 
-    private void consumeResultSet(CSVPrinter csvPrinter, ResultSet resultSet) {
-        if (isExistingPk(resultSet)) return;
+    private void consumeResultSet(ResultSet resultSet) {
+        if (isExistingPk(resultSet)) {
+            log.debug("{} skips a row that already exists", tableName);
+            return;
+        }
+
+        log.debug("{} prints a row", tableName);
 
         try {
             for (SelectedColumn selectedColumn : selectedColumns) {

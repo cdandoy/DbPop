@@ -3,6 +3,7 @@ package org.dandoy.dbpop.download;
 import org.dandoy.dbpop.database.ColumnType;
 
 import java.util.Collection;
+import java.util.List;
 
 public record SelectedColumn(int jdbcPos, String name, ColumnType columnType, boolean binary) {
     public String asHeaderName() {
@@ -17,5 +18,9 @@ public record SelectedColumn(int jdbcPos, String name, ColumnType columnType, bo
             }
         }
         return null;
+    }
+
+    public static List<SelectedColumn> findByName(Collection<SelectedColumn> selectedColumns, List<String> columnNames) {
+        return columnNames.stream().map(it -> findByName(selectedColumns, it)).toList();
     }
 }

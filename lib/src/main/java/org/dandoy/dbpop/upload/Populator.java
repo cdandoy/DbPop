@@ -148,7 +148,7 @@ public class Populator implements AutoCloseable {
      */
     public int load(List<String> datasets) {
         return StopWatch.record("Populator.load()", () -> {
-            List<String> adjustedDatasets = adjustDatasetsForStatic(datasets);
+            List<String> adjustedDatasets = adjustDatasets(datasets);
             log.debug("---- Loading {}", String.join(", ", adjustedDatasets));
             try (AutoComitterOff ignored = new AutoComitterOff(database.getConnection())) {
                 int rowCount = 0;
@@ -172,16 +172,20 @@ public class Populator implements AutoCloseable {
     /**
      * The static dataset is only loaded once per Populator
      */
-    private List<String> adjustDatasetsForStatic(List<String> datasets) {
-        // No need to adjust if we don't have a static dataset
-        if (!datasetsByName.containsKey(Datasets.STATIC)) return datasets;
-        ArrayList<String> ret = new ArrayList<>(datasets);
+    private List<String> adjustDatasets(List<String> datasets) {
+        // We move the datasets to 0, so do in reverse order
+        List<String> ret = new ArrayList<>(datasets);
+        if (datasetsByName.containsKey(Datasets.BASE)) {    // No need to adjust if we don't have a base dataset
+            ret.remove(Datasets.BASE);
+            ret.add(0, Datasets.BASE);
+        }
 
-        if (ret.remove(Datasets.STATIC))
-            log.warn("Cannot explicitely load the static dataset");
-
-        if (staticLoaded++ == 0)
-            ret.add(0, Datasets.STATIC);
+        if (datasetsByName.containsKey(Datasets.STATIC)) {  // No need to adjust if we don't have a static dataset
+            ret.remove(Datasets.STATIC);
+            if (staticLoaded++ == 0) {
+                ret.add(0, Datasets.STATIC);
+            }
+        }
 
         return ret;
     }
