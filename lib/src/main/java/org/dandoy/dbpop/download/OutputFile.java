@@ -13,19 +13,21 @@ import java.util.List;
 public class OutputFile {
     private final File file;
     private List<String> headers;
-    private final boolean newFile; // TODO: I don't think that newFile is necessary
     private final boolean forceCreate;
 
     /**
-     * @param file        The file to write to
-     * @param headers     The CSV headers
+     * @param file       The file to write to
+     * @param headers    The CSV headers
      * @param forceEmpty Force the creation of the file, even if it is empty
      */
     private OutputFile(File file, List<String> headers, boolean forceEmpty) {
         this.file = file;
         this.headers = headers;
-        this.newFile = !file.exists();
         this.forceCreate = forceEmpty;
+    }
+
+    public boolean isNewFile() {
+        return !file.exists();
     }
 
     public static OutputFile createOutputFile(File datasetsDirectory, String dataset, TableName tableName, boolean forceEmpty) {

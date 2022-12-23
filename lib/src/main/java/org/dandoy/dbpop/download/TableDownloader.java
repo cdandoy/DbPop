@@ -40,15 +40,15 @@ public class TableDownloader implements AutoCloseable {
     }
 
     private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, List<String> filteredColumns, boolean forceEmpty) {
-        OutputFile outputFile = OutputFile.createOutputFile(datasetsDirectory, dataset, tableName, forceEmpty);
         Table table = database.getTable(tableName);
         TableFetcher tableFetcher = TableFetcher.createTableExecutor(database, table, filteredColumns);
         List<SelectedColumn> selectedColumns = tableFetcher.getSelectedColumns();
         TablePrimaryKeys tablePrimaryKeys = TablePrimaryKeys.createTablePrimaryKeys(datasetsDirectory, dataset, table, selectedColumns);
 
-        if (outputFile.isNewFile()) {
-            outputFile.setColumns(selectedColumns);
-        } else {
+        OutputFile outputFile = OutputFile.createOutputFile(datasetsDirectory, dataset, tableName, forceEmpty);
+        outputFile.setColumns(selectedColumns);
+        if (!outputFile.isNewFile()) {
+            // If the file exists, we must only fetch the columns found in the headers
             selectedColumns = filterSelectedColumns(selectedColumns, outputFile.getHeaders());
         }
 
