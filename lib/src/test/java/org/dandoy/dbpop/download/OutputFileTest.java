@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class OutputFileTest {
     @Test
     void name() {
-        OutputFile outputFile = OutputFile.createOutputFile(new File("src/test/resources/mssql"), "base", new TableName("master", "dbo", "customers"));
+        OutputFile outputFile = OutputFile.createOutputFile(new File("src/test/resources/mssql"), "base", new TableName("master", "dbo", "customers"), false);
         assertEquals("customer_id", outputFile.getHeaders().get(0));
     }
 }

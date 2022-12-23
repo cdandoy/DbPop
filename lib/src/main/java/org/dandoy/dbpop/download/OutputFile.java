@@ -1,38 +1,40 @@
 package org.dandoy.dbpop.download;
 
 import lombok.Getter;
-import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVPrinter;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.utils.DbPopUtils;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 @Getter
 public class OutputFile {
     private final File file;
     private List<String> headers;
-    private final boolean newFile;
+    private final boolean newFile; // TODO: I don't think that newFile is necessary
+    private final boolean forceCreate;
 
-    private OutputFile(File file, List<String> headers, boolean newFile) {
+    /**
+     * @param file        The file to write to
+     * @param headers     The CSV headers
+     * @param forceEmpty Force the creation of the file, even if it is empty
+     */
+    private OutputFile(File file, List<String> headers, boolean forceEmpty) {
         this.file = file;
         this.headers = headers;
-        this.newFile = newFile;
+        this.newFile = !file.exists();
+        this.forceCreate = forceEmpty;
     }
 
-    public static OutputFile createOutputFile(File datasetsDirectory, String dataset, TableName tableName) {
+    public static OutputFile createOutputFile(File datasetsDirectory, String dataset, TableName tableName, boolean forceEmpty) {
         File file = DbPopUtils.getOutputFile(datasetsDirectory, dataset, tableName);
         if (file.exists()) {
             List<String> headers = readHeaders(file);
-            return new OutputFile(file, headers, false);
+            return new OutputFile(file, headers, forceEmpty);
         } else {
-            return new OutputFile(file, null, true);
+            return new OutputFile(file, null, forceEmpty);
         }
     }
 
@@ -48,15 +50,7 @@ public class OutputFile {
         headers = selectedColumns.stream().map(SelectedColumn::asHeaderName).toList();
     }
 
-    public CSVPrinter createCsvPrinter() throws IOException {
-        boolean newFile = !file.exists();
-        BufferedWriter bufferedWriter = Files.newBufferedWriter(file.toPath(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-
-        CSVFormat.Builder csvFormatBuilder = CSVFormat.DEFAULT.builder()
-                .setNullString("");
-        if (newFile) {
-            csvFormatBuilder.setHeader(headers.toArray(String[]::new));
-        }
-        return new CSVPrinter(bufferedWriter, csvFormatBuilder.build());
+    public DeferredCsvPrinter createCsvPrinter() {
+        return new DeferredCsvPrinter(file, headers);
     }
 }

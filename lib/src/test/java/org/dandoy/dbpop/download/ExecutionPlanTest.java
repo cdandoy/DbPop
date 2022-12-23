@@ -35,5 +35,7 @@ class ExecutionPlanTest {
                 }
             }
         }
+
+        TestUtils.delete(new File(datasetsDirectory, "download"));
     }
 }
