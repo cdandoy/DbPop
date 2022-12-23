@@ -25,13 +25,6 @@ public class TableExecutionModel {
         this.constraints = constraints == null ? Collections.emptyList() : constraints;
     }
 
-    public TableExecutionModel(
-            String constraintName,
-            TableExecutionModel... constraints
-    ) {
-        this(constraintName, List.of(constraints));
-    }
-
     public TableExecutionModel removeTableExecutionModel(String constraintName) {
         for (int i = constraints.size() - 1; i >= 0; i--) {
             TableExecutionModel constraint = constraints.get(i);
