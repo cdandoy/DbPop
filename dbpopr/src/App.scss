@@ -1,0 +1,17 @@
+html, body {
+  height: 100%
+}
+
+.fullheight {
+  height: 100%;
+}
+
+#root {
+  > .container {
+    height: calc(100% - 120px);
+
+    #app-switch {
+      height: calc(100% - 158px);
+    }
+  }
+}

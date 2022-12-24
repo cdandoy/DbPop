@@ -43,6 +43,7 @@ public class SqlSetupService {
             File configurationDir = configurationService.getConfigurationDir();
             File setupFile = new File(configurationDir, "setup.sql");
             if (setupFile.isFile()) {
+                // TODO: Run this in a background thread
                 try (Connection connection = configurationService.createConnection()) {
                     List<String> lines = Files.readAllLines(setupFile.toPath());
                     List<Sql> sqls = linesToSql(lines);
