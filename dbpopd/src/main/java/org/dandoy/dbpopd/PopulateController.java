@@ -22,7 +22,7 @@ public class PopulateController {
         this.populatorHolder = populatorHolder;
     }
 
-    @Get("populate")
+    @Get("/populate")
     public PopulateResult populate(
             List<String> dataset
     ) {

@@ -1,5 +1,7 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import './Datasets.scss'
+import axios from "axios";
+import {PopulateResult} from "../models/PopulateResult";
 
 function DatasetComponent({
                               dataset,
@@ -24,7 +26,7 @@ function DatasetComponent({
     setLoadingError: (error: string | null) => void
 }): JSX.Element {
 
-    function loadingComponent() {
+    function buttonContent() {
         if (loadingDataset === null) {
             return <i className="fa fa-fw fa-play" onClick={loadDataset}></i>;
         } else if (loadingDataset === dataset) {
@@ -36,11 +38,24 @@ function DatasetComponent({
 
     function loadDataset(): void {
         setLoadingDataset(dataset);
-        setTimeout(() => {
-            setLoadingDataset(null);
-            setLoadedDataset(dataset);
-            setLoadingError('Something is wrong');
-        }, 2000);
+        setLoadingResult(null);
+        setLoadingError(null);
+        axios.get<PopulateResult>("/populate", {params: {dataset}})
+            .then(result => {
+                setLoadingDataset(null);
+                setLoadingResult(`Loaded ${result.data.rows} in ${result.data.millis}ms`);
+                setLoadedDataset(dataset);
+            })
+            .catch(error => {
+                setLoadingDataset(null);
+                let errorMessages = error.response?.data?._embedded?.errors
+                    ?.map((it: any) => {
+                        return it?.message;
+                    })
+                    ?.join('<br/>');
+                setLoadingError(errorMessages);
+                setLoadedDataset(dataset);
+            })
     }
 
     return (
@@ -48,11 +63,11 @@ function DatasetComponent({
             <div data-dataset={dataset}>
                 <div className='dataset-button'>
                     <button className="btn btn-xs button-load" title="Load">
-                        {loadingComponent()}
+                        {buttonContent()}
                     </button>
                     <span>{dataset}</span>
                 </div>
-                {loadedDataset === dataset && loadingError && <div className='dataset-error'>{loadingError}</div>}
+                {loadedDataset === dataset && loadingError && <pre className='dataset-error'>{loadingError}</pre>}
                 {loadedDataset === dataset && loadingResult && <div className='dataset-result'>{loadingResult}</div>}
             </div>
         </div>
@@ -60,11 +75,22 @@ function DatasetComponent({
 }
 
 export default function DatasetsComponent(): JSX.Element {
-    const [datasets, setDatasets] = useState<string[]>(['static', 'base']);
+    const [datasets, setDatasets] = useState<string[]>([]);
     const [loadingDataset, setLoadingDataset] = useState<string | null>(null);
     const [loadedDataset, setLoadedDataset] = useState<string | null>(null);
     const [loadingResult, setLoadingResult] = useState<string | null>(null);
     const [loadingError, setLoadingError] = useState<string | null>(null);
+
+    useEffect(() => {
+        axios.get<string[]>("/datasets")
+            .then((result) => {
+                setDatasets(result.data);
+            });
+    }, []);
+
+    function isDisplayable(dataset: string): boolean {
+        return dataset !== 'static'
+    }
 
     return (
         <>
@@ -74,19 +100,20 @@ export default function DatasetsComponent(): JSX.Element {
                  aria-labelledby="datasets-tab"
                  tabIndex={0}>
                 <div className="datasets p-2">
-                    {datasets.map(dataset => <DatasetComponent key={dataset}
-                                                               dataset={dataset}
-                                                               loadingDataset={loadingDataset}
-                                                               loadedDataset={loadedDataset}
-                                                               loadingResult={loadingResult}
-                                                               loadingError={loadingError}
-                                                               setLoadingDataset={setLoadingDataset}
-                                                               setLoadedDataset={setLoadedDataset}
-                                                               setLoadingResult={setLoadingResult}
-                                                               setLoadingError={setLoadingError}
-                    />)}
+                    {datasets.map(dataset => isDisplayable(dataset) &&
+                        <DatasetComponent key={dataset}
+                                          dataset={dataset}
+                                          loadingDataset={loadingDataset}
+                                          loadedDataset={loadedDataset}
+                                          loadingResult={loadingResult}
+                                          loadingError={loadingError}
+                                          setLoadingDataset={setLoadingDataset}
+                                          setLoadedDataset={setLoadedDataset}
+                                          setLoadingResult={setLoadingResult}
+                                          setLoadingError={setLoadingError}
+                        />)}
                 </div>
             </div>
         </>
-    )
+    );
 }

@@ -24,48 +24,53 @@ function PopulateComponent(): JSX.Element {
         return !sqlSetupStatus.loaded;
     }
 
-    if (error) {
-        return <pre className="mb-4 alert alert-danger" role="alert">${error}</pre>
-    } else if (!loaded) {
-        return <div className="mb-4"><i className="fa fa-fw fa-spinner fa-spin"></i> setup.sql loading...</div>
-    } else {
-        return (
-            <div id="populate-component">
-                <ul className="nav nav-tabs" role="tablist">
-                    <li className="nav-item" role="presentation">
-                        <NavLink to="/populate/datasets"
-                                 className={({isActive}) => ((isActive ? 'active' : 'inactive') + " nav-link")}
-                                 role="tab">
-                            Datasets
-                        </NavLink>
-
-                    </li>
-                    <li className="nav-item" role="presentation">
-                        <NavLink to="/populate/files"
-                                 className={({isActive}) => ((isActive ? 'active' : 'inactive') + " nav-link")}
-                                 role="tab">
-                            Files
-                        </NavLink>
-                    </li>
-                    <li className="nav-item" role="presentation">
-                        <NavLink to="/populate/api"
-                                 className={({isActive}) => ((isActive ? 'active' : 'inactive') + " nav-link")}
-                                 role="tab">
-                            API
-                        </NavLink>
-                    </li>
-                </ul>
-                <div className="tab-content">
-                    <Routes>
-                        <Route path="datasets" element={<DatasetsComponent/>}/>
-                        <Route path="files" element={<FilesComponent/>}/>
-                        <Route path="api" element={<ApiComponent/>}/>
-                        <Route path="/" element={<Navigate to="/populate/datasets" replace/>}/>
-                    </Routes>
+    return (
+        <div id="populate-component">
+            {error && (
+                <div className="mb-4 alert alert-danger">
+                    <div>setup.sql</div>
+                    <pre className="m-3" role="alert" style={{whiteSpace: "pre-line"}}>${error}</pre>
                 </div>
+            )}
+            {loaded || (
+                <div className="mb-4 alert ">
+                    <div>setup.sql:</div>
+                    <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Loading...</div>
+                </div>
+            )}
+            <ul className="nav nav-tabs" role="tablist">
+                <li className="nav-item" role="presentation">
+                    <NavLink to="/populate/datasets"
+                             className={({isActive}) => ((isActive ? 'active' : 'inactive') + " nav-link")}
+                             role="tab">
+                        Datasets
+                    </NavLink>
+                </li>
+                <li className="nav-item" role="presentation">
+                    <NavLink to="/populate/files"
+                             className={({isActive}) => ((isActive ? 'active' : 'inactive') + " nav-link")}
+                             role="tab">
+                        Files
+                    </NavLink>
+                </li>
+                <li className="nav-item" role="presentation">
+                    <NavLink to="/populate/api"
+                             className={({isActive}) => ((isActive ? 'active' : 'inactive') + " nav-link")}
+                             role="tab">
+                        API
+                    </NavLink>
+                </li>
+            </ul>
+            <div className="tab-content">
+                <Routes>
+                    <Route path="datasets" element={<DatasetsComponent/>}/>
+                    <Route path="files" element={<FilesComponent/>}/>
+                    <Route path="api" element={<ApiComponent/>}/>
+                    <Route path="/" element={<Navigate to="/populate/datasets" replace/>}/>
+                </Routes>
             </div>
-        )
-    }
+        </div>
+    )
 }
 
 export default PopulateComponent;
