@@ -2,6 +2,7 @@ import {NavLink} from "react-router-dom";
 import React, {useEffect, useState} from "react";
 import axios from "axios";
 import {DatasetResponse} from "../models/DatasetResponse";
+import {toHumanReadableSize} from "../utils/DbPopUtils";
 
 function DatasetComponent({dataset}: { dataset: DatasetResponse }) {
     const files = dataset.files;
@@ -11,15 +12,7 @@ function DatasetComponent({dataset}: { dataset: DatasetResponse }) {
         size += file.fileSize;
         rows += file.rows;
     }
-    let unit = 'bytes';
-    if (size > 1024) {
-        rows = rows / 1024;
-        unit = "Kb";
-    }
-    if (size > 1024) {
-        rows = rows / 1024;
-        unit = "Mb";
-    }
+    let readableSize = toHumanReadableSize(size);
 
     return (
         <>
@@ -31,7 +24,7 @@ function DatasetComponent({dataset}: { dataset: DatasetResponse }) {
                 </td>
                 <td className="text-end">{files.length}</td>
                 <td className="text-end">{rows}</td>
-                <td className="text-end">{size} {unit}</td>
+                <td className="text-end">{readableSize.text}</td>
             </tr>
         </>
     );

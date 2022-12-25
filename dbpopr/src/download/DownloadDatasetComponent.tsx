@@ -2,15 +2,18 @@ import React, {useEffect, useState} from "react";
 import {NavLink, useParams} from "react-router-dom";
 import {DatasetResponse} from "../models/DatasetResponse";
 import axios from "axios";
+import {toHumanReadableSize} from "../utils/DbPopUtils";
 
 export default function DownloadDatasetComponent(): JSX.Element {
     const routeParams = useParams();
     const datasetName = routeParams['dataset']
     const [dataset, setDataset] = useState<DatasetResponse | null>(null);
+
     useEffect(() => {
         axios.get<DatasetResponse>(`/datasets/content/${datasetName}`)
             .then((result) => setDataset(result.data));
     }, []);
+
     return (
         <div>
             <nav aria-label="breadcrumb">
@@ -19,6 +22,12 @@ export default function DownloadDatasetComponent(): JSX.Element {
                     <li className="breadcrumb-item active" aria-current="page">Dataset: {datasetName}</li>
                 </ol>
             </nav>
+
+            <div className="card">
+                <div className="card-body">
+                    This dataset contains .
+                </div>
+            </div>
 
             <table className="table table-hover">
                 <thead>
@@ -29,6 +38,16 @@ export default function DownloadDatasetComponent(): JSX.Element {
                 </tr>
                 </thead>
                 <tbody>
+                {dataset?.files?.map(file => {
+                    let readableSize = toHumanReadableSize(file.fileSize);
+                    return (
+                        <tr>
+                            <td>{file.name}</td>
+                            <td>{file.rows}</td>
+                            <td>{readableSize.text}</td>
+                        </tr>
+                    )
+                })}
                 {dataset?.files?.map(file => (
                     <tr>
                         <td>{file.name}</td>
