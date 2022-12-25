@@ -48,13 +48,6 @@ export default function DownloadDatasetComponent(): JSX.Element {
                         </tr>
                     )
                 })}
-                {dataset?.files?.map(file => (
-                    <tr>
-                        <td>{file.name}</td>
-                        <td>{file.rows}</td>
-                        <td>{file.fileSize}</td>
-                    </tr>
-                ))}
                 </tbody>
             </table>
         </div>

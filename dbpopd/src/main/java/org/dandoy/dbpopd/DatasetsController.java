@@ -94,20 +94,15 @@ public class DatasetsController {
     public DatasetResponse getDatasetContent(String datasetName) {
         Dataset dataset = Datasets.getDataset(configurationService.getDatasetsDirectory(), datasetName);
 
-        List<DatasetDatafileResponse> ret = dataset.getDataFiles().stream()
-                .map(dataFile -> new DatasetDatafileResponse(
-                                dataFile.getFile().getName(),
-                                dataFile.getFile().length()*1024,
-                                getCsvRowCount(dataFile.getFile())
-                        )
-                ).toList();
-        List<DatasetDatafileResponse> ret2 = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            ret2.addAll(ret);
-        }
         return new DatasetResponse(
                 dataset.getName(),
-                ret2
+                dataset.getDataFiles().stream()
+                        .map(dataFile -> new DatasetDatafileResponse(
+                                        dataFile.getFile().getName(),
+                                        dataFile.getFile().length()*1024,
+                                        getCsvRowCount(dataFile.getFile())
+                                )
+                        ).toList()
         );
     }
 
