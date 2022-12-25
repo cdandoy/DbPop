@@ -27,12 +27,14 @@ public class SiteController {
      * Gets the status of the SqlSetupService, the service that runs setup.sql in populate mode
      */
     @Get("/site/populate/setup")
-    public WelcomeController.SqlSetupStatus setupStatus() {
-        // TODO: We still share this with the jQuery version of the app. Move it over when we switch
-        return new WelcomeController.SqlSetupStatus(
+    public SqlSetupStatus setupStatus() {
+        return new SqlSetupStatus(
                 sqlSetupService.isLoading(),
                 sqlSetupService.isLoaded(),
                 sqlSetupService.getErrorMessage()
         );
+    }
+
+    public record SqlSetupStatus(boolean loading, boolean loaded, String errorMessage) {
     }
 }

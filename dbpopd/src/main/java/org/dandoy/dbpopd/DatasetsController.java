@@ -34,19 +34,19 @@ public class DatasetsController {
     }
 
     @Get("/files")
-    public List<WelcomeController.DatasetFileRow> getFiles() {
+    public List<DatasetFileRow> getFiles() {
         List<Dataset> datasets = Datasets.getDatasets(configurationService.getDatasetsDirectory())
                 .stream()
                 .sorted(Comparator.comparing(Dataset::getName))
                 .collect(Collectors.toCollection(ArrayList::new));
 
-        List<WelcomeController.DatasetFileRow> datasetFileRows = new ArrayList<>();
+        List<DatasetFileRow> datasetFileRows = new ArrayList<>();
         for (Dataset dataset : datasets) {
             boolean isFirst = true;
             for (DataFile dataFile : dataset.getDataFiles()) {
                 File file = dataFile.getFile();
                 datasetFileRows.add(
-                        new WelcomeController.DatasetFileRow(
+                        new DatasetFileRow(
                                 isFirst ? dataset.getName() : "",
                                 dataFile.getTableName().toQualifiedName(),
                                 file.length(),
@@ -70,5 +70,8 @@ public class DatasetsController {
             log.error("Failed to read " + file);
             return null;
         }
+    }
+
+    public record DatasetFileRow(String datasetName, String tableName, Long fileSize, Integer rows) {
     }
 }
