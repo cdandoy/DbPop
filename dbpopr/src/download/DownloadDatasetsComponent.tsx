@@ -1,8 +1,8 @@
-import {NavLink} from "react-router-dom";
 import React, {useEffect, useState} from "react";
 import axios from "axios";
 import {DatasetResponse} from "../models/DatasetResponse";
 import {toHumanReadableSize} from "../utils/DbPopUtils";
+import {NavLink} from "react-router-dom";
 
 function DatasetComponent({dataset}: { dataset: DatasetResponse }) {
     const files = dataset.files;
@@ -15,50 +15,37 @@ function DatasetComponent({dataset}: { dataset: DatasetResponse }) {
     let readableSize = toHumanReadableSize(size);
 
     return (
-        <>
-            <tr>
-                <td>
-                    <NavLink to={`download/${dataset.name}`}>
-                        {dataset.name}
-                    </NavLink>
-                </td>
-                <td className="text-end">{files.length}</td>
-                <td className="text-end">{rows}</td>
-                <td className="text-end">{readableSize.text}</td>
-            </tr>
-        </>
-    );
+        <div className="card m-3">
+            <div className="card-body">
+                <h5 className="card-title">{dataset.name}</h5>
+                <h6 className="card-subtitle mb-2 text-muted">{files.length} files, {readableSize.text}</h6>
+                <div className="text-end">
+                    <NavLink to={`dataset/${dataset.name}`} className="card-link">Details</NavLink>
+                    <NavLink to={`dataset/add/${dataset.name}`} className="card-link">Add Data</NavLink>
+                </div>
+            </div>
+        </div>
+    )
 }
 
 export default function DownloadDatasetsComponent() {
+    const [loaded, setLoaded] = useState<boolean>(false);
     const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
     useEffect(() => {
         axios.get<DatasetResponse[]>("/datasets/content")
-            .then((result) => setDatasets(result.data));
+            .then((result) => {
+                setLoaded(true);
+                setDatasets(result.data);
+            });
     }, []);
     return (
         <div className="card datasets">
             <div className="card-body">
                 <h5 className="card-title">Datasets</h5>
                 <div className="datasets p-3">
-                    {datasets.length == 0 && <div className="text-center">No Datasets</div>}
-                    {datasets.length > 0 &&
-                        <table className="table table-hover">
-                            <thead>
-                            <tr>
-                                <th>Dataset</th>
-                                <th className="text-end">Files</th>
-                                <th className="text-end">Rows</th>
-                                <th className="text-end">Size</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {datasets.map(dataset => <DatasetComponent key={dataset.name}
-                                                                       dataset={dataset}
-                            />)}
-                            </tbody>
-                        </table>
-                    }
+                    {loaded || <div className="text-center"><i className="fa fa-spinner fa-spin"/> Loading</div>}
+                    {loaded && datasets.length == 0 && <div className="text-center">No Datasets</div>}
+                    {loaded && datasets.map(dataset => <DatasetComponent key={dataset.name} dataset={dataset}/>)}
                 </div>
 
                 <div className="text-end">

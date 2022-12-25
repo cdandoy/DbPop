@@ -8,10 +8,14 @@ export default function DownloadDatasetComponent(): JSX.Element {
     const routeParams = useParams();
     const datasetName = routeParams['dataset']
     const [dataset, setDataset] = useState<DatasetResponse | null>(null);
+    const [loaded, setLoaded] = useState<boolean>(false);
 
     useEffect(() => {
         axios.get<DatasetResponse>(`/datasets/content/${datasetName}`)
-            .then((result) => setDataset(result.data));
+            .then((result) => {
+                setLoaded(true);
+                setDataset(result.data);
+            });
     }, []);
 
     return (
@@ -23,33 +27,30 @@ export default function DownloadDatasetComponent(): JSX.Element {
                 </ol>
             </nav>
 
-            <div className="card">
-                <div className="card-body">
-                    This dataset contains .
-                </div>
-            </div>
-
-            <table className="table table-hover">
-                <thead>
-                <tr>
-                    <th>File</th>
-                    <th>Rows</th>
-                    <th>Size</th>
-                </tr>
-                </thead>
-                <tbody>
-                {dataset?.files?.map(file => {
-                    let readableSize = toHumanReadableSize(file.fileSize);
-                    return (
-                        <tr>
-                            <td>{file.name}</td>
-                            <td>{file.rows}</td>
-                            <td>{readableSize.text}</td>
-                        </tr>
-                    )
-                })}
-                </tbody>
-            </table>
+            {loaded || <div ><i className="fa fa-spinner fa-spin"/> Loading</div>}
+            {loaded && (
+                <table className="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Rows</th>
+                        <th>Size</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {dataset?.files?.map(file => {
+                        let readableSize = toHumanReadableSize(file.fileSize);
+                        return (
+                            <tr>
+                                <td>{file.name}</td>
+                                <td>{file.rows}</td>
+                                <td>{readableSize.text}</td>
+                            </tr>
+                        )
+                    })}
+                    </tbody>
+                </table>
+            )}
         </div>
     )
 }

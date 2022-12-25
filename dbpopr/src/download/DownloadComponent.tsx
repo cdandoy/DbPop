@@ -9,7 +9,7 @@ function DownloadComponent(): JSX.Element {
         <>
             <div id="download-component" className="row">
                 <Routes>
-                    <Route path="/download/:dataset" element=<DownloadDatasetComponent/>/>
+                    <Route path="/dataset/:dataset" element=<DownloadDatasetComponent/>/>
                     <Route path="/" element=<DownloadDashboardComponent/>/>
                 </Routes>
             </div>
