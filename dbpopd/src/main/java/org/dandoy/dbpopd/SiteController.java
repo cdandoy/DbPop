@@ -7,13 +7,10 @@ import java.util.Map;
 
 @Controller
 public class SiteController {
-    private final SqlSetupService sqlSetupService;
     private final ConfigurationService configurationService;
 
-    public SiteController(ConfigurationService configurationService,
-                          SqlSetupService sqlSetupService) {
+    public SiteController(ConfigurationService configurationService) {
         this.configurationService = configurationService;
-        this.sqlSetupService = sqlSetupService;
     }
 
     @Get("/site")
@@ -21,20 +18,5 @@ public class SiteController {
         return Map.of(
                 "mode", configurationService.getMode()
         );
-    }
-
-    /**
-     * Gets the status of the SqlSetupService, the service that runs setup.sql in populate mode
-     */
-    @Get("/site/populate/setup")
-    public SqlSetupStatus setupStatus() {
-        return new SqlSetupStatus(
-                sqlSetupService.isLoading(),
-                sqlSetupService.isLoaded(),
-                sqlSetupService.getErrorMessage()
-        );
-    }
-
-    public record SqlSetupStatus(boolean loading, boolean loaded, String errorMessage) {
     }
 }

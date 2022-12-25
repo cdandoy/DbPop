@@ -2,7 +2,7 @@ import './App.scss';
 import React, {useEffect, useState} from 'react';
 import PopulateComponent from "./populate/PopulateComponent";
 import {HashRouter, Navigate, Route, Routes} from "react-router-dom";
-import Download from "./download/Download";
+import DownloadComponent from "./download/DownloadComponent";
 
 function Header() {
     return (
@@ -63,7 +63,7 @@ function AppSwitch() {
         return (
             <Routes>
                 {mode === "populate" && <Route path="populate/*" element={<PopulateComponent/>}/>}
-                {mode === "download" && <Route path="download/*" element={<Download/>}/>}
+                {mode === "download" && <Route path="download/*" element={<DownloadComponent/>}/>}
                 {mode === null && <Route path="/" element={<div>Loading</div>}/>}
                 {mode === "populate" && <Route path="/" element={<Navigate to="/populate/datasets" replace/>}/>}
                 {mode === "download" && <Route path="/" element={<Navigate to="/download" replace/>}/>}
@@ -72,7 +72,7 @@ function AppSwitch() {
     }
 }
 
-function App() {
+export default function App() {
     return (
         <>
             <Header/>
@@ -90,6 +90,3 @@ function App() {
         </>
     );
 }
-
-
-export default App;

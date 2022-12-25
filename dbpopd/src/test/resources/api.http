@@ -12,3 +12,9 @@ Content-Type: application/json
   "table": "customers"
 }
 
+###
+GET http://localhost:8080/datasets
+
+###
+GET http://localhost:8080/datasets/content/static
+

@@ -59,6 +59,53 @@ public class DatasetsController {
         return datasetFileRows;
     }
 
+    @Get("/content")
+    public List<DatasetResponse> getContent() {
+        List<Dataset> datasets = Datasets.getDatasets(configurationService.getDatasetsDirectory());
+        // Move static first, base next
+        for (String s : new String[]{"base", "static"}) {
+            for (int i = datasets.size() - 1; i >= 0; i--) {
+                Dataset dataset = datasets.get(i);
+                if (dataset.getName().equals(s)) {
+                    datasets.remove(i);
+                    datasets.add(0, dataset);
+                    break;
+                }
+            }
+        }
+
+        return datasets
+                .stream()
+                .map(dataset -> new DatasetResponse(
+                                dataset.getName(),
+                                dataset.getDataFiles().stream()
+                                        .map(dataFile -> new DatasetDatafileResponse(
+                                                        dataFile.getFile().getName(),
+                                                        dataFile.getFile().length(),
+                                                        getCsvRowCount(dataFile.getFile())
+                                                )
+                                        ).toList()
+                        )
+                )
+                .toList();
+    }
+
+    @Get("/content/{datasetName}")
+    public DatasetResponse getDatasetContent(String datasetName) {
+        Dataset dataset = Datasets.getDataset(configurationService.getDatasetsDirectory(), datasetName);
+
+        return new DatasetResponse(
+                dataset.getName(),
+                dataset.getDataFiles().stream()
+                        .map(dataFile -> new DatasetDatafileResponse(
+                                        dataFile.getFile().getName(),
+                                        dataFile.getFile().length(),
+                                        getCsvRowCount(dataFile.getFile())
+                                )
+                        ).toList()
+        );
+    }
+
     private static Integer getCsvRowCount(File file) {
         try (CSVParser csvParser = DbPopUtils.createCsvParser(file)) {
             int rows = 0;
@@ -70,6 +117,12 @@ public class DatasetsController {
             log.error("Failed to read " + file);
             return null;
         }
+    }
+
+    public record DatasetDatafileResponse(String name, long fileSize, Integer rows) {
+    }
+
+    public record DatasetResponse(String name, List<DatasetDatafileResponse> files) {
     }
 
     public record DatasetFileRow(String datasetName, String tableName, Long fileSize, Integer rows) {

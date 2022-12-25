@@ -17,9 +17,12 @@ import java.util.List;
 @Requires(property = "dbpopd.mode", value = "populate")
 public class PopulateController {
     private final PopulatorHolder populatorHolder;
+    private final SqlSetupService sqlSetupService;
 
-    public PopulateController(PopulatorHolder populatorHolder) {
+    public PopulateController(PopulatorHolder populatorHolder,
+                              SqlSetupService sqlSetupService) {
         this.populatorHolder = populatorHolder;
+        this.sqlSetupService = sqlSetupService;
     }
 
     @Get("/populate")
@@ -36,6 +39,21 @@ public class PopulateController {
             String message = String.join("\n", ExceptionUtils.getErrorMessages(e, ">"));
             throw new HttpStatusException(HttpStatus.BAD_REQUEST, message);
         }
+    }
+
+    /**
+     * Gets the status of the SqlSetupService, the service that runs setup.sql in populate mode
+     */
+    @Get("/site/populate/setup")
+    public SqlSetupStatus setupStatus() {
+        return new SqlSetupStatus(
+                sqlSetupService.isLoading(),
+                sqlSetupService.isLoaded(),
+                sqlSetupService.getErrorMessage()
+        );
+    }
+
+    public record SqlSetupStatus(boolean loading, boolean loaded, String errorMessage) {
     }
 
     record PopulateResult(int rows, long millis) {
