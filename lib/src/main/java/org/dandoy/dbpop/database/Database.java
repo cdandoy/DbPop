@@ -206,6 +206,10 @@ public abstract class Database implements AutoCloseable {
                columnType == Types.BLOB;
     }
 
+    /**
+     * Searches for tables by partial name
+     */
+    public abstract Set<TableName> searchTable(String query);
 
     public class DatabaseInserter implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;

@@ -8,6 +8,7 @@ import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.upload.DataFileHeader;
 import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpop.utils.StopWatch;
+import org.dandoy.dbpop.utils.StringUtils;
 
 import java.sql.*;
 import java.util.*;
@@ -449,6 +450,54 @@ public class SqlServerDatabase extends Database {
     @Override
     public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
         return SqlServerDisablePreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
+    }
+
+    @Override
+    public Set<TableName> searchTable(String query) {
+        Set<TableName> ret = new HashSet<>();
+        query = query.trim();
+        if (!query.isEmpty()) {
+            query = "%" + String.join("%", StringUtils.split(query, ' ')) + "%";
+            try {
+                List<String> catalogs = getCatalogs();
+                for (String catalog : catalogs) {
+                    use(catalog);
+                    try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                            SELECT s.name AS "schema", t.name AS "table"
+                            FROM sys.schemas s
+                                     JOIN sys.tables t ON t.schema_id = s.schema_id
+                            WHERE t.name LIKE ?
+                            """)) {
+                        preparedStatement.setString(1, query);
+                        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                            while (resultSet.next()) {
+                                String schema = resultSet.getString("schema");
+                                String table = resultSet.getString("table");
+                                ret.add(new TableName(catalog, schema, table));
+                            }
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return ret;
+    }
+
+    private List<String> getCatalogs() {
+        List<String> ret = new ArrayList<>();
+        try (PreparedStatement databasesStatement = connection.prepareStatement("SELECT name FROM sys.databases")) {
+            try (ResultSet resultSet = databasesStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    String database = resultSet.getString(1);
+                    ret.add(database);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return ret;
     }
 
     void disableForeignKey(ForeignKey foreignKey) {

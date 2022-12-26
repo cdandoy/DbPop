@@ -463,4 +463,9 @@ public class PostgresDatabase extends Database {
     public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
         return PostgresDatabasePreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
     }
+
+    @Override
+    public Set<TableName> searchTable(String query) {
+        return null; // FIXME
+    }
 }

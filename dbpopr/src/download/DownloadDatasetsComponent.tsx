@@ -21,7 +21,7 @@ function DatasetComponent({dataset}: { dataset: DatasetResponse }) {
                 <h6 className="card-subtitle mb-2 text-muted">{files.length} files, {readableSize.text}</h6>
                 <div className="text-end">
                     <NavLink to={`dataset/${dataset.name}`} className="card-link">Details</NavLink>
-                    <NavLink to={`dataset/add/${dataset.name}`} className="card-link">Add Data</NavLink>
+                    <NavLink to={`add/${dataset.name}`} className="card-link">Add Data</NavLink>
                 </div>
             </div>
         </div>

@@ -1,4 +1,5 @@
 import './App.scss';
+import 'react-bootstrap-typeahead/css/Typeahead.css';
 import React, {useEffect, useState} from 'react';
 import PopulateComponent from "./populate/PopulateComponent";
 import {HashRouter, Navigate, Route, Routes} from "react-router-dom";
