@@ -40,11 +40,13 @@ public class ExecutionPlan implements AutoCloseable {
     }
 
     public static Map<TableName, Integer> execute(
-            Database database, File datasetsDirectory, String dataset,
+            @NotNull Database database,
+            @NotNull File datasetsDirectory,
+            @NotNull String dataset,
             @NotNull TableName tableName,
             @NotNull TableExecutionModel tableExecutionModel,
             @NotNull List<String> filteredColumns,
-            Set<List<Object>> pks
+            @NotNull Set<List<Object>> pks
     ) {
         try (ExecutionPlan executionPlan = new ExecutionPlan(database, datasetsDirectory, dataset)) {
             ExecutionNode executionNode = executionPlan.build(tableName, tableExecutionModel, filteredColumns);
@@ -54,7 +56,7 @@ public class ExecutionPlan implements AutoCloseable {
         }
     }
 
-    private  Map<TableName, Integer> getRowCounts(){
+    private Map<TableName, Integer> getRowCounts() {
         Map<TableName, Integer> ret = new HashMap<>();
         executionNodes.forEach(executionNode -> ret.put(executionNode.getTableName(), executionNode.getRowCount()));
         return ret;
