@@ -25,7 +25,7 @@ public class TableFetcher implements AutoCloseable {
         this.pkColumnTypes = pkColumnTypes;
     }
 
-    public static TableFetcher createTableExecutor(Database database, Table table, List<String> filteredColumns) {
+    public static TableFetcher createTableFetcher(Database database, Table table, List<String> filteredColumns) {
         String sql = ("SELECT *\nFROM %s").formatted(database.quote(table.tableName()));
         int batchSize = Integer.MAX_VALUE;
         List<ColumnType> pkColumnTypes = null;

@@ -25,6 +25,8 @@ public class TableDownloader implements AutoCloseable {
     private final DeferredCsvPrinter csvPrinter;
     private final List<SelectedColumn> selectedColumns;
     private final List<Consumer<ResultSet>> consumers = new ArrayList<>();
+    @Getter
+    private int rowCount;
 
     private TableDownloader(TableName tableName, OutputFile outputFile, TablePrimaryKeys tablePrimaryKeys, TableFetcher tableFetcher, List<SelectedColumn> selectedColumns) {
         this.tableName = tableName;
@@ -41,7 +43,7 @@ public class TableDownloader implements AutoCloseable {
 
     private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, List<String> filteredColumns, boolean forceEmpty) {
         Table table = database.getTable(tableName);
-        TableFetcher tableFetcher = TableFetcher.createTableExecutor(database, table, filteredColumns);
+        TableFetcher tableFetcher = TableFetcher.createTableFetcher(database, table, filteredColumns);
         List<SelectedColumn> selectedColumns = tableFetcher.getSelectedColumns();
         TablePrimaryKeys tablePrimaryKeys = TablePrimaryKeys.createTablePrimaryKeys(datasetsDirectory, dataset, table, selectedColumns);
 
@@ -106,6 +108,7 @@ public class TableDownloader implements AutoCloseable {
     }
 
     private void dispatchResultSet(ResultSet resultSet) {
+        rowCount++;
         for (Consumer<ResultSet> consumer : consumers) {
             consumer.accept(resultSet);
         }

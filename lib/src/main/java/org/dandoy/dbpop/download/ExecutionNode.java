@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.download;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.TableName;
 
@@ -14,6 +15,7 @@ import java.util.function.Consumer;
 @Slf4j
 public class ExecutionNode implements Consumer<ResultSet>, AutoCloseable {
     public static final int BATCH_SIZE = 1000;
+    @Getter
     private final TableName tableName;
     private final TableDownloader tableDownloader;
     private final List<SelectedColumn> extractedColumns;
@@ -36,6 +38,10 @@ public class ExecutionNode implements Consumer<ResultSet>, AutoCloseable {
     @Override
     public void close() {
         tableDownloader.close();
+    }
+
+    public int getRowCount() {
+        return tableDownloader.getRowCount();
     }
 
     public void download(Set<List<Object>> pks) {

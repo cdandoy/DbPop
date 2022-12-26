@@ -1,0 +1,7 @@
+{
+  "constraints": [
+    {
+      "constraintName": "invoices_customers_fk"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.upload.Populator;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.*;
@@ -15,8 +16,9 @@ import java.net.URL;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.Map;
 
-import static org.dandoy.TestUtils.invoices;
+import static org.dandoy.TestUtils.*;
 
 class ExecutionPlanTest {
 
@@ -48,7 +50,7 @@ class ExecutionPlanTest {
     }
 
     @Test
-    void name() throws IOException {
+    void testFullModel() throws IOException {
         try (Populator populator = LOCAL_CREDENTIALS
                 .populator()
                 .setDirectory(DATASETS_DIRECTORY)
@@ -58,10 +60,34 @@ class ExecutionPlanTest {
 
         URL url = getClass().getResource("fullTableExecutionModel1.json");
         TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
-        try (ExecutionPlan executionPlan = new ExecutionPlan(database, DATASETS_DIRECTORY, "download")) {
-            executionPlan.build(invoices, tableExecutionModel, Collections.emptyList());
-            executionPlan.download(Collections.emptySet());
+        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet());
+        assertRowCounts(rowCounts, invoices, 4);
+        assertRowCounts(rowCounts, invoiceDetails, 7);
+        assertRowCounts(rowCounts, customers, 2);
+        assertRowCounts(rowCounts, products, 3);
+    }
+
+    @Test
+    void testSmallModel() throws IOException {
+        try (Populator populator = LOCAL_CREDENTIALS
+                .populator()
+                .setDirectory(DATASETS_DIRECTORY)
+                .build()) {
+            populator.load("invoices");
         }
+
+        URL url = getClass().getResource("smallTableExecutionModel1.json");
+        TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
+        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet());
+        assertRowCounts(rowCounts, invoices, 4);
+        assertRowCounts(rowCounts, invoiceDetails, null);
+        assertRowCounts(rowCounts, customers, 2);
+        assertRowCounts(rowCounts, products, null);
+    }
+
+    private static void assertRowCounts(Map<TableName, Integer> rowCounts, TableName tableName, Integer expected) {
+        Integer actual = rowCounts.get(tableName);
+        Assertions.assertEquals(expected, actual);
     }
 
     @Test
@@ -87,9 +113,9 @@ class ExecutionPlanTest {
     static void testBadConstraints(@Language("JSON") String json) {
         try {
             TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(json, TableExecutionModel.class);
-            try (ExecutionPlan executionPlan = new ExecutionPlan(database, DATASETS_DIRECTORY, "download")) {
-                Assertions.assertThrows(RuntimeException.class, () -> executionPlan.build(invoices, tableExecutionModel, Collections.emptyList()));
-            }
+            Assertions.assertThrows(RuntimeException.class, () ->
+                    ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet())
+            );
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

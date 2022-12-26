@@ -7,10 +7,7 @@ import org.dandoy.dbpop.database.TableName;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class ExecutionPlan implements AutoCloseable {
     private final Database database;
@@ -18,9 +15,8 @@ public class ExecutionPlan implements AutoCloseable {
     private final String dataset;
     private final Set<TableName> processed = new HashSet<>();
     private final List<ExecutionNode> executionNodes = new ArrayList<>();
-    private TableDownloader tableDownloader;
 
-    public ExecutionPlan(Database database, File datasetsDirectory, String dataset) {
+    private ExecutionPlan(Database database, File datasetsDirectory, String dataset) {
         this.database = database;
         this.datasetsDirectory = datasetsDirectory;
         this.dataset = dataset;
@@ -28,9 +24,7 @@ public class ExecutionPlan implements AutoCloseable {
 
     @Override
     public void close() {
-        flush();
         executionNodes.forEach(ExecutionNode::close);
-        tableDownloader.close();
     }
 
     private void flush() {
@@ -45,11 +39,28 @@ public class ExecutionPlan implements AutoCloseable {
         } while (hasFlushed);
     }
 
-    public void download(Set<List<Object>> pks) {
-        tableDownloader.download(pks);
+    public static Map<TableName, Integer> execute(
+            Database database, File datasetsDirectory, String dataset,
+            @NotNull TableName tableName,
+            @NotNull TableExecutionModel tableExecutionModel,
+            @NotNull List<String> filteredColumns,
+            Set<List<Object>> pks
+    ) {
+        try (ExecutionPlan executionPlan = new ExecutionPlan(database, datasetsDirectory, dataset)) {
+            ExecutionNode executionNode = executionPlan.build(tableName, tableExecutionModel, filteredColumns);
+            executionNode.download(pks);
+            executionPlan.flush();
+            return executionPlan.getRowCounts();
+        }
     }
 
-    public void build(
+    private  Map<TableName, Integer> getRowCounts(){
+        Map<TableName, Integer> ret = new HashMap<>();
+        executionNodes.forEach(executionNode -> ret.put(executionNode.getTableName(), executionNode.getRowCount()));
+        return ret;
+    }
+
+    private ExecutionNode build(
             @NotNull TableName tableName,
             @NotNull TableExecutionModel tableExecutionModel,
             @NotNull List<String> filteredColumns
@@ -57,7 +68,7 @@ public class ExecutionPlan implements AutoCloseable {
         processed.add(tableName);
         Table table = database.getTable(tableName);
 
-        tableDownloader = TableDownloader.builder()
+        TableDownloader tableDownloader = TableDownloader.builder()
                 .setDatabase(database)
                 .setDatasetsDirectory(datasetsDirectory)
                 .setDataset(dataset)
@@ -67,9 +78,11 @@ public class ExecutionPlan implements AutoCloseable {
         List<SelectedColumn> selectedColumns = tableDownloader.getSelectedColumns();
         List<SelectedColumn> filterSelectedColumns = filteredColumns.stream().map(it -> SelectedColumn.findByName(selectedColumns, it)).toList();
         ExecutionNode executionNode = new ExecutionNode(table.tableName(), tableDownloader, filterSelectedColumns);
+        executionNodes.add(executionNode);
         addLookupNodes(tableExecutionModel, executionNode, table);
         addDataNodes(tableExecutionModel, executionNode, table);
         checkConstraintsEmpty(tableExecutionModel, tableName);
+        return executionNode;
     }
 
     private ExecutionNode buildData(TableExecutionModel tableExecutionModel, TableName tableName, List<String> filteredColumns, List<SelectedColumn> pkSelectedColumns) {
