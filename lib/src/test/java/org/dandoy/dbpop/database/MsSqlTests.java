@@ -7,6 +7,8 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
+import static org.dandoy.TestUtils.customers;
+import static org.dandoy.TestUtils.invoices;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -16,8 +18,6 @@ public class MsSqlTests {
         LocalCredentials localCredentials = LocalCredentials.from("mssql");
         try (Connection connection = localCredentials.createConnection()) {
             try (Database database = Database.createDatabase(connection)) {
-                TableName invoices = new TableName("master", "dbo", "invoices");
-                TableName customers = new TableName("master", "dbo", "customers");
                 Table table = database.getTable(invoices);
                 {
                     assertNotNull(table);

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.Database;
-import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.upload.Populator;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.*;
@@ -16,6 +15,8 @@ import java.net.URL;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collections;
+
+import static org.dandoy.TestUtils.invoices;
 
 class ExecutionPlanTest {
 
@@ -58,8 +59,7 @@ class ExecutionPlanTest {
         URL url = getClass().getResource("fullTableExecutionModel1.json");
         TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
         try (ExecutionPlan executionPlan = new ExecutionPlan(database, DATASETS_DIRECTORY, "download")) {
-            TableName tableName = new TableName("master", "dbo", "invoices");
-            executionPlan.build(tableName, tableExecutionModel, Collections.emptyList());
+            executionPlan.build(invoices, tableExecutionModel, Collections.emptyList());
             executionPlan.download(Collections.emptySet());
         }
     }
@@ -88,8 +88,7 @@ class ExecutionPlanTest {
         try {
             TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(json, TableExecutionModel.class);
             try (ExecutionPlan executionPlan = new ExecutionPlan(database, DATASETS_DIRECTORY, "download")) {
-                TableName tableName = new TableName("master", "dbo", "invoices");
-                Assertions.assertThrows(RuntimeException.class, () -> executionPlan.build(tableName, tableExecutionModel, Collections.emptyList()));
+                Assertions.assertThrows(RuntimeException.class, () -> executionPlan.build(invoices, tableExecutionModel, Collections.emptyList()));
             }
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

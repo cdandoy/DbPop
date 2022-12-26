@@ -1,8 +1,9 @@
 package org.dandoy.dbpopd;
 
+import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
-import io.micronaut.http.annotation.QueryValue;
+import io.micronaut.http.annotation.Post;
 import org.dandoy.dbpop.database.*;
 
 import java.sql.Connection;
@@ -42,19 +43,21 @@ public class DatabaseController {
         }
     }
 
-    @Get("dependents")
-    public List<DependentResponse> getDependents(String catalog, String schema, @QueryValue("table") String tableName) throws SQLException {
+    @Post("dependents")
+    public List<DependentResponse> getDependents(@Body List<TableName> tableNames) throws SQLException {
         try (Connection connection = configurationService.createConnection()) {
             try (Database database = Database.createDatabase(connection)) {
-                Table table = database.getTable(new TableName(catalog, schema, tableName));
-                return table.foreignKeys().stream()
-                        .map(ForeignKey::getPkTableName)
-                        .map(pkTableName -> new DependentResponse(
-                                pkTableName.toQualifiedName(),
-                                pkTableName,
-                                false
-                        ))
-                        .toList();
+                TableDependencies tableDependencies = new TableDependencies(database);
+                tableNames.forEach(tableDependencies::findDependencies);
+                return tableDependencies.getDependencies().stream()
+                        .map(tableDependency -> {
+                            TableName tableName = tableDependency.tableName();
+                            return new DependentResponse(
+                                    tableName.toQualifiedName(),
+                                    tableName,
+                                    tableDependency.optional()
+                            );
+                        }).toList();
             }
         }
     }

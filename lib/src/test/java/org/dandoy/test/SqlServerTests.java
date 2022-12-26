@@ -22,6 +22,7 @@ import java.nio.file.Paths;
 import java.sql.*;
 import java.util.List;
 
+import static org.dandoy.TestUtils.customers;
 import static org.junit.jupiter.api.Assertions.*;
 
 @EnabledIf("org.dandoy.TestUtils#hasSqlServer")
@@ -293,7 +294,7 @@ public class SqlServerTests {
                         .setDatabase(database)
                         .setDatasetsDirectory(dir)
                         .setDataset("base")
-                        .setTableName(new TableName("master", "dbo", "customers"))
+                        .setTableName(customers)
                         .build()) {
                     tableDownloader.download();
                 }
@@ -310,7 +311,7 @@ public class SqlServerTests {
                         .setDatabase(database)
                         .setDatasetsDirectory(dir)
                         .setDataset("base")
-                        .setTableName(new TableName("master", "dbo", "customers"))
+                        .setTableName(customers)
                         .build()) {
                     // This is supposed to only download the new customer
                     tableDownloader.download();

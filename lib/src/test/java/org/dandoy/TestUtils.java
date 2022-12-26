@@ -1,6 +1,7 @@
 package org.dandoy;
 
 import org.apache.commons.io.IOUtils;
+import org.dandoy.dbpop.database.TableName;
 import org.dandoy.test.SqlServerTests;
 
 import java.io.*;
@@ -10,6 +11,11 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public class TestUtils {
+    public static final TableName invoices = new TableName("master", "dbo", "invoices");
+    public static final TableName invoiceDetails = new TableName("master", "dbo", "invoice_details");
+    public static final TableName customers = new TableName("master", "dbo", "customers");
+    public static final TableName products = new TableName("master", "dbo", "products");
+
     public static boolean hasSqlServer() {
         return LocalCredentials.from("mssql").dbUrl() != null;
     }

@@ -4,7 +4,6 @@ import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Table;
-import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -14,6 +13,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
+
+import static org.dandoy.TestUtils.invoiceDetails;
+import static org.dandoy.TestUtils.invoices;
 
 @EnabledIf("org.dandoy.TestUtils#hasSqlServer")
 class TableDownloaderTest {
@@ -34,13 +36,12 @@ class TableDownloaderTest {
         try (Connection connection = localCredentials.createConnection()) {
             Database database = Database.createDatabase(connection);
             String dataset = "download";
-            TableName tableName = new TableName("master", "dbo", "invoices");
-            Table table = database.getTable(tableName);
+            Table table = database.getTable(invoices);
             try (TableDownloader tableDownloader = TableDownloader.builder()
                     .setDatabase(database)
                     .setDatasetsDirectory(datasetsDirectory)
                     .setDataset(dataset)
-                    .setTableName(tableName)
+                    .setTableName(invoices)
                     .setFilteredColumns(table.primaryKey().columns())
                     .build()) {
 
@@ -66,8 +67,6 @@ class TableDownloaderTest {
         try (Connection connection = localCredentials.createConnection()) {
             Database database = Database.createDatabase(connection);
             String dataset = "download";
-            TableName invoices = new TableName("master", "dbo", "invoices");
-            TableName invoiceDetails = new TableName("master", "dbo", "invoice_details");
             Table table = database.getTable(invoiceDetails);
             List<String> fkColumns = table.foreignKeys().stream()
                     .filter(it -> it.getPkTableName().equals(invoices)).findFirst().orElseThrow()
@@ -107,7 +106,7 @@ class TableDownloaderTest {
                     .setDatabase(database)
                     .setDatasetsDirectory(datasetsDirectory)
                     .setDataset(dataset)
-                    .setTableName(new TableName("master", "dbo", "invoices"))
+                    .setTableName(invoices)
                     .build()) {
                 tableDownloader.download();
             }
