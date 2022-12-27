@@ -43,6 +43,7 @@ class TableDownloaderTest {
                     .setDataset(dataset)
                     .setTableName(invoices)
                     .setFilteredColumns(table.primaryKey().columns())
+                    .setExecutionMode(ExecutionMode.SAVE)
                     .build()) {
 
                 Set<List<Object>> pks = Set.of(List.of(1001), List.of(1002));
@@ -77,6 +78,7 @@ class TableDownloaderTest {
                     .setDataset(dataset)
                     .setTableName(invoiceDetails)
                     .setFilteredColumns(fkColumns)
+                    .setExecutionMode(ExecutionMode.SAVE)
                     .build()) {
 
                 Set<List<Object>> pks = Set.of(List.of(1001), List.of(1002));

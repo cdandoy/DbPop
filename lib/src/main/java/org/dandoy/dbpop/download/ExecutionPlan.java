@@ -13,13 +13,15 @@ public class ExecutionPlan implements AutoCloseable {
     private final Database database;
     private final File datasetsDirectory;
     private final String dataset;
+    private final ExecutionMode executionMode;
     private final Set<TableName> processed = new HashSet<>();
     private final List<ExecutionNode> executionNodes = new ArrayList<>();
 
-    private ExecutionPlan(Database database, File datasetsDirectory, String dataset) {
+    private ExecutionPlan(Database database, File datasetsDirectory, String dataset, ExecutionMode executionMode) {
         this.database = database;
         this.datasetsDirectory = datasetsDirectory;
         this.dataset = dataset;
+        this.executionMode = executionMode;
     }
 
     @Override
@@ -46,9 +48,10 @@ public class ExecutionPlan implements AutoCloseable {
             @NotNull TableName tableName,
             @NotNull TableExecutionModel tableExecutionModel,
             @NotNull List<String> filteredColumns,
-            @NotNull Set<List<Object>> pks
+            @NotNull Set<List<Object>> pks,
+            @NotNull ExecutionMode executionMode
     ) {
-        try (ExecutionPlan executionPlan = new ExecutionPlan(database, datasetsDirectory, dataset)) {
+        try (ExecutionPlan executionPlan = new ExecutionPlan(database, datasetsDirectory, dataset, executionMode)) {
             ExecutionNode executionNode = executionPlan.build(tableName, tableExecutionModel, filteredColumns);
             executionNode.download(pks);
             executionPlan.flush();
@@ -76,6 +79,7 @@ public class ExecutionPlan implements AutoCloseable {
                 .setDataset(dataset)
                 .setTableName(table.tableName())
                 .setFilteredColumns(filteredColumns)
+                .setExecutionMode(executionMode)
                 .build();
         List<SelectedColumn> selectedColumns = tableDownloader.getSelectedColumns();
         List<SelectedColumn> filterSelectedColumns = filteredColumns.stream().map(it -> SelectedColumn.findByName(selectedColumns, it)).toList();
@@ -160,6 +164,7 @@ public class ExecutionPlan implements AutoCloseable {
                 .setDataset(dataset)
                 .setTableName(table.tableName())
                 .setFilteredColumns(filteredColumns)
+                .setExecutionMode(executionMode)
                 .build();
         ExecutionNode executionNode = new ExecutionNode(table.tableName(), tableDownloader, extractSelectedColumns);
         executionNodes.add(executionNode);

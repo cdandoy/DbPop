@@ -8,6 +8,7 @@ import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.datasets.Datasets;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,20 +29,20 @@ public class TableDownloader implements AutoCloseable {
     @Getter
     private int rowCount;
 
-    private TableDownloader(TableName tableName, OutputFile outputFile, TablePrimaryKeys tablePrimaryKeys, TableFetcher tableFetcher, List<SelectedColumn> selectedColumns) {
+    private TableDownloader(TableName tableName, TablePrimaryKeys tablePrimaryKeys, TableFetcher tableFetcher, List<SelectedColumn> selectedColumns, @Nullable DeferredCsvPrinter csvPrinter) {
         this.tableName = tableName;
         this.tablePrimaryKeys = tablePrimaryKeys;
         this.tableFetcher = tableFetcher;
         this.selectedColumns = selectedColumns;
-        this.csvPrinter = outputFile.createCsvPrinter();
-        consumers.add(this::consumeResultSet);
+        this.csvPrinter = csvPrinter;
+        this.consumers.add(this::consumeResultSet);
     }
 
     public static Builder builder() {
         return new Builder();
     }
 
-    private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, List<String> filteredColumns, boolean forceEmpty) {
+    private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, List<String> filteredColumns, boolean forceEmpty, ExecutionMode executionMode) {
         Table table = database.getTable(tableName);
         TableFetcher tableFetcher = TableFetcher.createTableFetcher(database, table, filteredColumns);
         List<SelectedColumn> selectedColumns = tableFetcher.getSelectedColumns();
@@ -54,7 +55,12 @@ public class TableDownloader implements AutoCloseable {
             selectedColumns = filterSelectedColumns(selectedColumns, outputFile.getHeaders());
         }
 
-        return new TableDownloader(tableName, outputFile, tablePrimaryKeys, tableFetcher, selectedColumns);
+        DeferredCsvPrinter csvPrinter = null;
+        if (executionMode == ExecutionMode.SAVE) {
+            csvPrinter = outputFile.createCsvPrinter();
+        }
+
+        return new TableDownloader(tableName, tablePrimaryKeys, tableFetcher, selectedColumns, csvPrinter);
     }
 
     private static List<SelectedColumn> filterSelectedColumns(List<SelectedColumn> selectedColumns, List<String> headers) {
@@ -74,7 +80,7 @@ public class TableDownloader implements AutoCloseable {
 
     @Override
     public void close() {
-        csvPrinter.close();
+        if (csvPrinter != null) csvPrinter.close();
         tableFetcher.close();
     }
 
@@ -108,7 +114,6 @@ public class TableDownloader implements AutoCloseable {
     }
 
     private void dispatchResultSet(ResultSet resultSet) {
-        rowCount++;
         for (Consumer<ResultSet> consumer : consumers) {
             consumer.accept(resultSet);
         }
@@ -121,29 +126,32 @@ public class TableDownloader implements AutoCloseable {
         }
 
         log.debug("{} prints a row", tableName);
+        rowCount++;
 
-        try {
-            for (SelectedColumn selectedColumn : selectedColumns) {
-                if (selectedColumn != null) {
-                    Integer integer = selectedColumn.columnType().toSqlType();
-                    String columnName = selectedColumn.name();
-                    int jdbcPos = selectedColumn.jdbcPos();
-                    if (integer == Types.CLOB) {
-                        downloadClob(resultSet, csvPrinter, columnName, jdbcPos);
-                    } else if (integer == Types.BLOB) {
-                        downloadBlob(resultSet, csvPrinter, columnName, jdbcPos);
-                    } else if (selectedColumn.binary()) {
-                        downloadBinary(resultSet, csvPrinter, columnName, jdbcPos);
+        if (csvPrinter != null) {
+            try {
+                for (SelectedColumn selectedColumn : selectedColumns) {
+                    if (selectedColumn != null) {
+                        Integer integer = selectedColumn.columnType().toSqlType();
+                        String columnName = selectedColumn.name();
+                        int jdbcPos = selectedColumn.jdbcPos();
+                        if (integer == Types.CLOB) {
+                            downloadClob(resultSet, csvPrinter, columnName, jdbcPos);
+                        } else if (integer == Types.BLOB) {
+                            downloadBlob(resultSet, csvPrinter, columnName, jdbcPos);
+                        } else if (selectedColumn.binary()) {
+                            downloadBinary(resultSet, csvPrinter, columnName, jdbcPos);
+                        } else {
+                            downloadString(resultSet, csvPrinter, columnName, jdbcPos);
+                        }
                     } else {
-                        downloadString(resultSet, csvPrinter, columnName, jdbcPos);
+                        csvPrinter.print(null);
                     }
-                } else {
-                    csvPrinter.print(null);
                 }
+                csvPrinter.println();
+            } catch (SQLException | IOException e) {
+                throw new RuntimeException(e);
             }
-            csvPrinter.println();
-        } catch (SQLException | IOException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -240,6 +248,7 @@ public class TableDownloader implements AutoCloseable {
         private File datasetsDirectory;
         private String dataset;
         private TableName tableName;
+        private ExecutionMode executionMode=ExecutionMode.SAVE;
         private List<String> filteredColumns = Collections.emptyList();
 
         public TableDownloader build() {
@@ -252,7 +261,7 @@ public class TableDownloader implements AutoCloseable {
             // Having an empty CSV file in /static/ or /base/ will make sure the table is deleted
             // However, we do not want to have empty CSV files in other dataset directories
             boolean forceEmpty = dataset.equals(Datasets.STATIC) || dataset.equals(Datasets.BASE);
-            return createTableDownloader(database, datasetsDirectory, dataset, tableName, filteredColumns, forceEmpty);
+            return createTableDownloader(database, datasetsDirectory, dataset, tableName, filteredColumns, forceEmpty, executionMode);
         }
     }
 }

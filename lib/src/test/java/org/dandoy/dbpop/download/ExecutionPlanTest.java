@@ -60,11 +60,11 @@ class ExecutionPlanTest {
 
         URL url = getClass().getResource("fullTableExecutionModel1.json");
         TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
-        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet());
+        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE);
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, 7);
-        assertRowCounts(rowCounts, customers, 2);
-        assertRowCounts(rowCounts, products, 3);
+        assertRowCounts(rowCounts, customers, 0);
+        assertRowCounts(rowCounts, products, 0);
     }
 
     @Test
@@ -78,10 +78,10 @@ class ExecutionPlanTest {
 
         URL url = getClass().getResource("smallTableExecutionModel1.json");
         TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
-        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet());
+        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE);
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, null);
-        assertRowCounts(rowCounts, customers, 2);
+        assertRowCounts(rowCounts, customers, 0);
         assertRowCounts(rowCounts, products, null);
     }
 
@@ -114,7 +114,7 @@ class ExecutionPlanTest {
         try {
             TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(json, TableExecutionModel.class);
             Assertions.assertThrows(RuntimeException.class, () ->
-                    ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet())
+                    ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE)
             );
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

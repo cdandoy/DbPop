@@ -32,6 +32,7 @@ public class ExecutionNode implements Consumer<ResultSet>, AutoCloseable {
         return "ExecutionNode{" +
                "tableName=" + tableName +
                ";buffered=" + keys.size() +
+               ";rowCount=" + tableDownloader.getRowCount() +
                '}';
     }
 
