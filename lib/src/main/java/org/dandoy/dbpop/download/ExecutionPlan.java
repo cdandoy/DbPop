@@ -5,6 +5,7 @@ import org.dandoy.dbpop.database.ForeignKey;
 import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.*;
@@ -55,9 +56,9 @@ public class ExecutionPlan implements AutoCloseable {
             @NotNull List<String> filteredColumns,
             @NotNull Set<List<Object>> pks,
             @NotNull ExecutionMode executionMode,
-            int rowCountLimit
+            @Nullable Integer rowCountLimit
     ) {
-        ExecutionContext executionContext = new ExecutionContext(rowCountLimit);
+        ExecutionContext executionContext = new ExecutionContext(rowCountLimit == null ? Integer.MAX_VALUE : rowCountLimit);
         try (ExecutionPlan executionPlan = new ExecutionPlan(database, datasetsDirectory, dataset, executionMode, executionContext)) {
             ExecutionNode executionNode = executionPlan.build(tableName, tableExecutionModel, filteredColumns);
             executionNode.download(pks);
