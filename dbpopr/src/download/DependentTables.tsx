@@ -17,7 +17,7 @@ export function DependentTables({rootTable, selectedDependentTables, setSelected
     const [dependentResults, setDependentResults] = useState<DependentResult[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
-    // tableSelections:         The root table
+    // rootTable:               The root table
     // dependentResults:        Tables that depend on the root table + the checked tables
     // selectedDependentTables: dependent tables with a checkbox checked
 
@@ -66,7 +66,6 @@ export function DependentTables({rootTable, selectedDependentTables, setSelected
                                            checked={selectedDependentTables.includes(dependentResult.displayName)}
                                            disabled={loading}
                                            onChange={e => {
-                                               console.log('onChange')
                                                if (e.target.checked) {
                                                    setSelectedDependentTables([...selectedDependentTables, dependentResult.displayName]);
                                                } else {

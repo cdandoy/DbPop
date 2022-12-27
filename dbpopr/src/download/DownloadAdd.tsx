@@ -2,6 +2,9 @@ import React, {useState} from "react";
 import {NavLink, useParams} from "react-router-dom";
 import {SearchTableResult, SelectTable} from "./SelectTable";
 import {DependentTables} from "./DependentTables";
+import FilterTable from "./FilterTable";
+import FilterForm from "./FilterForm";
+import RowCounts from "./RowCounts";
 
 export default function DownloadAdd() {
     const routeParams = useParams();
@@ -9,10 +12,10 @@ export default function DownloadAdd() {
     const [tableSelections, setTableSelections] = useState<SearchTableResult[]>([]);
     const [selectedDependentTables, setSelectedDependentTables] = useState<string[]>([])
     const [queryValues, setQueryValues] = useState<any>({})
+    const filterMode: string = "F"; // Filter using FilterTable (T) or FilterForm (F)
 
-    function whenSearchSubmitted(e: any) {
-        e.preventDefault();
-        console.log('HELO')
+    function whenSearchSubmitted() {
+        console.log('HELO');
     }
 
     return (
@@ -39,67 +42,20 @@ export default function DownloadAdd() {
                                  setSelectedDependentTables={setSelectedDependentTables}/>
             </div>
 
-            {/*HTML Table*/}
-            {tableSelections.length > 0 &&
-                <form onSubmit={whenSearchSubmitted}>
-                    <table className="table table-hover">
-                        {/*Column Names*/}
-                        {tableSelections.map(tableSelection => {
-                            const searchables = tableSelection.searches.map(search => {
-                                return search.columns[0]
-                            });
-                            return (
-                                <thead key={1}>
-                                <tr>
-                                    {tableSelection.columns.map(column => {
-                                        return (
-                                            <th key={column}>
-                                                {column}
-                                                {searchables.includes(column) && (
-                                                    <>
-                                                        &nbsp;
-                                                        <i className={"fa fa-key fa-xs"} style={{opacity: .6}}/>
-                                                    </>
-                                                )}
-                                            </th>
-                                        )
-                                    })}
-                                    <th></th>
-                                </tr>
-                                </thead>
-                            )
-                        })}
-                        {/*Filters*/}
-                        {tableSelections.map(tableSelection => (
-                            <thead key={1}>
-                            <tr>
-                                {tableSelection.columns.map((column) => {
-                                    return (
-                                        <td key={column}>
-                                            <input type={"text"}
-                                                   style={{width: "100%"}}
-                                                   onChange={e => {
-                                                       const clone = structuredClone(queryValues);
-                                                       clone[column] = e.target.value;
-                                                       setQueryValues(clone);
-                                                   }}
-                                            />
-                                        </td>
-                                    )
-                                })}
-                                <td>
-                                    <button type='submit' className={"btn btn-sm btn-primary"}>
-                                        <i className={"fa fa-search"}/>
-                                    </button>
-                                </td>
-                            </tr>
-                            </thead>
-                        ))}
-                    </table>
-                    {/*Debug query*/}
-                    {Object.keys(queryValues).map(column => <div key={column}>{column} = {queryValues[column]}</div>)}
-                </form>
-            }
+            {/*Filter*/}
+            {filterMode == "T" && <FilterTable rootTable={tableSelections.length > 0 ? tableSelections[0] : null}
+                                               queryValues={queryValues}
+                                               setQueryValues={setQueryValues}
+                                               whenSearchSubmitted={whenSearchSubmitted}
+            />}
+            {filterMode == "F" && <FilterForm rootTable={tableSelections.length > 0 ? tableSelections[0] : null}
+                                               queryValues={queryValues}
+                                               setQueryValues={setQueryValues}
+                                               whenSearchSubmitted={whenSearchSubmitted}
+            />}
+
+            {/*Row Counts*/}
+            <RowCounts/>
         </div>
     )
 }
