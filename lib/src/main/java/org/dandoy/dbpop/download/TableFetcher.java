@@ -6,7 +6,7 @@ import org.dandoy.dbpop.database.Table;
 
 import java.sql.*;
 import java.util.*;
-import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -58,7 +58,7 @@ public class TableFetcher implements AutoCloseable {
         }
     }
 
-    public void execute(Set<List<Object>> pks, Consumer<ResultSet> consumer) {
+    public void execute(Set<List<Object>> pks, Predicate<ResultSet> predicate) {
         try {
             if (!pks.isEmpty()) {
                 List<List<Object>> pks2 = new LinkedList<>(pks);
@@ -66,10 +66,10 @@ public class TableFetcher implements AutoCloseable {
                     int split = Math.min(batchSize, pks2.size());
                     List<List<Object>> todo = pks2.subList(0, split);
                     pks2 = pks2.subList(split, pks2.size());
-                    executeSublist(todo, consumer);
+                    executeSublist(todo, predicate);
                 }
             } else {
-                executeSublist(Collections.emptyList(), consumer);
+                executeSublist(Collections.emptyList(), predicate);
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -90,13 +90,15 @@ public class TableFetcher implements AutoCloseable {
         }
     }
 
-    private void executeSublist(List<List<Object>> pks, Consumer<ResultSet> consumer) throws SQLException {
+    private void executeSublist(List<List<Object>> pks, Predicate<ResultSet> consumer) throws SQLException {
         if (!pks.isEmpty()) {
             bind(pks);
         }
         try (ResultSet resultSet = preparedStatement.executeQuery()) {
             while (resultSet.next()) {
-                consumer.accept(resultSet);
+                if (!consumer.test(resultSet)) {
+                    break;
+                }
             }
         }
     }

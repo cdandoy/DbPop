@@ -42,6 +42,12 @@ class ExecutionPlanTest {
     @BeforeEach
     void setUp() {
         TestUtils.delete(new File(DATASETS_DIRECTORY, "download"));
+        try (Populator populator = LOCAL_CREDENTIALS
+                .populator()
+                .setDirectory(DATASETS_DIRECTORY)
+                .build()) {
+            populator.load("invoices");
+        }
     }
 
     @AfterEach
@@ -51,38 +57,48 @@ class ExecutionPlanTest {
 
     @Test
     void testFullModel() throws IOException {
-        try (Populator populator = LOCAL_CREDENTIALS
-                .populator()
-                .setDirectory(DATASETS_DIRECTORY)
-                .build()) {
-            populator.load("invoices");
-        }
-
         URL url = getClass().getResource("fullTableExecutionModel1.json");
         TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
-        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE);
+        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, Integer.MAX_VALUE);
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, 7);
-        assertRowCounts(rowCounts, customers, 0);
-        assertRowCounts(rowCounts, products, 0);
+        assertRowCounts(rowCounts, customers, null);
+        assertRowCounts(rowCounts, products, null);
+    }
+
+    @Test
+    void testRowCountLimit() throws IOException {
+        URL url = getClass().getResource("fullTableExecutionModel1.json");
+        TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
+        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, 3);
+        assertRowCounts(rowCounts, invoices, 3);
+        assertRowCounts(rowCounts, invoiceDetails, null);
+        assertRowCounts(rowCounts, customers, null);
+        assertRowCounts(rowCounts, products, null);
     }
 
     @Test
     void testSmallModel() throws IOException {
-        try (Populator populator = LOCAL_CREDENTIALS
-                .populator()
-                .setDirectory(DATASETS_DIRECTORY)
-                .build()) {
-            populator.load("invoices");
-        }
-
         URL url = getClass().getResource("smallTableExecutionModel1.json");
         TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
-        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE);
+        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, Integer.MAX_VALUE);
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, null);
-        assertRowCounts(rowCounts, customers, 0);
+        assertRowCounts(rowCounts, customers, null);
         assertRowCounts(rowCounts, products, null);
+        Assertions.assertTrue(new File(DATASETS_DIRECTORY, "download/master/dbo/invoices.csv").exists());
+    }
+
+    @Test
+    void testCountSmallModel() throws IOException {
+        URL url = getClass().getResource("smallTableExecutionModel1.json");
+        TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
+        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.COUNT, Integer.MAX_VALUE);
+        assertRowCounts(rowCounts, invoices, 4);
+        assertRowCounts(rowCounts, invoiceDetails, null);
+        assertRowCounts(rowCounts, customers, null);
+        assertRowCounts(rowCounts, products, null);
+        Assertions.assertFalse(new File(DATASETS_DIRECTORY, "download/master/dbo/invoices.csv").exists());
     }
 
     private static void assertRowCounts(Map<TableName, Integer> rowCounts, TableName tableName, Integer expected) {
@@ -114,7 +130,7 @@ class ExecutionPlanTest {
         try {
             TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(json, TableExecutionModel.class);
             Assertions.assertThrows(RuntimeException.class, () ->
-                    ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE)
+                    ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, Integer.MAX_VALUE)
             );
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

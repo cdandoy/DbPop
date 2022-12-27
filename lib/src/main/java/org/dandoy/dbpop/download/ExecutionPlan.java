@@ -14,14 +14,16 @@ public class ExecutionPlan implements AutoCloseable {
     private final File datasetsDirectory;
     private final String dataset;
     private final ExecutionMode executionMode;
+    private final ExecutionContext executionContext;
     private final Set<TableName> processed = new HashSet<>();
     private final List<ExecutionNode> executionNodes = new ArrayList<>();
 
-    private ExecutionPlan(Database database, File datasetsDirectory, String dataset, ExecutionMode executionMode) {
+    private ExecutionPlan(Database database, File datasetsDirectory, String dataset, ExecutionMode executionMode, ExecutionContext executionContext) {
         this.database = database;
         this.datasetsDirectory = datasetsDirectory;
         this.dataset = dataset;
         this.executionMode = executionMode;
+        this.executionContext = executionContext;
     }
 
     @Override
@@ -29,12 +31,15 @@ public class ExecutionPlan implements AutoCloseable {
         executionNodes.forEach(ExecutionNode::close);
     }
 
-    private void flush() {
+    private void flush(ExecutionContext executionContext) {
         boolean hasFlushed;
         do {
             hasFlushed = false;
             for (ExecutionNode executionNode : executionNodes) {
                 if (executionNode.flush()) {
+                    if (!executionContext.keepRunning()) {
+                        return;
+                    }
                     hasFlushed = true;
                 }
             }
@@ -49,20 +54,16 @@ public class ExecutionPlan implements AutoCloseable {
             @NotNull TableExecutionModel tableExecutionModel,
             @NotNull List<String> filteredColumns,
             @NotNull Set<List<Object>> pks,
-            @NotNull ExecutionMode executionMode
+            @NotNull ExecutionMode executionMode,
+            int rowCountLimit
     ) {
-        try (ExecutionPlan executionPlan = new ExecutionPlan(database, datasetsDirectory, dataset, executionMode)) {
+        ExecutionContext executionContext = new ExecutionContext(rowCountLimit);
+        try (ExecutionPlan executionPlan = new ExecutionPlan(database, datasetsDirectory, dataset, executionMode, executionContext)) {
             ExecutionNode executionNode = executionPlan.build(tableName, tableExecutionModel, filteredColumns);
             executionNode.download(pks);
-            executionPlan.flush();
-            return executionPlan.getRowCounts();
+            executionPlan.flush(executionContext);
+            return executionContext.getRowCounts();
         }
-    }
-
-    private Map<TableName, Integer> getRowCounts() {
-        Map<TableName, Integer> ret = new HashMap<>();
-        executionNodes.forEach(executionNode -> ret.put(executionNode.getTableName(), executionNode.getRowCount()));
-        return ret;
     }
 
     private ExecutionNode build(
@@ -80,6 +81,7 @@ public class ExecutionPlan implements AutoCloseable {
                 .setTableName(table.tableName())
                 .setFilteredColumns(filteredColumns)
                 .setExecutionMode(executionMode)
+                .setExecutionContext(executionContext)
                 .build();
         List<SelectedColumn> selectedColumns = tableDownloader.getSelectedColumns();
         List<SelectedColumn> filterSelectedColumns = filteredColumns.stream().map(it -> SelectedColumn.findByName(selectedColumns, it)).toList();
@@ -165,6 +167,7 @@ public class ExecutionPlan implements AutoCloseable {
                 .setTableName(table.tableName())
                 .setFilteredColumns(filteredColumns)
                 .setExecutionMode(executionMode)
+                .setExecutionContext(executionContext)
                 .build();
         ExecutionNode executionNode = new ExecutionNode(table.tableName(), tableDownloader, extractSelectedColumns);
         executionNodes.add(executionNode);
