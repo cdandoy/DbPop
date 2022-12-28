@@ -62,12 +62,10 @@ public class DatabaseController {
         }
     }
 
-    public record SearchTableSearchByResponse(String displayName, List<String> columns) {
-    }
+    public record SearchTableSearchByResponse(String displayName, List<String> columns) {}
 
-    public record SearchTableResponse(String displayName, TableName tableName, List<String> columns, List<SearchTableSearchByResponse> searches) {
-    }
+    public record SearchTableResponse(String displayName, TableName tableName, List<String> columns, List<SearchTableSearchByResponse> searches) {}
 
-    public record DependentResponse(String displayName, TableName tableName, boolean optional) {
-    }
+    public record DependentResponse(String displayName, TableName tableName, boolean optional) {}
+
 }
