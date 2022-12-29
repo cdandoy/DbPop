@@ -21,3 +21,16 @@ GET http://localhost:8080/datasets/content/static
 ###
 GET http://localhost:8080/database/dependents?catalog=master&schema=dbo&table=invoices
 
+###
+POST http://localhost:8080/database/dependencies
+Content-Type: application/json
+
+{
+  "tableName" : {
+    "catalog" : "master",
+    "schema" : "advanced",
+    "table" : "invoices"
+  },
+  "selected" : true,
+  "mandatory" : true
+}

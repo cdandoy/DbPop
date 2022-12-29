@@ -43,21 +43,11 @@ public class DatabaseController {
         }
     }
 
-    @Post("dependents")
-    public List<DependentResponse> getDependents(@Body List<TableName> tableNames) throws SQLException {
+    @Post("dependencies")
+    public Dependency getDependents(@Body Dependency dependency) throws SQLException {
         try (Connection connection = configurationService.createConnection()) {
             try (Database database = Database.createDatabase(connection)) {
-                TableDependencies tableDependencies = new TableDependencies(database);
-                tableNames.forEach(tableDependencies::findDependencies);
-                return tableDependencies.getDependencies().stream()
-                        .map(tableDependency -> {
-                            TableName tableName = tableDependency.tableName();
-                            return new DependentResponse(
-                                    tableName.toQualifiedName(),
-                                    tableName,
-                                    tableDependency.optional()
-                            );
-                        }).toList();
+                return DependencyCalculator.calculateDependencies(database, dependency);
             }
         }
     }
@@ -65,7 +55,4 @@ public class DatabaseController {
     public record SearchTableSearchByResponse(String displayName, List<String> columns) {}
 
     public record SearchTableResponse(String displayName, TableName tableName, List<String> columns, List<SearchTableSearchByResponse> searches) {}
-
-    public record DependentResponse(String displayName, TableName tableName, boolean optional) {}
-
 }

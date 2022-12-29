@@ -19,8 +19,8 @@ public class DependencyCalculator {
     private Dependency calculateDependencies(Dependency dependency) {
         Dependency ret = Dependency.mutableCopy(dependency);
 
-        if (dependency.selected()) {
-            Table table = database.getTable(dependency.tableName());
+        if (dependency.isSelected()) {
+            Table table = database.getTable(dependency.getTableName());
 
             // If we are on invoices, look for customers
             for (ForeignKey foreignKey : table.foreignKeys()) {
@@ -30,19 +30,19 @@ public class DependencyCalculator {
                             .getSubDependencyByConstraint(constraintName)
                             .orElseGet(() -> Dependency.placeHolder(foreignKey.getPkTableName(), constraintName, true));
                     Dependency retSubDependency = calculateDependencies(subDependency);
-                    ret.subDependencies().add(retSubDependency);
+                    ret.getSubDependencies().add(retSubDependency);
                 }
             }
 
             // If we are on invoices, look for invoice_details
-            for (ForeignKey foreignKey : database.getRelatedForeignKeys(dependency.tableName())) {
+            for (ForeignKey foreignKey : database.getRelatedForeignKeys(dependency.getTableName())) {
                 String constraintName = foreignKey.getName();
                 if (processedConstraints.add(constraintName)) {
                     Dependency subDependency = dependency
                             .getSubDependencyByConstraint(constraintName)
                             .orElseGet(() -> Dependency.placeHolder(foreignKey.getFkTableName(), constraintName, false));
                     Dependency retSubDependency = calculateDependencies(subDependency);
-                    ret.subDependencies().add(retSubDependency);
+                    ret.getSubDependencies().add(retSubDependency);
                 }
             }
         }

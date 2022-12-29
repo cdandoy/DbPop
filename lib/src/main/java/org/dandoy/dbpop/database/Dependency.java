@@ -1,19 +1,46 @@
 package org.dandoy.dbpop.database;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static java.util.Collections.emptyList;
 
-public record Dependency(TableName tableName, String constraintName, List<Dependency> subDependencies, boolean selected, boolean mandatory) {
+@Getter
+public final class Dependency {
+    private final String displayName;
+    private final TableName tableName;
+    private final String constraintName;
+    private final List<Dependency> subDependencies;
+    private final boolean selected;
+    private final boolean mandatory;
+
+    @JsonCreator
+    public Dependency(
+            @JsonProperty("tableName") TableName tableName,
+            @JsonProperty("constraintName") String constraintName,
+            @JsonProperty("subDependencies") List<Dependency> subDependencies,
+            @JsonProperty("selected") boolean selected,
+            @JsonProperty("mandatory") boolean mandatory
+    ) {
+        displayName = tableName.toQualifiedName();
+        this.tableName = tableName;
+        this.constraintName = constraintName;
+        this.subDependencies = subDependencies == null ? emptyList() : subDependencies;
+        this.selected = selected;
+        this.mandatory = mandatory;
+    }
 
     public static Dependency root(TableName tableName) {
         return new Dependency(tableName, null, emptyList(), true, true);
     }
 
     public static Dependency mutableCopy(Dependency that) {
-        return new Dependency(that.tableName, that.constraintName(), new ArrayList<>(), that.selected, that.mandatory);
+        return new Dependency(that.tableName, that.getConstraintName(), new ArrayList<>(), that.selected, that.mandatory);
     }
 
     public static Dependency placeHolder(TableName tableName, String constraintName, boolean mandatory) {

@@ -1,20 +1,15 @@
 import {SearchTableResult} from "./SelectTable";
 import React, {useEffect, useState} from "react";
-import axios from "axios";
-import {TableName} from "../models/TableName";
+import axios, {AxiosResponse} from "axios";
+import {Dependency} from "./Dependency";
 
-interface DependentResult {
-    displayName: string;
-    tableName: TableName;
-    optional: boolean;
-}
-
-export function DependentTables({rootTable, selectedDependentTables, setSelectedDependentTables}: {
+export function DependentTables({rootTable, changeNumber, setChangeNumber, dependency, setDependency}: {
     rootTable: SearchTableResult | null,
-    selectedDependentTables: string[],
-    setSelectedDependentTables: ((s: string[]) => void),
+    changeNumber: number,
+    setChangeNumber: ((i: number) => void),
+    dependency: Dependency | null,
+    setDependency: ((d: Dependency | null) => void),
 }) {
-    const [dependentResults, setDependentResults] = useState<DependentResult[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
     // rootTable:               The root table
@@ -24,63 +19,62 @@ export function DependentTables({rootTable, selectedDependentTables, setSelected
     useEffect(() => {
         if (rootTable != null) {
             setLoading(true);
-            let queryTableNames = dependentResults
-                .filter(it => selectedDependentTables.includes(it.displayName))
-                .map(it => it.tableName);
-            queryTableNames.splice(0, 0, rootTable.tableName)
-            axios.post<DependentResult[]>(`/database/dependents`, queryTableNames)
+            axios.post<Dependency, AxiosResponse<Dependency>>(`/database/dependencies`, dependency)
                 .then((result) => {
                     setLoading(false);
-                    let filtered = result.data.filter(it => it.displayName !== rootTable.displayName);
-                    setDependentResults(filtered);
+                    setDependency(result.data);
                 });
         }
-    }, [rootTable, selectedDependentTables]);
+    }, [rootTable, changeNumber]);
+
+    function drawDependencies(dependency: Dependency) {
+        return (
+            <>
+                {dependency.subDependencies != null && dependency.subDependencies.map(it => (
+                    <div key={it.constraintName} style={{marginLeft: "1em"}}>
+                        {/*Disabled - Lookups*/}
+                        {it.mandatory && (
+                            <div className="form-check">
+                                <input className="form-check-input"
+                                       type="checkbox"
+                                       id={`dependent-${it.constraintName}`}
+                                       checked={true}
+                                       disabled/>
+                                <label className="form-check-label" htmlFor={`dependent-${it.constraintName}`}>
+                                    {it.displayName}
+                                </label>
+                            </div>
+                        )}
+                        {/*Enabled - Data*/}
+                        {it.mandatory || (
+                            <div key={it.constraintName} className="form-check">
+                                <input className="form-check-input"
+                                       type="checkbox"
+                                       id={`dependent-${it.constraintName}`}
+                                       checked={it.selected}
+                                       disabled={loading}
+                                       onChange={e => {
+                                           it.selected = e.target.checked;
+                                           setChangeNumber(changeNumber + 1);
+                                       }}
+                                />
+                                <label className="form-check-label" htmlFor={`dependent-${it.constraintName}`}>
+                                    {it.displayName}
+                                </label>
+                            </div>
+                        )}
+                        {drawDependencies(it)}
+                    </div>
+                ))}
+            </>
+        )
+    }
 
     return (
         <>
             <div>
-                {dependentResults
-                    .sort((a, b) => (b.optional ? 1 : 0) - (a.optional ? 1 : 0))
-                    .map(dependentResult => (
-                        <div key={dependentResult.displayName}>
-                            {/*Disabled - Lookups*/}
-                            {dependentResult.optional || (
-                                <div className="form-check">
-                                    <input className="form-check-input"
-                                           type="checkbox"
-                                           id={`dependent-${dependentResult.displayName}`}
-                                           checked={true}
-                                           disabled/>
-                                    <label className="form-check-label" htmlFor={`dependent-${dependentResult.displayName}`}>
-                                        {dependentResult.displayName}
-                                    </label>
-                                </div>
-                            )}
-                            {/*Enabled - Data*/}
-                            {dependentResult.optional && (
-                                <div key={dependentResult.displayName} className="form-check">
-                                    <input className="form-check-input"
-                                           type="checkbox"
-                                           id={`dependent-${dependentResult.displayName}`}
-                                           checked={selectedDependentTables.includes(dependentResult.displayName)}
-                                           disabled={loading}
-                                           onChange={e => {
-                                               if (e.target.checked) {
-                                                   setSelectedDependentTables([...selectedDependentTables, dependentResult.displayName]);
-                                               } else {
-                                                   setSelectedDependentTables(selectedDependentTables.filter(it => it !== dependentResult.displayName));
-                                               }
-                                           }}
-                                    />
-                                    <label className="form-check-label" htmlFor={`dependent-${dependentResult.displayName}`}>
-                                        {dependentResult.displayName}
-                                    </label>
-                                </div>
-                            )}
-                        </div>
-                    ))}
+                {dependency && drawDependencies(dependency)}
             </div>
         </>
-    )
+    );
 }

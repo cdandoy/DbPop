@@ -5,13 +5,15 @@ import {DependentTables} from "./DependentTables";
 import FilterTable from "./FilterTable";
 import FilterForm from "./FilterForm";
 import RowCounts from "./RowCounts";
+import {Dependency} from "./Dependency";
 
 export default function DownloadAdd() {
     const routeParams = useParams();
     const datasetName = routeParams['dataset']
     const [tableSelections, setTableSelections] = useState<SearchTableResult[]>([]);
-    const [selectedDependentTables, setSelectedDependentTables] = useState<string[]>([])
+    const [dependency, setDependency] = useState<Dependency | null>(null);
     const [queryValues, setQueryValues] = useState<any>({})
+    const [changeNumber, setChangeNumber] = useState<number>(0);
     const filterMode: string = "F"; // Filter using FilterTable (T) or FilterForm (F)
 
     function whenSearchSubmitted() {
@@ -31,15 +33,20 @@ export default function DownloadAdd() {
             {/*Table Selection*/}
             <div className="mb-3">
                 <label htmlFor="table-name" className="form-label">Table Name:</label>
-                <SelectTable setTableSelections={setTableSelections}/>
+                <SelectTable setTableSelections={setTableSelections}
+                             setDependency={setDependency}
+                />
             </div>
 
             {/*Dependent Tables*/}
             <div className="mb-3">
                 <label htmlFor="table-name" className="form-label">Dependent:</label>
                 <DependentTables rootTable={tableSelections.length > 0 ? tableSelections[0] : null}
-                                 selectedDependentTables={selectedDependentTables}
-                                 setSelectedDependentTables={setSelectedDependentTables}/>
+                                 changeNumber={changeNumber}
+                                 setChangeNumber={setChangeNumber}
+                                 dependency={dependency}
+                                 setDependency={setDependency}
+                />
             </div>
 
             {/*Filter*/}
@@ -49,9 +56,9 @@ export default function DownloadAdd() {
                                                whenSearchSubmitted={whenSearchSubmitted}
             />}
             {filterMode == "F" && <FilterForm rootTable={tableSelections.length > 0 ? tableSelections[0] : null}
-                                               queryValues={queryValues}
-                                               setQueryValues={setQueryValues}
-                                               whenSearchSubmitted={whenSearchSubmitted}
+                                              queryValues={queryValues}
+                                              setQueryValues={setQueryValues}
+                                              whenSearchSubmitted={whenSearchSubmitted}
             />}
 
             {/*Row Counts*/}

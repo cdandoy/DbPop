@@ -1,5 +1,9 @@
 package org.dandoy.dbpop.database;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.junit.jupiter.api.BeforeAll;
@@ -24,6 +28,44 @@ class DependencyCalculatorTest {
     }
 
     @Test
+    void test0() throws JsonProcessingException, SQLException {
+        LocalCredentials localCredentials = LocalCredentials.from("mssql");
+        ObjectWriter objectWriter = new ObjectMapper()
+                .setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
+                .writerWithDefaultPrettyPrinter();
+        try (Connection connection = localCredentials.createConnection()) {
+            try (Database database = Database.createDatabase(connection)) {
+
+                System.out.println("Root:");
+                Dependency rootDependency = Dependency.root(invoices);
+                System.out.println(objectWriter.writeValueAsString(rootDependency));
+
+                System.out.println("---------------------");
+                System.out.println(objectWriter.writeValueAsString(DependencyCalculator.calculateDependencies(database, rootDependency)));
+
+                System.out.println("---------------------");
+                Dependency invoiceInvoiceDetaulsDependency = new Dependency(
+                        invoices,
+                        null,
+                        List.of(
+                                new Dependency(
+                                        invoiceDetails,
+                                        "invoice_details_invoices_fk",
+                                        Collections.emptyList(),
+                                        true,
+                                        false
+                                )
+                        ),
+                        true,
+                        true
+                );
+                System.out.println(objectWriter.writeValueAsString(DependencyCalculator.calculateDependencies(database, invoiceInvoiceDetaulsDependency)));
+
+            }
+        }
+    }
+
+    @Test
     void name() throws SQLException {
         LocalCredentials localCredentials = LocalCredentials.from("mssql");
         try (Connection connection = localCredentials.createConnection()) {
@@ -44,8 +86,9 @@ class DependencyCalculatorTest {
                     // invoices -> invoice_details
                     Dependency invoiceDetailsInvoicesFk = result.getSubDependencyByConstraint("invoice_details_invoices_fk").orElseThrow();
                     assertDependency(invoiceDetailsInvoicesFk, "invoice_details", false, false);
-                    assertTrue(invoiceDetailsInvoicesFk.subDependencies().isEmpty());
+                    assertTrue(invoiceDetailsInvoicesFk.getSubDependencies().isEmpty());
                 }
+
 
                 {   // invoices + invoice_details
                     Dependency dependency = new Dependency(
@@ -64,7 +107,7 @@ class DependencyCalculatorTest {
                             true
                     );
                     Dependency result = DependencyCalculator.calculateDependencies(database, dependency);
-                    assertEquals("invoices", result.tableName().getTable());
+                    assertEquals("invoices", result.getTableName().getTable());
 
                     // invoices -> customers (SM)
                     Dependency invoicesCustomersFk = result.getSubDependencyByConstraint("invoices_customers_fk").orElseThrow();
@@ -91,8 +134,8 @@ class DependencyCalculatorTest {
     }
 
     private static void assertDependency(Dependency dependency, String expectedTable, boolean expectedSelected, boolean expectedMandatory) {
-        assertEquals(expectedTable, dependency.tableName().getTable());
-        assertEquals(expectedSelected, dependency.selected());
-        assertEquals(expectedMandatory, dependency.mandatory());
+        assertEquals(expectedTable, dependency.getTableName().getTable());
+        assertEquals(expectedSelected, dependency.isSelected());
+        assertEquals(expectedMandatory, dependency.isMandatory());
     }
 }
