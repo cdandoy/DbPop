@@ -47,6 +47,10 @@ export function SelectTable(props: any) {
             options={tables}
             labelKey={"displayName"}
             placeholder="Search..."
+            inputProps={{
+                autoCorrect: 'off', // Safari-only
+                spellCheck: false,
+            }}
             onChange={selections => {
                 setTableSelections(selections);
                 if (selections.length) {

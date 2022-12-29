@@ -30,7 +30,7 @@ export default function DownloadAdd() {
                 </ol>
             </nav>
 
-            {/*Table Selection*/}
+            {/* Table Selection drop-down*/}
             <div className="mb-3">
                 <label htmlFor="table-name" className="form-label">Table Name:</label>
                 <SelectTable setTableSelections={setTableSelections}
