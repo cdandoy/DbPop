@@ -20,6 +20,10 @@ public class ExecutionContext {
         this.totalRowCountLimit = totalRowCountLimit;
     }
 
+    public void tableAdded(TableName tableName) {
+        rowCounts.putIfAbsent(tableName, 0);
+    }
+
     public void rowAdded(TableName tableName) {
         Integer integer = rowCounts.get(tableName);
         if (integer == null) {

@@ -1,17 +1,19 @@
 package org.dandoy.dbpopd;
 
-import io.micronaut.core.convert.ConversionService;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
 import org.apache.commons.io.FileUtils;
+import org.dandoy.dbpop.database.Dependency;
+import org.dandoy.dbpop.database.TableName;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.io.FileUtils.readLines;
 import static org.dandoy.dbpop.utils.FileUtils.deleteRecursively;
@@ -20,6 +22,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @MicronautTest
 class DbpopdTest {
 
+    public static final TableName invoices = new TableName("master", "dbo", "invoices");
+    public static final TableName customers = new TableName("master", "dbo", "customers");
+    public static final TableName invoiceDetails = new TableName("master", "dbo", "invoice_details");
     @Inject
     PopulateController populateController;
     @Inject
@@ -40,7 +45,21 @@ class DbpopdTest {
     }
 
     @Test
-    void testDownload() throws IOException {
+    void testCount() throws SQLException {
+        long t0 = System.currentTimeMillis();
+        populateController.populate(List.of("invoices", "invoice_details"));
+        long t1 = System.currentTimeMillis();
+
+        DownloadRequest downloadRequest = createInvoiceDownloadRequest("static", true);
+        DownloadResponse downloadResponse = downloadController.download(downloadRequest);
+        long t2 = System.currentTimeMillis();
+        System.out.printf("populate: %dms, download: %dms%n", t1 - t0, t2 - t1);
+
+        assertEquals(4, downloadResponse.rowCounts().get(invoices));
+    }
+
+    @Test
+    void testDownload() throws IOException, SQLException {
         populateController.populate(singletonList("customers_1000"));
 
         File dir = new File("src/test/resources/config/datasets/test_dataset/");
@@ -49,18 +68,7 @@ class DbpopdTest {
             deleteRecursively(dir);
         }
 
-        DownloadRequest downloadRequest = ConversionService.SHARED
-                .convertRequired(
-                        Map.of(
-                                "dataset", "test_dataset",
-                                "catalog", "master",
-                                "schema", "dbo",
-                                "table", "customers",
-                                "where", Map.of(
-                                        "customer_id", 1001
-                                )
-                        ),
-                        DownloadRequest.class);
+        DownloadRequest downloadRequest = createInvoiceDownloadRequest("static", false);
         assertNotNull(downloadRequest);
 
         downloadController.download(downloadRequest);
@@ -72,5 +80,36 @@ class DbpopdTest {
         assertFalse(content.contains("Arris"));
 
         deleteRecursively(dir);
+    }
+
+    private static DownloadRequest createInvoiceDownloadRequest(String dataset, boolean dryRun) {
+        return new DownloadRequest()
+                .setDataset(dataset)
+                .setDependency(
+                        new Dependency(
+                                invoices,
+                                null,
+                                List.of(
+                                        new Dependency(
+                                                customers,
+                                                "invoices_customers_fk",
+                                                List.of(),
+                                                true,
+                                                true
+                                        ),
+                                        new Dependency(
+                                                invoiceDetails,
+                                                "invoice_details_invoices_fk",
+                                                List.of(),
+                                                false,
+                                                false
+                                        )
+                                ),
+                                true,
+                                true
+                        )
+                )
+                .setQueryValues(emptyMap())
+                .setDryRun(dryRun);
     }
 }

@@ -1,7 +1,6 @@
 package org.dandoy.dbpopd;
 
 import io.micronaut.context.annotation.Context;
-import io.micronaut.context.annotation.Requires;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
@@ -14,7 +13,6 @@ import java.util.List;
 @Controller
 @Slf4j
 @Context
-@Requires(property = "dbpopd.mode", value = "populate")
 public class PopulateController {
     private final PopulatorHolder populatorHolder;
     private final SqlSetupService sqlSetupService;

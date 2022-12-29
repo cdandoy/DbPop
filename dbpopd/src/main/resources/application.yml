@@ -18,4 +18,4 @@ netty:
     allocator:
       max-order: 3
 dbpopd:
-  mode: ${DBPOP_MODE:populate}
+  mode: ${DBPOP_MODE:download}

@@ -1,7 +1,6 @@
 package org.dandoy.dbpopd;
 
 import io.micronaut.context.annotation.Context;
-import io.micronaut.context.annotation.Requires;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.Getter;
@@ -22,7 +21,7 @@ import java.util.regex.Pattern;
 @Singleton
 @Context
 @Slf4j
-@Requires(property = "dbpopd.mode", value = "populate")
+//FIXME: We should not run setup.sql when running in download mode
 public class SqlSetupService {
     private final ConfigurationService configurationService;
     @Getter

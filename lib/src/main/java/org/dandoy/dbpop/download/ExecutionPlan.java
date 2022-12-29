@@ -91,6 +91,7 @@ public class ExecutionPlan implements AutoCloseable {
         addLookupNodes(tableExecutionModel, executionNode, table);
         addDataNodes(tableExecutionModel, executionNode, table);
         checkConstraintsEmpty(tableExecutionModel, tableName);
+        executionContext.tableAdded(tableName);
         return executionNode;
     }
 
@@ -101,6 +102,7 @@ public class ExecutionPlan implements AutoCloseable {
         addLookupNodes(tableExecutionModel, executionNode, table);
         addDataNodes(tableExecutionModel, executionNode, table);
         checkConstraintsEmpty(tableExecutionModel, tableName);
+        executionContext.tableAdded(tableName);
         return executionNode;
     }
 
@@ -116,6 +118,7 @@ public class ExecutionPlan implements AutoCloseable {
         ExecutionNode executionNode = createExecutionNode(table, pkColumns, fkSelectedColumns);
         addLookupNodes(tableExecutionModel, executionNode, table);
         checkConstraintsEmpty(tableExecutionModel, tableName);
+        executionContext.tableAdded(tableName);
 
         return executionNode;
     }

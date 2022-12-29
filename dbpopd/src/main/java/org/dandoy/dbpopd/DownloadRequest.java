@@ -4,6 +4,7 @@ import io.micronaut.core.annotation.Introspected;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import org.dandoy.dbpop.database.Dependency;
 
 import javax.validation.constraints.NotNull;
 import java.util.Map;
@@ -15,9 +16,8 @@ import java.util.Map;
 public class DownloadRequest {
     @NotNull
     private String dataset;
-    private String catalog;
-    private String schema;
     @NotNull
-    private String table;
-    private Map<String, Object> where;
+    private Dependency dependency;
+    private Map<String, String> queryValues;
+    private boolean dryRun;
 }

@@ -27,7 +27,7 @@ public final class Dependency {
             @JsonProperty("selected") boolean selected,
             @JsonProperty("mandatory") boolean mandatory
     ) {
-        displayName = tableName.toQualifiedName();
+        this.displayName = tableName.toQualifiedName();
         this.tableName = tableName;
         this.constraintName = constraintName;
         this.subDependencies = subDependencies == null ? emptyList() : subDependencies;

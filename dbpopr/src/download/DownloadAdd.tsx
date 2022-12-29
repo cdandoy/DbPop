@@ -8,14 +8,19 @@ import {Dependency} from "./Dependency";
 
 export default function DownloadAdd() {
     const routeParams = useParams();
-    const datasetName = routeParams['dataset']
+    const datasetName = routeParams['datasetName']
     const [tableSelections, setTableSelections] = useState<SearchTableResult[]>([]);
     const [dependency, setDependency] = useState<Dependency | null>(null);
     const [queryValues, setQueryValues] = useState<any>({})
-    const [changeNumber, setChangeNumber] = useState<number>(0);
+    const [dependencyChangeNumber, setDependencyChangeNumber] = useState<number>(0);
+    const [searchChangeNumber, setSearchChangeNumber] = useState<number>(0);
 
     function whenSearchSubmitted() {
-        console.log('HELO');
+        setSearchChangeNumber(searchChangeNumber + 1);
+    }
+
+    if (!datasetName) {
+        return <div>Missing Dataset</div>
     }
 
     return (
@@ -40,8 +45,8 @@ export default function DownloadAdd() {
             <div className="mb-3">
                 <label htmlFor="table-name" className="form-label">Dependent:</label>
                 <DependentTables rootTable={tableSelections.length > 0 ? tableSelections[0] : null}
-                                 changeNumber={changeNumber}
-                                 setChangeNumber={setChangeNumber}
+                                 changeNumber={dependencyChangeNumber}
+                                 setChangeNumber={setDependencyChangeNumber}
                                  dependency={dependency}
                                  setDependency={setDependency}
                 />
@@ -55,7 +60,13 @@ export default function DownloadAdd() {
             />
 
             {/*Row Counts*/}
-            <RowCounts/>
+            {dependency && queryValues && searchChangeNumber > 0 &&
+                <RowCounts
+                    dataset={datasetName}
+                    changeNumber={searchChangeNumber}
+                    dependency={dependency}
+                    queryValues={queryValues}
+                />}
         </div>
-    )
+    );
 }

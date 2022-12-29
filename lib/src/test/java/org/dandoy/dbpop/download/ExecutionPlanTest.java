@@ -62,8 +62,8 @@ class ExecutionPlanTest {
         Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, null);
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, 7);
-        assertRowCounts(rowCounts, customers, null);
-        assertRowCounts(rowCounts, products, null);
+        assertRowCounts(rowCounts, customers, 0);
+        assertRowCounts(rowCounts, products, 0);
     }
 
     @Test
@@ -72,9 +72,9 @@ class ExecutionPlanTest {
         TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
         Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, 3);
         assertRowCounts(rowCounts, invoices, 3);
-        assertRowCounts(rowCounts, invoiceDetails, null);
-        assertRowCounts(rowCounts, customers, null);
-        assertRowCounts(rowCounts, products, null);
+        assertRowCounts(rowCounts, invoiceDetails, 0);
+        assertRowCounts(rowCounts, customers, 0);
+        assertRowCounts(rowCounts, products, 0);
     }
 
     @Test
@@ -84,7 +84,7 @@ class ExecutionPlanTest {
         Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, null);
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, null);
-        assertRowCounts(rowCounts, customers, null);
+        assertRowCounts(rowCounts, customers, 0);
         assertRowCounts(rowCounts, products, null);
         Assertions.assertTrue(new File(DATASETS_DIRECTORY, "download/master/dbo/invoices.csv").exists());
     }
@@ -96,7 +96,7 @@ class ExecutionPlanTest {
         Map<TableName, Integer> rowCounts = ExecutionPlan.execute(database, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.COUNT, null);
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, null);
-        assertRowCounts(rowCounts, customers, null);
+        assertRowCounts(rowCounts, customers, 0);
         assertRowCounts(rowCounts, products, null);
         Assertions.assertFalse(new File(DATASETS_DIRECTORY, "download/master/dbo/invoices.csv").exists());
     }

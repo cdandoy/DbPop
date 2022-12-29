@@ -34,3 +34,50 @@ Content-Type: application/json
   "selected" : true,
   "mandatory" : true
 }
+
+###
+POST http://localhost:3000/download
+Content-Type: application/json
+
+{
+  "dataset": "base",
+  "dependency": {
+    "tableName": {
+      "catalog": "master",
+      "schema": "dbo",
+      "table": "invoices"
+    },
+    "subDependencies": [
+      {
+        "tableName": {
+          "catalog": "master",
+          "schema": "dbo",
+          "table": "customers"
+        },
+        "constraintName": "invoices_customers_fk",
+        "selected": true,
+        "mandatory": true,
+        "displayName": "master.dbo.customers"
+      },
+      {
+        "tableName": {
+          "catalog": "master",
+          "schema": "dbo",
+          "table": "invoice_details"
+        },
+        "constraintName": "invoice_details_invoices_fk",
+        "selected": false,
+        "mandatory": false,
+        "displayName": "master.dbo.invoice_details"
+      }
+    ],
+    "selected": true,
+    "mandatory": true,
+    "displayName": "master.dbo.invoices"
+  },
+  "queryValues": {},
+  "dryRun": true
+}
+
+###
+
