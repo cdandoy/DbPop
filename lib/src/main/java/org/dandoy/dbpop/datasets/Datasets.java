@@ -71,7 +71,6 @@ public class Datasets {
                 log.warn("Unexpected file " + catalogFile);
             }
         }
-        if (dataFiles.isEmpty()) return null;
 
         return new Dataset(
                 datasetFile.getName(),
