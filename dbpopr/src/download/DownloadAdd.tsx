@@ -2,7 +2,6 @@ import React, {useState} from "react";
 import {NavLink, useParams} from "react-router-dom";
 import {SearchTableResult, SelectTable} from "./SelectTable";
 import {DependentTables} from "./DependentTables";
-import FilterTable from "./FilterTable";
 import FilterForm from "./FilterForm";
 import RowCounts from "./RowCounts";
 import {Dependency} from "./Dependency";
@@ -14,7 +13,6 @@ export default function DownloadAdd() {
     const [dependency, setDependency] = useState<Dependency | null>(null);
     const [queryValues, setQueryValues] = useState<any>({})
     const [changeNumber, setChangeNumber] = useState<number>(0);
-    const filterMode: string = "F"; // Filter using FilterTable (T) or FilterForm (F)
 
     function whenSearchSubmitted() {
         console.log('HELO');
@@ -50,16 +48,11 @@ export default function DownloadAdd() {
             </div>
 
             {/*Filter*/}
-            {filterMode == "T" && <FilterTable rootTable={tableSelections.length > 0 ? tableSelections[0] : null}
-                                               queryValues={queryValues}
-                                               setQueryValues={setQueryValues}
-                                               whenSearchSubmitted={whenSearchSubmitted}
-            />}
-            {filterMode == "F" && <FilterForm rootTable={tableSelections.length > 0 ? tableSelections[0] : null}
-                                              queryValues={queryValues}
-                                              setQueryValues={setQueryValues}
-                                              whenSearchSubmitted={whenSearchSubmitted}
-            />}
+            <FilterForm rootTable={tableSelections.length > 0 ? tableSelections[0] : null}
+                        queryValues={queryValues}
+                        setQueryValues={setQueryValues}
+                        whenSearchSubmitted={whenSearchSubmitted}
+            />
 
             {/*Row Counts*/}
             <RowCounts/>
