@@ -24,9 +24,7 @@ public class PopulateController {
     }
 
     @Get("/populate")
-    public PopulateResult populate(
-            List<String> dataset
-    ) {
+    public PopulateResult populate(List<String> dataset) {
         try {
             long t0 = System.currentTimeMillis();
             int rows = populatorHolder.getPopulator().load(dataset);

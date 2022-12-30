@@ -246,7 +246,7 @@ public class Populator implements AutoCloseable {
      * @return a connection to the test database.
      * @throws SQLException An exception that provides information on a database access error or other errors.
      */
-    public Connection createConnection() throws SQLException {
+    public Connection createTargetConnection() throws SQLException {
         return connectionBuilder.createConnection();
     }
 
@@ -257,20 +257,10 @@ public class Populator implements AutoCloseable {
     @Setter
     @Accessors(chain = true)
     public static class Builder {
-        private String dbUrl;
-        private String dbUser;
-        private String dbPassword;
+        private ConnectionBuilder connectionBuilder;
         private File directory;
 
         private Builder() {
-        }
-
-        public ConnectionBuilder getConnectionBuilder() {
-            return new UrlConnectionBuilder(
-                    getDbUrl(),
-                    getDbUser(),
-                    getDbPassword()
-            );
         }
 
         public Builder setDirectory(String directory) {

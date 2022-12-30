@@ -22,10 +22,12 @@ public class DatabaseController {
 
     @Get("search")
     public List<SearchTableResponse> search(String query) throws SQLException {
-        try (Connection connection = configurationService.createConnection()) {
-            try (Database database = Database.createDatabase(connection)) {
-                Set<TableName> tableNames = database.searchTable(query);
-                Collection<Table> tables = database.getTables(tableNames);
+        configurationService.assertSourceConnection();
+
+        try (Connection sourceConnection = configurationService.createSourceConnection()) {
+            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
+                Set<TableName> tableNames = sourceDatabase.searchTable(query);
+                Collection<Table> tables = sourceDatabase.getTables(tableNames);
                 return tables.stream()
                         .map(table -> new SearchTableResponse(
                                 table.tableName().toQualifiedName(),
@@ -45,9 +47,11 @@ public class DatabaseController {
 
     @Post("dependencies")
     public Dependency getDependents(@Body Dependency dependency) throws SQLException {
-        try (Connection connection = configurationService.createConnection()) {
-            try (Database database = Database.createDatabase(connection)) {
-                return DependencyCalculator.calculateDependencies(database, dependency);
+        configurationService.assertSourceConnection();
+
+        try (Connection sourceConnection = configurationService.createSourceConnection()) {
+            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
+                return DependencyCalculator.calculateDependencies(sourceDatabase, dependency);
             }
         }
     }

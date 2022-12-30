@@ -17,7 +17,5 @@ netty:
   default:
     allocator:
       max-order: 3
-dbpopd:
-  mode: ${DBPOP_MODE:download}
 jackson:
   serialization-inclusion: non_null

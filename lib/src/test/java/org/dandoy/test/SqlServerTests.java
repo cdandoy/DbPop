@@ -8,7 +8,7 @@ import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.TableDownloader;
 import org.dandoy.dbpop.upload.Populator;
 import org.dandoy.dbpop.utils.FileUtils;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
@@ -25,25 +25,12 @@ import java.util.List;
 import static org.dandoy.TestUtils.customers;
 import static org.junit.jupiter.api.Assertions.*;
 
-@EnabledIf("org.dandoy.TestUtils#hasSqlServer")
+@EnabledIf("org.dandoy.TestUtils#hasMssql")
 @Slf4j
 public class SqlServerTests {
-
-    @BeforeAll
-    public static void prepare() {
-        TestUtils.executeSqlScript("mssql", "/mssql/test.sql");
-    }
-
-    @Test
-    void noCsvFiles() {
-        assertThrows(RuntimeException.class, () -> {
-            try (Populator ignored = LocalCredentials
-                    .mssqlPopulator()
-                    .setDirectory("src/test/resources/test_no_datafiles/")
-                    .build()) {
-                System.out.println("I should not be here");
-            }
-        });
+    @BeforeEach
+    void setUp() {
+        TestUtils.prepareMssqlTarget();
     }
 
     @Test
@@ -98,25 +85,25 @@ public class SqlServerTests {
                 .mssqlPopulator()
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
-            try (Connection connection = populator.createConnection()) {
+            try (Connection targetConnection = populator.createTargetConnection()) {
 
                 populator.load("base");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 0);
-                assertCount(connection, "invoice_details", 0);
-                assertCount(connection, "products", 3);
+                assertCount(targetConnection, "customers", 3);
+                assertCount(targetConnection, "invoices", 0);
+                assertCount(targetConnection, "invoice_details", 0);
+                assertCount(targetConnection, "products", 3);
 
                 populator.load("base", "invoices");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 4);
-                assertCount(connection, "invoice_details", 7);
-                assertCount(connection, "products", 3);
+                assertCount(targetConnection, "customers", 3);
+                assertCount(targetConnection, "invoices", 4);
+                assertCount(targetConnection, "invoice_details", 7);
+                assertCount(targetConnection, "products", 3);
 
                 populator.load("base");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 0);
-                assertCount(connection, "invoice_details", 0);
-                assertCount(connection, "products", 3);
+                assertCount(targetConnection, "customers", 3);
+                assertCount(targetConnection, "invoices", 0);
+                assertCount(targetConnection, "invoice_details", 0);
+                assertCount(targetConnection, "products", 3);
             }
         }
     }
@@ -128,23 +115,23 @@ public class SqlServerTests {
                 .mssqlPopulator()
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
-            try (Connection connection = populator.createConnection()) {
+            try (Connection targetConnection = populator.createTargetConnection()) {
 
                 populator.load("base");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 0);
-                assertCount(connection, "invoice_details", 0);
-                assertCount(connection, "products", 3);
+                assertCount(targetConnection, "customers", 3);
+                assertCount(targetConnection, "invoices", 0);
+                assertCount(targetConnection, "invoice_details", 0);
+                assertCount(targetConnection, "products", 3);
 
                 // Insert a product (static dataset) before to load. the populator is not supposed to notice
-                try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO master.dbo.products (part_no, part_desc) VALUES ('XXX', 'XXX')")) {
+                try (PreparedStatement preparedStatement = targetConnection.prepareStatement("INSERT INTO master.dbo.products (part_no, part_desc) VALUES ('XXX', 'XXX')")) {
                     preparedStatement.execute();
                 }
                 populator.load("base");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 0);
-                assertCount(connection, "invoice_details", 0);
-                assertCount(connection, "products", 4);
+                assertCount(targetConnection, "customers", 3);
+                assertCount(targetConnection, "invoices", 0);
+                assertCount(targetConnection, "invoice_details", 0);
+                assertCount(targetConnection, "products", 4);
             }
         }
 
@@ -153,12 +140,12 @@ public class SqlServerTests {
                 .mssqlPopulator()
                 .setDirectory("src/test/resources/mssql")
                 .build()) {
-            try (Connection connection = populator.createConnection()) {
+            try (Connection targetConnection = populator.createTargetConnection()) {
                 populator.load("base");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 0);
-                assertCount(connection, "invoice_details", 0);
-                assertCount(connection, "products", 3);
+                assertCount(targetConnection, "customers", 3);
+                assertCount(targetConnection, "invoices", 0);
+                assertCount(targetConnection, "invoice_details", 0);
+                assertCount(targetConnection, "products", 3);
             }
         }
     }
@@ -186,85 +173,41 @@ public class SqlServerTests {
         }
     }
 
-    /**
-     * This test only works when running from the IDE because it is too complicated to change the classpath
-     */
     @Test
     void testBinary() throws SQLException {
+        TestUtils.prepareMssqlSource();
         File dir = createGeneratedTestDirectory();
         TestUtils.delete(dir);
-        try (Connection connection = LocalCredentials.from("mssql").createConnection()) {
-            try (Database database = Database.createDatabase(connection)) {
+        try (Connection sourceConnection = LocalCredentials.from("mssql").createSourceConnection()) {
+            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
                 try (TableDownloader tableDownloader = TableDownloader.builder()
-                        .setDatabase(database)
+                        .setDatabase(sourceDatabase)
                         .setDatasetsDirectory(dir)
                         .setDataset("base")
                         .setTableName(new TableName("master", "dbo", "test_binary"))
                         .build()) {
-                    try (Statement statement = connection.createStatement()) {
-                        statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
-                    }
-
-                    try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO master.dbo.test_binary(id, test_binary, test_blob) VALUES (?,?,?)")) {
-                        preparedStatement.setInt(1, 1);
-                        preparedStatement.setBytes(2, "HELLOHELLOHELLOHELLOHELLOHELLOHE".getBytes());
-                        Blob blob = connection.createBlob();
-                        blob.setBytes(1, "HELLO\0WORLD".getBytes());
-                        preparedStatement.setBlob(3, blob);
-                        preparedStatement.executeUpdate();
-                    }
 
                     // Download the data
                     tableDownloader.download();
-
-                    // Don't leave that data behind
-                    try (Statement statement = connection.createStatement()) {
-                        statement.execute("DELETE FROM master.dbo.test_binary WHERE id = 1");
-                    }
-                    connection.commit();
-
-                }
-            }
-
-            try (Populator populator = LocalCredentials
-                    .mssqlPopulator()
-                    .setDirectory(dir)
-                    .build()) {
-
-                // Upload the data
-                populator.load("base");
-
-                // Verify
-                try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM master.dbo.test_binary")) {
-                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                        assertTrue(resultSet.next());
-                        assertEquals(1, resultSet.getInt(1));
-                        assertEquals("HELLOHELLOHELLOHELLOHELLOHELLOHE", new String(resultSet.getBytes(2)));
-                        Blob blob = resultSet.getBlob(3);
-                        assertEquals("HELLO\0WORLD", new String(blob.getBytes(1, (int) blob.length())));
-                    }
                 }
             }
         }
-    }
 
-    @Test
-    void testLoadBinary() throws SQLException {
         try (Populator populator = LocalCredentials
                 .mssqlPopulator()
-                .setDirectory("src/test/resources/mssql")
+                .setDirectory(dir)
                 .build()) {
 
             // Upload the data
-            populator.load("test_binary");
+            populator.load("base");
 
             // Verify
-            try (Connection connection = populator.createConnection()) {
-                try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM master.dbo.test_binary")) {
+            try (Connection targetConnection = populator.createTargetConnection()) {
+                try (PreparedStatement preparedStatement = targetConnection.prepareStatement("SELECT * FROM master.dbo.test_binary")) {
                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
                         assertTrue(resultSet.next());
                         assertEquals(1, resultSet.getInt(1));
-                        assertEquals("HELLOHELLOHELLOHELLOHELLOHELLOHE", new String(resultSet.getBytes(2)));
+                        assertEquals("HELLO\0WORLD", new String(resultSet.getBytes(2)));
                         Blob blob = resultSet.getBlob(3);
                         assertEquals("HELLO\0WORLD", new String(blob.getBytes(1, (int) blob.length())));
                     }
@@ -275,23 +218,16 @@ public class SqlServerTests {
 
     @Test
     void testAppend() throws SQLException, IOException {
+        TestUtils.prepareMssqlSource();
         File dir = createGeneratedTestDirectory();
         File customerCsv = new File(dir, "base/master/dbo/customers.csv");
         TestUtils.delete(dir);
 
-        try (Connection connection = LocalCredentials.from("mssql").createConnection()) {
-            try (Database database = Database.createDatabase(connection)) {
-                // Load the default dataset
-                try (Populator populator = LocalCredentials
-                        .mssqlPopulator()
-                        .setDirectory("src/test/resources/mssql")
-                        .build()) {
-                    populator.load("base");
-                }
-
+        try (Connection sourceConnection = LocalCredentials.from("mssql").createSourceConnection()) {
+            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
                 // Download it in a temp directory
                 try (TableDownloader tableDownloader = TableDownloader.builder()
-                        .setDatabase(database)
+                        .setDatabase(sourceDatabase)
                         .setDatasetsDirectory(dir)
                         .setDataset("base")
                         .setTableName(customers)
@@ -302,13 +238,13 @@ public class SqlServerTests {
                 assertEquals(4, Files.readAllLines(customerCsv.toPath()).size()); // Only the header
 
                 // Insert a new customer
-                try (Statement statement = connection.createStatement()) {
+                try (Statement statement = sourceConnection.createStatement()) {
                     statement.execute("INSERT INTO master.dbo.customers (name) VALUES ('HyperAir')");
                 }
 
                 // then download in append mode
                 try (TableDownloader tableDownloader = TableDownloader.builder()
-                        .setDatabase(database)
+                        .setDatabase(sourceDatabase)
                         .setDatasetsDirectory(dir)
                         .setDataset("base")
                         .setTableName(customers)

@@ -1,11 +1,6 @@
 package org.dandoy.dbpop.database;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import org.dandoy.LocalCredentials;
-import org.dandoy.TestUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -24,55 +19,19 @@ class DependencyCalculatorTest {
 
     @BeforeAll
     static void beforeAll() {
-        TestUtils.executeSqlScript("mssql", "/mssql/advanced.sql");
-    }
-
-    @Test
-    void test0() throws JsonProcessingException, SQLException {
-        LocalCredentials localCredentials = LocalCredentials.from("mssql");
-        ObjectWriter objectWriter = new ObjectMapper()
-                .setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
-                .writerWithDefaultPrettyPrinter();
-        try (Connection connection = localCredentials.createConnection()) {
-            try (Database database = Database.createDatabase(connection)) {
-
-                System.out.println("Root:");
-                Dependency rootDependency = Dependency.root(invoices);
-                System.out.println(objectWriter.writeValueAsString(rootDependency));
-
-                System.out.println("---------------------");
-                System.out.println(objectWriter.writeValueAsString(DependencyCalculator.calculateDependencies(database, rootDependency)));
-
-                System.out.println("---------------------");
-                Dependency invoiceInvoiceDetaulsDependency = new Dependency(
-                        invoices,
-                        null,
-                        List.of(
-                                new Dependency(
-                                        invoiceDetails,
-                                        "invoice_details_invoices_fk",
-                                        Collections.emptyList(),
-                                        true,
-                                        false
-                                )
-                        ),
-                        true,
-                        true
-                );
-                System.out.println(objectWriter.writeValueAsString(DependencyCalculator.calculateDependencies(database, invoiceInvoiceDetaulsDependency)));
-
-            }
-        }
+        LocalCredentials
+                .from("mssql")
+                .executeSource("advanced.sql");
     }
 
     @Test
     void name() throws SQLException {
         LocalCredentials localCredentials = LocalCredentials.from("mssql");
-        try (Connection connection = localCredentials.createConnection()) {
-            try (Database database = Database.createDatabase(connection)) {
+        try (Connection sourceConnection = localCredentials.createSourceConnection()) {
+            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
 
                 {   // invoices
-                    Dependency result = DependencyCalculator.calculateDependencies(database, Dependency.root(invoices));
+                    Dependency result = DependencyCalculator.calculateDependencies(sourceDatabase, Dependency.root(invoices));
                     assertDependency(result, "invoices", true, true);
 
                     // invoices -> customers (SM)
@@ -106,7 +65,7 @@ class DependencyCalculatorTest {
                             true,
                             true
                     );
-                    Dependency result = DependencyCalculator.calculateDependencies(database, dependency);
+                    Dependency result = DependencyCalculator.calculateDependencies(sourceDatabase, dependency);
                     assertEquals("invoices", result.getTableName().getTable());
 
                     // invoices -> customers (SM)

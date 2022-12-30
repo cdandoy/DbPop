@@ -27,6 +27,8 @@ public class DownloadController {
 
     @Post("download")
     public DownloadResponse download(@Body DownloadRequest downloadRequest) throws SQLException {
+        configurationService.assertSourceConnection();
+
         ExecutionMode executionMode = downloadRequest.isDryRun() ? ExecutionMode.COUNT : ExecutionMode.SAVE;
         TableExecutionModel tableExecutionModel = toTableExecutionModel(downloadRequest.getDependency());
 
@@ -44,10 +46,10 @@ public class DownloadController {
             pks.add(pk);
         }
 
-        try (Connection connection = configurationService.createConnection()) {
-            try (Database database = Database.createDatabase(connection)) {
+        try (Connection sourceConnection = configurationService.createSourceConnection()) {
+            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
                 Map<TableName, Integer> executionResult = ExecutionPlan.execute(
-                        database,
+                        sourceDatabase,
                         configurationService.getDatasetsDirectory(),
                         downloadRequest.getDataset(),
                         downloadRequest.getDependency().getTableName(),

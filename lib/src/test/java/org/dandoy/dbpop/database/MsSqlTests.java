@@ -1,7 +1,10 @@
 package org.dandoy.dbpop.database;
 
 import org.dandoy.LocalCredentials;
+import org.dandoy.TestUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -12,13 +15,19 @@ import static org.dandoy.TestUtils.invoices;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@EnabledIf("org.dandoy.TestUtils#hasTargetMssql")
 public class MsSqlTests {
+    @BeforeEach
+    void setUp() {
+        TestUtils.prepareMssqlTarget();
+    }
+
     @Test
     void name() throws SQLException {
         LocalCredentials localCredentials = LocalCredentials.from("mssql");
-        try (Connection connection = localCredentials.createConnection()) {
-            try (Database database = Database.createDatabase(connection)) {
-                Table table = database.getTable(invoices);
+        try (Connection targetConnection = localCredentials.createTargetConnection()) {
+            try (Database targetDatabase = Database.createDatabase(targetConnection)) {
+                Table table = targetDatabase.getTable(invoices);
                 {
                     assertNotNull(table);
                     assertEquals(3, table.columns().size());
@@ -37,7 +46,7 @@ public class MsSqlTests {
                     assertNotNull(table.foreignKeys().get(0).getName());
                 }
 
-                List<ForeignKey> relatedForeignKeys = database.getRelatedForeignKeys(customers);
+                List<ForeignKey> relatedForeignKeys = targetDatabase.getRelatedForeignKeys(customers);
                 {
                     assertEquals(1, relatedForeignKeys.size());
                     ForeignKey foreignKey = relatedForeignKeys.get(0);

@@ -1,3 +1,8 @@
+USE master;
+
+IF SCHEMA_ID('advanced') IS NULL
+    EXEC ('create schema advanced')
+
 DROP TABLE IF EXISTS master.advanced.order_details;
 DROP TABLE IF EXISTS master.advanced.orders;
 DROP TABLE IF EXISTS master.advanced.deliveries;

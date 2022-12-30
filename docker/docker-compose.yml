@@ -8,29 +8,38 @@ services:
     volumes:
       - ./mssql:/var/opt/dbpop
     environment:
-      - DBPOP_JDBCURL=jdbc:sqlserver://mssql;database=tempdb;trustServerCertificate=true
-      - DBPOP_USERNAME=sa
-      - DBPOP_PASSWORD=${DB_PASS}
-      - DBPOP_MODE=populate
+      - SOURCE_JDBCURL=jdbc:sqlserver://mssql-source;database=tempdb;trustServerCertificate=true
+      - SOURCE_USERNAME=sa
+      - SOURCE_PASSWORD=${SOURCE_DB_PASS}
+      - TARGET_JDBCURL=jdbc:sqlserver://mssql-target;database=tempdb;trustServerCertificate=true
+      - TARGET_USERNAME=sa
+      - TARGET_PASSWORD=${TARGET_DB_PASS}
     depends_on:
-      - mssql
-  mssql:
+      - mssql-target
+  mssql-source:
     image: mcr.microsoft.com/mssql/server
     ports:
-      - "1433:1433"
+      - "2433:1433"
     environment:
-      - SA_PASSWORD=${DB_PASS}
+      - SA_PASSWORD=${SOURCE_DB_PASS}
+      - ACCEPT_EULA="Y"
+  mssql-target:
+    image: mcr.microsoft.com/mssql/server
+    ports:
+      - "3433:1433"
+    environment:
+      - SA_PASSWORD=${TARGET_DB_PASS}
       - ACCEPT_EULA="Y"
   pgsql:
     image: postgres:latest
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_PASSWORD=${TARGET_DB_PASS}
   oracle-express:
     image: container-registry.oracle.com/database/express:21.3.0-xe
     ports:
       - "1521:1521"
       - "5500:5500"
     environment:
-      - ORACLE_PWD=${DB_PASS}
+      - ORACLE_PWD=${TARGET_DB_PASS}

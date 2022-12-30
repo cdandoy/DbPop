@@ -2,6 +2,7 @@ package org.dandoy.dbpop.database;
 
 import org.dandoy.LocalCredentials;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -10,15 +11,16 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@EnabledIf("org.dandoy.TestUtils#hasTargetPgsql")
 public class PgSqlTests {
     @Test
     void name() throws SQLException {
         LocalCredentials localCredentials = LocalCredentials.from("pgsql");
-        try (Connection connection = localCredentials.createConnection()) {
-            try (Database database = Database.createDatabase(connection)) {
+        try (Connection targetConnection = localCredentials.createTargetConnection()) {
+            try (Database targetDatabase = Database.createDatabase(targetConnection)) {
                 TableName invoices = new TableName("dbpop", "public", "invoices");
                 TableName customers = new TableName("dbpop", "public", "customers");
-                Table table = database.getTable(invoices);
+                Table table = targetDatabase.getTable(invoices);
                 {
                     assertNotNull(table);
                     assertEquals(3, table.columns().size());
@@ -37,7 +39,7 @@ public class PgSqlTests {
                     assertNotNull(table.foreignKeys().get(0).getName());
                 }
 
-                List<ForeignKey> relatedForeignKeys = database.getRelatedForeignKeys(customers);
+                List<ForeignKey> relatedForeignKeys = targetDatabase.getRelatedForeignKeys(customers);
                 {
                     assertEquals(1, relatedForeignKeys.size());
                     ForeignKey foreignKey = relatedForeignKeys.get(0);

@@ -2,10 +2,12 @@ package org.dandoy.dbpopd;
 
 import io.micronaut.context.annotation.Context;
 import io.micronaut.context.annotation.Property;
+import io.micronaut.http.HttpStatus;
+import io.micronaut.http.exceptions.HttpStatusException;
 import jakarta.inject.Singleton;
 import lombok.Getter;
+import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
-import org.dandoy.dbpop.upload.Populator;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -21,38 +23,44 @@ public class ConfigurationService {
     private static final String PROP_FILE_NAME = "dbpop.properties";
     @Getter
     private final File configurationDir;
+    private final ConnectionBuilder sourceConnectionBuilder;
     @Getter
-    private final String mode;
-    private final String jdbcurl;
-    private final String username;
-    private final String password;
+    private final ConnectionBuilder targetConnectionBuilder;
 
     @SuppressWarnings("MnInjectionPoints")
     public ConfigurationService(
-            @Property(name = "dbpopd.configuration.path") String configurationPath,
-            @Property(name = "dbpopd.mode") String mode
+            @Property(name = "dbpopd.configuration.path") String configurationPath
     ) {
         configurationDir = new File(configurationPath);
-        this.mode = mode;
         File configurationFile = new File(configurationDir, PROP_FILE_NAME);
         Properties properties = getConfigurationProperties(configurationFile);
-        jdbcurl = getValidProperty(configurationFile, properties, "jdbcurl", "DBPOP_JDBCURL");
-        username = getValidProperty(configurationFile, properties, "username", "DBPOP_USERNAME");
-        password = getValidProperty(configurationFile, properties, "password", "DBPOP_PASSWORD");
+
+        sourceConnectionBuilder = createConnectionBuilder(properties, "SOURCE_JDBCURL", "SOURCE_USERNAME", "SOURCE_PASSWORD");
+        targetConnectionBuilder = createConnectionBuilder(properties, "TARGET_JDBCURL", "TARGET_USERNAME", "TARGET_PASSWORD");
+        if (sourceConnectionBuilder == null && targetConnectionBuilder == null) {
+            throw new RuntimeException("No database connection found. Please declare a source or target database");
+        }
+    }
+
+    private static UrlConnectionBuilder createConnectionBuilder(Properties properties, String jdbcurlProperty, String usernameProperty, String passwordProperty) {
+        String url = getProperty(properties, jdbcurlProperty);
+        String username = getProperty(properties, usernameProperty);
+        String password = getProperty(properties, passwordProperty);
+
+        if (url == null || username == null) return null;
+
+        return new UrlConnectionBuilder(url, username, password);
     }
 
     public File getDatasetsDirectory() {
         return new File(configurationDir, "datasets");
     }
 
-    private static String getValidProperty(File configurationFile, Properties properties, String propertyName, String environmentVariableName) {
-        String environmentValue = System.getenv(environmentVariableName);
+    private static String getProperty(Properties properties, String propertyName) {
+        String environmentValue = System.getenv(propertyName);
         if (environmentValue != null) return environmentValue;
 
-        String value = properties.getProperty(propertyName);
-        if (value != null) return value;
-
-        throw new RuntimeException("Missing environment variable %s or property %s in %s".formatted(environmentVariableName, propertyName, configurationFile));
+        return properties.getProperty(propertyName);
     }
 
     private static Properties getConfigurationProperties(File configurationFile) {
@@ -67,17 +75,24 @@ public class ConfigurationService {
         return properties;
     }
 
-    public Connection createConnection() throws SQLException {
-        // I am not happy with this
-        return new UrlConnectionBuilder(jdbcurl, username, password).createConnection();
+    public void assertSourceConnection() {
+        if (sourceConnectionBuilder == null) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "The source database has not been defined");
     }
 
-    public Populator createPopulator() {
-        return Populator.builder()
-                .setDbUrl(jdbcurl)
-                .setDbUser(username)
-                .setDbPassword(password)
-                .setDirectory(getDatasetsDirectory())
-                .build();
+    public void assertTargetConnection() {
+        if (targetConnectionBuilder == null) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "The target database has not been defined");
     }
+
+    public boolean hasTargetConnection() {
+        return targetConnectionBuilder != null;
+    }
+
+    public Connection createSourceConnection() throws SQLException {
+        return sourceConnectionBuilder.createConnection();
+    }
+
+    public Connection createTargetConnection() throws SQLException {
+        return targetConnectionBuilder.createConnection();
+    }
+
 }

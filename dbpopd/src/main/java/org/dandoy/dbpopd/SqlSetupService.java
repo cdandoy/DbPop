@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
 @Singleton
 @Context
 @Slf4j
-//FIXME: We should not run setup.sql when running in download mode
 public class SqlSetupService {
     private final ConfigurationService configurationService;
     @Getter
@@ -39,16 +38,18 @@ public class SqlSetupService {
     public void loadSetup() {
         loading = true;
         try {
-            File configurationDir = configurationService.getConfigurationDir();
-            File setupFile = new File(configurationDir, "setup.sql");
-            if (setupFile.isFile()) {
-                // TODO: Run this in a background thread
-                try (Connection connection = configurationService.createConnection()) {
-                    List<String> lines = Files.readAllLines(setupFile.toPath());
-                    List<Sql> sqls = linesToSql(lines);
-                    executeSqls(setupFile, connection, sqls);
-                } catch (SQLException | IOException e) {
-                    throw new RuntimeException(e);
+            if (configurationService.hasTargetConnection()) {
+                File configurationDir = configurationService.getConfigurationDir();
+                File setupFile = new File(configurationDir, "setup.sql");
+                if (setupFile.isFile()) {
+                    // TODO: Run this in a background thread
+                    try (Connection connection = configurationService.createTargetConnection()) {
+                        List<String> lines = Files.readAllLines(setupFile.toPath());
+                        List<Sql> sqls = linesToSql(lines);
+                        executeSqls(setupFile, connection, sqls);
+                    } catch (SQLException | IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
         } catch (RuntimeException e) {
