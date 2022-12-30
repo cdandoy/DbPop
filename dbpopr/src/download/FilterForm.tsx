@@ -41,7 +41,7 @@ export default function FilterForm({rootTable, queryValues, setQueryValues, when
                     ))}
                 </div>
                 <div>
-                    <button type='submit' className={"btn btn-sm btn-primary"}>
+                    <button type='submit' className={"btn btn-primary"}>
                         <i className={"fa fa-search"}/> Search
                     </button>
                 </div>

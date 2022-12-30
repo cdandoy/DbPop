@@ -48,9 +48,11 @@ export default function DownloadDatasetsComponent() {
                     {loaded && datasets.map(dataset => <DatasetComponent key={dataset.name} dataset={dataset}/>)}
                 </div>
 
+{/*
                 <div className="text-end">
                     <a href="#" className="card-link">Create Dataset</a>
                 </div>
+*/}
             </div>
         </div>
     )

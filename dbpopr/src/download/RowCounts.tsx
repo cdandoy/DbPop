@@ -1,43 +1,49 @@
 import React, {useEffect, useState} from "react";
 import {Dependency} from "./Dependency";
-import axios, {AxiosResponse} from "axios";
+import {DownloadResponse, executeDownload} from "./downloadApi";
 
-export default function RowCounts({changeNumber, dataset, dependency, queryValues}: {
+
+export default function RowCounts({changeNumber, dataset, dependency, queryValues, rowCounts,setRowCounts }: {
     dataset: string,
     changeNumber: number,
     dependency: Dependency,
-    queryValues: any
+    queryValues: any,
+    rowCounts: DownloadResponse | null,
+    setRowCounts: ((s: DownloadResponse) => void),
 }) {
     const [loading, setLoading] = useState<boolean>(false);
-    const [loaded, setLoaded] = useState<number>(0);
 
     useEffect(() => {
         if (dependency != null) {
             setLoading(true);
-            setLoaded(loaded + 1);
-
-            for (let [key, value] of Object.entries(queryValues)) {
-                if (!value) {
-                    delete queryValues[key];
-                }
-            }
-
-            axios.post<Dependency, AxiosResponse<Dependency>>(`/download`, {
-                dataset,
-                dependency,
-                queryValues,
-                dryRun: true
-            })
-                .then((result) => {
+            executeDownload(dataset, dependency, queryValues, true)
+                .then(response => {
                     setLoading(false);
-                });
+                    setRowCounts(response.data);
+                })
         }
     }, [changeNumber]);
 
+    if (rowCounts == null) return <></>;
+
     return (
         <>
-            <div>Change number: {changeNumber}</div>
-            <div>Loaded: {loaded}</div>
+            <table className={"table table-hover"}>
+                <thead>
+                <tr>
+                    <th>Table</th>
+                    <th>Rows</th>
+                </tr>
+                </thead>
+                <tbody>
+                {rowCounts.tableRowCounts.map(tableRowCount =>
+                    <tr key={tableRowCount.displayName}>
+                        <td>{tableRowCount.displayName}</td>
+                        <td>{tableRowCount.rowCount}</td>
+                    </tr>
+                )}
+                </tbody>
+            </table>
         </>
     );
 }
