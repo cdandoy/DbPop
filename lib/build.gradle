@@ -26,8 +26,8 @@ dependencies {
     compileOnly 'org.postgresql:postgresql:42.5.0'
     implementation 'org.jetbrains:annotations:23.1.0'
 
-    compileOnly 'com.fasterxml.jackson.core:jackson-annotations:2.13.4'
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.1'
+    compileOnly 'com.fasterxml.jackson.core:jackson-annotations:2.14.1'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.14.1'
 
     testCompileOnly 'org.projectlombok:lombok:1.18.24'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.24'

@@ -50,6 +50,11 @@ micronaut {
     }
 }
 
+task('copyClientResources', type: Copy) {
+    from "${project(':dbpopr').buildDir}"
+    into "${project(':dbpopd').buildDir}/resources/main/public"
+}
+
 task versionTxt()  {
     doLast {
         def file = new File(buildDir, "resources/main/version.txt")
@@ -58,5 +63,5 @@ task versionTxt()  {
     }
 }
 
-compileJava.finalizedBy versionTxt
+processResources.finalizedBy([copyClientResources, versionTxt])
 

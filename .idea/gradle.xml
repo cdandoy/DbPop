@@ -12,6 +12,7 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/dbpopd" />
+            <option value="$PROJECT_DIR$/dbpopr" />
             <option value="$PROJECT_DIR$/lib" />
           </set>
         </option>
