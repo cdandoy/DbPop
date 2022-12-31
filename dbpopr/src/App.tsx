@@ -8,7 +8,7 @@ import DownloadAdd from "./download/DownloadAdd";
 
 function Header() {
     return (
-        <header>
+        <header className="app-header">
             <div className="px-3 py-2 text-bg-dark">
                 <div className="container">
                     <div className="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
@@ -18,15 +18,21 @@ function Header() {
 
                         <ul className="nav col-12 col-lg-auto my-2 justify-content-center my-md-0 text-small">
                             <li>
-                                <a href="https://github.com/cdandoy/DbPop" className="nav-link text-white">
-                                    <i className="fa-brands fa-docker"></i>
+                                <a href="https://github.com/cdandoy/DbPop" target="_blank" className="nav-link text-white">
+                                    <i className="nav-icon fa-brands fa-docker"></i>
                                     GitHub
                                 </a>
                             </li>
                             <li>
-                                <a href="https://hub.docker.com/repository/docker/cdandoy/dbpop" className="nav-link text-white">
-                                    <i className="fa-brands fa-github"></i>
+                                <a href="https://hub.docker.com/r/cdandoy/dbpop" target="_blank" className="nav-link text-white">
+                                    <i className="nav-icon fa-brands fa-github"></i>
                                     Docker
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/api-docs/" target="_blank" className="nav-link text-white">
+                                    <i className="nav-icon fa fa-book"></i>
+                                    API
                                 </a>
                             </li>
                         </ul>
