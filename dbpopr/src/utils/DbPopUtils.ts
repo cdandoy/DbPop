@@ -1,5 +1,5 @@
 export function toHumanReadableSize(bytes: number) {
-    let unit = 'bytes';
+    let unit = bytes === 1 ? 'byte' : 'bytes';
     let size = bytes;
     if (size > 1024) {
         size = size / 1024;

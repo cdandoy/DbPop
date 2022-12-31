@@ -1,9 +1,10 @@
 import './App.scss';
 import 'react-bootstrap-typeahead/css/Typeahead.css';
-import React, {useEffect, useState} from 'react';
-import PopulateComponent from "./populate/PopulateComponent";
-import {HashRouter, Navigate, Route, Routes} from "react-router-dom";
-import DownloadComponent from "./download/DownloadComponent";
+import React from 'react';
+import {HashRouter, Route, Routes} from "react-router-dom";
+import DownloadDatasetDetailsComponent from "./download/DownloadDatasetDetailsComponent";
+import DownloadDatasetsComponent from "./download/DownloadDatasetsComponent"
+import DownloadAdd from "./download/DownloadAdd";
 
 function Header() {
     return (
@@ -36,42 +37,6 @@ function Header() {
     );
 }
 
-function AppSwitch() {
-    const [error, setError] = useState(null);
-    const [isLoaded, setIsLoaded] = useState(false);
-    const [mode, setMode] = useState(null);
-
-    useEffect(() => {
-        fetch("/site")
-            .then(res => res.json())
-            .then(
-                (result) => {
-                    setIsLoaded(true);
-                    setMode(result.mode);
-                },
-                (error) => {
-                    setIsLoaded(true);
-                    setError(error);
-                }
-            )
-    }, []);
-
-    if (error) {
-        return <div>Error: {error}</div>;
-    } else if (!isLoaded) {
-        return <div className="text-center">Loading...</div>;
-    } else {
-        return (
-            <Routes>
-                {mode === "populate" && <Route path="populate/*" element={<PopulateComponent/>}/>}
-                {mode === "download" && <Route path="download/*" element={<DownloadComponent/>}/>}
-                {mode === null && <Route path="/" element={<div>Loading</div>}/>}
-                {mode === "populate" && <Route path="/" element={<Navigate to="/populate/datasets" replace/>}/>}
-                {mode === "download" && <Route path="/" element={<Navigate to="/download" replace/>}/>}
-            </Routes>
-        )
-    }
-}
 
 export default function App() {
     return (
@@ -83,8 +48,12 @@ export default function App() {
                         <h1>Welcome to DbPop</h1>
                         <p className="lead">The easiest way to populate your development database.</p>
                     </div>
-                    <div id="app-switch">
-                        <AppSwitch/>
+                    <div id="download-component" className="row">
+                        <Routes>
+                            <Route path="/dataset/:dataset" element=<DownloadDatasetDetailsComponent/>/>
+                            <Route path="/add/:datasetName" element=<DownloadAdd/>/>
+                            <Route path="/" element=<DownloadDatasetsComponent/>/>
+                        </Routes>
                     </div>
                 </HashRouter>
             </div>

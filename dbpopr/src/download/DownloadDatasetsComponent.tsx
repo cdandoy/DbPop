@@ -1,59 +1,128 @@
 import React, {useEffect, useState} from "react";
-import axios from "axios";
+import axios, {AxiosResponse} from "axios";
 import {DatasetResponse} from "../models/DatasetResponse";
-import {toHumanReadableSize} from "../utils/DbPopUtils";
-import {NavLink} from "react-router-dom";
+import {Configuration} from "../models/Configuration";
+import {DatasetComponent} from "./DatasetComponent";
+import {usePollingEffect} from "../hooks/usePollingEffect";
+import {SqlSetupStatus} from "../models/SqlSetupStatus";
 
-function DatasetComponent({dataset}: { dataset: DatasetResponse }) {
-    const files = dataset.files;
-    let size = 0;
-    let rows = 0;
-    for (const file of files) {
-        size += file.fileSize;
-        rows += file.rows;
+interface SiteResponse {
+    hasSource: boolean;
+    hasTarget: boolean;
+}
+
+function SqlSetupStatusComponent() {
+    const [error, setError] = useState<string | null>(null);
+    const [loaded, setLoaded] = useState(false);
+
+    usePollingEffect(
+        async () => whenSqlSetupStatus(await axios.get<SqlSetupStatus>('/site/populate/setup')),
+        {interval: 5000}
+    );
+
+    function whenSqlSetupStatus(response: AxiosResponse<SqlSetupStatus>): boolean {
+        let sqlSetupStatus = response.data;
+        setError(sqlSetupStatus.errorMessage);
+        setLoaded(sqlSetupStatus.loaded);
+        return !sqlSetupStatus.loaded;
     }
-    let readableSize = toHumanReadableSize(size);
 
-    return (
-        <div className="card m-3">
-            <div className="card-body">
-                <h5 className="card-title">{dataset.name}</h5>
-                <h6 className="card-subtitle mb-2 text-muted">{files.length} files, {readableSize.text}</h6>
-                <div className="text-end">
-                    <NavLink to={`dataset/${dataset.name}`} className="card-link">Details</NavLink>
-                    <NavLink to={`add/${dataset.name}`} className="card-link">Add Data</NavLink>
-                </div>
-            </div>
+    if (error) return (
+        <div className="mb-4 alert alert-danger">
+            <div>setup.sql</div>
+            <pre className="m-3" role="alert" style={{whiteSpace: "pre-line"}}>{error}</pre>
         </div>
     )
+
+    if (!loaded) {
+        return (
+            <div className="mb-4 alert ">
+                <div>setup.sql:</div>
+                <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Loading...</div>
+            </div>
+        );
+    } else {
+        return <></>;
+    }
 }
 
 export default function DownloadDatasetsComponent() {
-    const [loaded, setLoaded] = useState<boolean>(false);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState(null);
+    const [configuration, setConfiguration] = useState<Configuration>({hasSource: false, hasTarget: false});
     const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
+    const [loadingDataset, setLoadingDataset] = useState<string | null>(null);
+    const [loadedDataset, setLoadedDataset] = useState<string | null>(null);
+    const [loadingResult, setLoadingResult] = useState<string | null>(null);
+    const [loadingError, setLoadingError] = useState<string | null>(null);
+
+    const canCreateDataset = false;
+
     useEffect(() => {
-        axios.get<DatasetResponse[]>("/datasets/content")
-            .then((result) => {
-                setLoaded(true);
-                setDatasets(result.data);
+        axios.get<SiteResponse>('/site')
+            .then(result => {
+                setConfiguration({
+                    hasSource: result.data.hasSource,
+                    hasTarget: result.data.hasTarget,
+                })
+                axios.get<DatasetResponse[]>("/datasets/content")
+                    .then((result) => {
+                        setLoading(false);
+                        setDatasets(result.data);
+                    })
+                    .catch(error => {
+                        setLoading(false);
+                        setError(error);
+                    });
+            })
+            .catch(error => {
+                setLoading(false);
+                setError(error);
             });
     }, []);
-    return (
-        <div className="card datasets">
-            <div className="card-body">
-                <h5 className="card-title">Datasets</h5>
-                <div className="datasets p-3">
-                    {loaded || <div className="text-center"><i className="fa fa-spinner fa-spin"/> Loading</div>}
-                    {loaded && datasets.length == 0 && <div className="text-center">No Datasets</div>}
-                    {loaded && datasets.map(dataset => <DatasetComponent key={dataset.name} dataset={dataset}/>)}
-                </div>
 
-{/*
-                <div className="text-end">
-                    <a href="#" className="card-link">Create Dataset</a>
+    if (loading) return <div className="text-center"><i className="fa fa-spinner fa-spin"/> Loading</div>;
+    if (error) return <div className="text-center"><i className="fa fa-error"/> {error}</div>;
+    if (datasets.length == 0) return <div className="text-center">No Datasets</div>;
+
+    return (
+        <>
+            <SqlSetupStatusComponent/>
+            <div className="card datasets">
+                <div className="card-body">
+                    <div className="row">
+                        <div className="col-6 text-start">
+                            <h5 className="card-title">Datasets</h5>
+                        </div>
+                    </div>
+                    <div className="datasets p-3">
+                        <div className={"row"}>
+                            {datasets.map(dataset => (
+                                <div key={dataset.name} className={"col-4"}>
+                                    <DatasetComponent
+                                        dataset={dataset}
+                                        hasDownload={configuration.hasSource}
+                                        hasUpload={configuration.hasTarget}
+                                        loadingDataset={loadingDataset}
+                                        loadedDataset={loadedDataset}
+                                        loadingResult={loadingResult}
+                                        loadingError={loadingError}
+                                        setLoadingDataset={setLoadingDataset}
+                                        setLoadedDataset={setLoadedDataset}
+                                        setLoadingResult={setLoadingResult}
+                                        setLoadingError={setLoadingError}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {canCreateDataset &&
+                        <div className="text-end">
+                            <a href="#" className="card-link">Create Dataset</a>
+                        </div>
+                    }
                 </div>
-*/}
             </div>
-        </div>
-    )
+        </>)
 }

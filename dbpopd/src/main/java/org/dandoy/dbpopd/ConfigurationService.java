@@ -83,16 +83,19 @@ public class ConfigurationService {
         if (targetConnectionBuilder == null) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "The target database has not been defined");
     }
 
-    public boolean hasTargetConnection() {
-        return targetConnectionBuilder != null;
+    public boolean hasSourceConnection() {
+        return sourceConnectionBuilder != null;
     }
 
     public Connection createSourceConnection() throws SQLException {
         return sourceConnectionBuilder.createConnection();
     }
 
+    public boolean hasTargetConnection() {
+        return targetConnectionBuilder != null;
+    }
+
     public Connection createTargetConnection() throws SQLException {
         return targetConnectionBuilder.createConnection();
     }
-
 }
