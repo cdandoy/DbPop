@@ -1,6 +1,5 @@
 package org.dandoy.dbpopd;
 
-import io.micronaut.context.annotation.Context;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
@@ -12,7 +11,6 @@ import java.util.List;
 
 @Controller
 @Slf4j
-@Context
 public class PopulateController {
     private final PopulatorHolder populatorHolder;
     private final SqlSetupService sqlSetupService;
@@ -35,6 +33,13 @@ public class PopulateController {
             String message = String.join("\n", ExceptionUtils.getErrorMessages(e, ">"));
             throw new HttpStatusException(HttpStatus.BAD_REQUEST, message);
         }
+    }
+
+    /**
+     * Used for tests only
+     */
+    public void resetPopulatorHolder(){
+        populatorHolder.reset();
     }
 
     /**

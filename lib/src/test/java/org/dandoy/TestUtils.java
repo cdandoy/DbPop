@@ -1,14 +1,8 @@
 package org.dandoy;
 
-import org.apache.commons.io.IOUtils;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.test.SqlServerTests;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.io.File;
 
 public class TestUtils {
     public static final TableName invoices = new TableName("master", "dbo", "invoices");
@@ -44,9 +38,9 @@ public class TestUtils {
         LocalCredentials
                 .from("mssql")
                 .executeSource(
-                        "drop_tables.sql",
-                        "create_tables.sql",
-                        "insert_data.sql"
+                        "/mssql/drop_tables.sql",
+                        "/mssql/create_tables.sql",
+                        "/mssql/insert_data.sql"
                 );
     }
 
@@ -54,32 +48,29 @@ public class TestUtils {
         LocalCredentials
                 .from("mssql")
                 .executeTarget(
-                        "drop_tables.sql",
-                        "create_tables.sql"
+                        "/mssql/drop_tables.sql",
+                        "/mssql/create_tables.sql"
                 );
     }
 
-    public static void executeTargetSql(String environment, String... paths) {
-        try (Connection connection = LocalCredentials
-                .from(environment)
-                .createTargetConnection()
-        ) {
-            for (String path : paths) {
-                try (InputStream resourceAsStream = SqlServerTests.class.getResourceAsStream(path)) {
-                    if (resourceAsStream == null) throw new RuntimeException("Script not found: " + path);
-                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(resourceAsStream, StandardCharsets.UTF_8))) {
-                        String sql = IOUtils.toString(reader);
-                        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-                            preparedStatement.execute();
-                        } catch (SQLException e) {
-                            throw new RuntimeException("Failed to execute \n%s".formatted(sql), e);
-                        }
-                    }
-                }
-            }
-        } catch (SQLException | IOException e) {
-            throw new RuntimeException(e);
-        }
+    @SuppressWarnings("unused")
+    public static void preparePgsqlSource() {
+        LocalCredentials
+                .from("pgsql")
+                .executeSource(
+                        "/pgsql/drop_tables.sql",
+                        "/pgsql/create_tables.sql",
+                        "/pgsql/insert_data.sql"
+                );
+    }
+
+    public static void preparePgsqlTarget() {
+        LocalCredentials
+                .from("pgsql")
+                .executeSource(
+                        "/pgsql/drop_tables.sql",
+                        "/pgsql/create_tables.sql"
+                );
     }
 
     public static void delete(File file) {

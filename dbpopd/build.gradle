@@ -25,6 +25,7 @@ dependencies {
     implementation project(":lib")
     implementation 'org.apache.commons:commons-csv:1.9.0'
     testImplementation 'commons-io:commons-io:2.11.0'
+    testImplementation project(":test-resources")
 }
 
 application {

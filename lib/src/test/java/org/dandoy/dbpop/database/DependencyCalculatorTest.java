@@ -21,7 +21,7 @@ class DependencyCalculatorTest {
     static void beforeAll() {
         LocalCredentials
                 .from("mssql")
-                .executeSource("advanced.sql");
+                .executeSource("/mssql/advanced.sql");
     }
 
     @Test

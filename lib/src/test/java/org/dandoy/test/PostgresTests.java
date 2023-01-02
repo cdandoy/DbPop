@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class PostgresTests {
     @BeforeAll
     public static void prepare() {
-        TestUtils.executeTargetSql("pgsql", "/pgsql/test.sql");
+        TestUtils.preparePgsqlTarget();
     }
 
     @Test

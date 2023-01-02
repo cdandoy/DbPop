@@ -6,7 +6,6 @@
     <file url="file://$PROJECT_DIR$/lib/src/main/java/org/dandoy/dbpop/database/pgsql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/lib/src/test/java/org/dandoy/test/PostgresTests.java" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/lib/src/test/java/org/dandoy/test/SqlServerTests.java" dialect="TSQL" />
-    <file url="file://$PROJECT_DIR$/lib/src/test/resources/mssql" dialect="TSQL" />
-    <file url="file://$PROJECT_DIR$/lib/src/test/resources/pgsql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/test-resources/src/main/resources/mssql" dialect="TSQL" />
   </component>
 </project>

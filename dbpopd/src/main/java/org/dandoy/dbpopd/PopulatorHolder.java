@@ -72,4 +72,8 @@ public class PopulatorHolder {
                 .build();
         lastTimestamp = System.currentTimeMillis();
     }
+
+    public void reset() {
+        populator = null;
+    }
 }

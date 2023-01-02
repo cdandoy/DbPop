@@ -1,6 +1,5 @@
 package org.dandoy.dbpopd;
 
-import io.micronaut.context.annotation.Context;
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
@@ -17,7 +16,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Controller
-@Context
 public class DownloadController {
     private final ConfigurationService configurationService;
 

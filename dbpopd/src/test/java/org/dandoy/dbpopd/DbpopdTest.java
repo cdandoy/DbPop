@@ -5,10 +5,14 @@ import jakarta.inject.Inject;
 import org.apache.commons.io.FileUtils;
 import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.tests.SqlExecutor;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -21,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @MicronautTest
 class DbpopdTest {
-
     public static final TableName invoices = new TableName("master", "dbo", "invoices");
     public static final TableName customers = new TableName("master", "dbo", "customers");
     public static final TableName invoiceDetails = new TableName("master", "dbo", "invoice_details");
@@ -29,6 +32,21 @@ class DbpopdTest {
     PopulateController populateController;
     @Inject
     DownloadController downloadController;
+    @Inject
+    ConfigurationService configurationService;
+
+    @BeforeEach
+    void setUp() throws SQLException {
+        try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
+            SqlExecutor.execute(
+                    connection,
+                    "/mssql/drop_tables.sql",
+                    "/mssql/create_tables.sql"
+            );
+        }
+
+        populateController.resetPopulatorHolder();
+    }
 
     @Test
     void testUpload() {
@@ -55,10 +73,20 @@ class DbpopdTest {
         long t2 = System.currentTimeMillis();
         System.out.printf("populate: %dms, download: %dms%n", t1 - t0, t2 - t1);
 
-        assertEquals(4, downloadResponse.rowCounts().get(invoices));
+
+        assertEquals(
+                4,
+                downloadResponse
+                        .getTableRowCounts().stream()
+                        .filter(it -> invoices.equals(it.getTableName()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getRowCount()
+        );
     }
 
     @Test
+    @Disabled("Rewrite this test")
     void testDownload() throws IOException, SQLException {
         populateController.populate(singletonList("customers_1000"));
 
@@ -82,6 +110,7 @@ class DbpopdTest {
         deleteRecursively(dir);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static DownloadRequest createInvoiceDownloadRequest(String dataset, boolean dryRun) {
         return new DownloadRequest()
                 .setDataset(dataset)

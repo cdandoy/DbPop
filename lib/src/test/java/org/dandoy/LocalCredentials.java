@@ -1,8 +1,8 @@
 package org.dandoy;
 
-import org.apache.commons.io.IOUtils;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
+import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.upload.Populator;
 
 import java.io.BufferedReader;
@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Properties;
@@ -90,32 +89,17 @@ public record LocalCredentials(ConnectionBuilder sourceConnectionBuilder, Connec
 
     public void executeSource(String... filenames) {
         try (Connection sourceConnection = createSourceConnection()) {
-            execute(sourceConnection, filenames);
-        } catch (SQLException | IOException e) {
+            SqlExecutor.execute(sourceConnection, filenames);
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
     public void executeTarget(String... filenames) {
         try (Connection sourceConnection = createTargetConnection()) {
-            execute(sourceConnection, filenames);
-        } catch (SQLException | IOException e) {
+            SqlExecutor.execute(sourceConnection, filenames);
+        } catch (SQLException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private static void execute(Connection sourceConnection, String... filenames) throws IOException {
-        File dir = new File("./src/test/resources/mssql");
-        for (String filename : filenames) {
-            File file = new File(dir, filename);
-            try (BufferedReader reader = Files.newBufferedReader(file.toPath())) {
-                String sql = IOUtils.toString(reader);
-                try (PreparedStatement preparedStatement = sourceConnection.prepareStatement(sql)) {
-                    preparedStatement.execute();
-                } catch (SQLException e) {
-                    throw new RuntimeException("Failed to execute \n%s".formatted(sql), e);
-                }
-            }
         }
     }
 }
