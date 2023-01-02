@@ -1,4 +1,4 @@
-FROM openjdk:17-alpine
+FROM amazoncorretto:17-alpine
 WORKDIR /home/app
 COPY build/docker/main/layers/libs /home/app/libs
 COPY build/docker/main/layers/classes /home/app/classes
