@@ -1,4 +1,4 @@
-import {TableName} from "../models/TableName";
+import {TableName} from "./TableName";
 
 export interface Dependency {
     displayName: string;

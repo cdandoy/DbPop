@@ -1,7 +1,7 @@
 import {SearchTableResult} from "./SelectTable";
 import React, {useEffect, useState} from "react";
 import axios, {AxiosResponse} from "axios";
-import {Dependency} from "./Dependency";
+import {Dependency} from "../models/Dependency";
 
 export function DependentTables({rootTable, changeNumber, setChangeNumber, dependency, setDependency}: {
     rootTable: SearchTableResult | null,

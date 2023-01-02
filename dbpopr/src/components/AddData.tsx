@@ -4,10 +4,11 @@ import {SearchTableResult, SelectTable} from "./SelectTable";
 import {DependentTables} from "./DependentTables";
 import FilterForm from "./FilterForm";
 import RowCounts from "./RowCounts";
-import {Dependency} from "./Dependency";
-import {DownloadResponse, executeDownload} from "./downloadApi";
+import {executeDownload} from "./executeDownload";
+import {Dependency} from "../models/Dependency";
+import {DownloadResponse} from "../models/DownloadResponse";
 
-export default function DownloadAdd() {
+export default function AddData() {
     const routeParams = useParams();
     const datasetName = routeParams['datasetName']
     const [tableSelections, setTableSelections] = useState<SearchTableResult[]>([]);

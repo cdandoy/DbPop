@@ -1,17 +1,6 @@
-import {TableName} from "../models/TableName";
-import {Dependency} from "./Dependency";
+import {Dependency} from "../models/Dependency";
 import axios, {AxiosResponse} from "axios";
-
-export interface DownloadResponse {
-    tableRowCounts: TableRowCounts[];
-    rowCount: number;
-}
-
-export interface TableRowCounts {
-    displayName: string;
-    tableName: TableName;
-    rowCount: number;
-}
+import {DownloadResponse} from "../models/DownloadResponse";
 
 export function executeDownload(dataset: string, dependency: Dependency, queryValues: any, dryRun: boolean): Promise<AxiosResponse<DownloadResponse>> {
 

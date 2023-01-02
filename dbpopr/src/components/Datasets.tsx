@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import axios, {AxiosResponse} from "axios";
 import {DatasetResponse} from "../models/DatasetResponse";
 import {Configuration} from "../models/Configuration";
-import {DatasetComponent} from "./DatasetComponent";
+import {Dataset} from "./Dataset";
 import {usePollingEffect} from "../hooks/usePollingEffect";
 import {SqlSetupStatus} from "../models/SqlSetupStatus";
 
@@ -46,7 +46,7 @@ function SqlSetupStatusComponent() {
     }
 }
 
-export default function DownloadDatasetsComponent() {
+export default function Datasets() {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState(null);
     const [configuration, setConfiguration] = useState<Configuration>({hasSource: false, hasTarget: false});
@@ -99,7 +99,7 @@ export default function DownloadDatasetsComponent() {
                         <div className={"row"}>
                             {datasets.map(dataset => (
                                 <div key={dataset.name} className={"col-4"}>
-                                    <DatasetComponent
+                                    <Dataset
                                         dataset={dataset}
                                         hasDownload={configuration.hasSource}
                                         hasUpload={configuration.hasTarget}

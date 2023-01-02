@@ -1,9 +1,9 @@
 import React, {useEffect, useState} from "react";
-import {Dependency} from "./Dependency";
-import {DownloadResponse, executeDownload} from "./downloadApi";
+import {Dependency} from "../models/Dependency";
+import {executeDownload} from "./executeDownload";
+import {DownloadResponse} from "../models/DownloadResponse";
 
-
-export default function RowCounts({changeNumber, dataset, dependency, queryValues, rowCounts,setRowCounts }: {
+export default function RowCounts({changeNumber, dataset, dependency, queryValues, rowCounts, setRowCounts}: {
     dataset: string,
     changeNumber: number,
     dependency: Dependency,
@@ -25,6 +25,8 @@ export default function RowCounts({changeNumber, dataset, dependency, queryValue
     }, [changeNumber]);
 
     if (rowCounts == null) return <></>;
+
+    if (loading) return <div><i className={"fa fa-spinner fa-spin"}/> Loading...</div>;
 
     return (
         <>

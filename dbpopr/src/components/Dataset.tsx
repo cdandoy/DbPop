@@ -13,7 +13,7 @@ function Plural({count, text}: {
     return <>{count} {text}s</>
 }
 
-export function DatasetComponent({
+export function Dataset({
                                      dataset,
                                      hasDownload,
                                      hasUpload,

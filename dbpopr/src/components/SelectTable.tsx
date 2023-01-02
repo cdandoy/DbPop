@@ -3,7 +3,7 @@ import React, {useState} from "react";
 import axios from "axios";
 import {AsyncTypeahead} from "react-bootstrap-typeahead";
 import {TableName} from "../models/TableName";
-import {Dependency} from "./Dependency";
+import {Dependency} from "../models/Dependency";
 
 export interface SearchTableResult {
     displayName: string;

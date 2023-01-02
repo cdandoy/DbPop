@@ -2,9 +2,9 @@ import './App.scss';
 import 'react-bootstrap-typeahead/css/Typeahead.css';
 import React from 'react';
 import {HashRouter, Route, Routes} from "react-router-dom";
-import DownloadDatasetDetailsComponent from "./download/DownloadDatasetDetailsComponent";
-import DownloadDatasetsComponent from "./download/DownloadDatasetsComponent"
-import DownloadAdd from "./download/DownloadAdd";
+import DatasetDetails from "./components/DatasetDetails";
+import Datasets from "./components/Datasets"
+import AddData from "./components/AddData";
 
 function Header() {
     return (
@@ -56,9 +56,9 @@ export default function App() {
                     </div>
                     <div id="download-component" className="row">
                         <Routes>
-                            <Route path="/dataset/:dataset" element=<DownloadDatasetDetailsComponent/>/>
-                            <Route path="/add/:datasetName" element=<DownloadAdd/>/>
-                            <Route path="/" element=<DownloadDatasetsComponent/>/>
+                            <Route path="/dataset/:dataset" element=<DatasetDetails/>/>
+                            <Route path="/add/:datasetName" element=<AddData/>/>
+                            <Route path="/" element=<Datasets/>/>
                         </Routes>
                     </div>
                 </HashRouter>

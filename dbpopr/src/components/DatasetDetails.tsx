@@ -4,7 +4,7 @@ import {DatasetResponse} from "../models/DatasetResponse";
 import axios from "axios";
 import {toHumanReadableSize} from "../utils/DbPopUtils";
 
-export default function DownloadDatasetDetailsComponent(): JSX.Element {
+export default function DatasetDetails() {
     const routeParams = useParams();
     const datasetName = routeParams['dataset']
     const [dataset, setDataset] = useState<DatasetResponse | null>(null);
