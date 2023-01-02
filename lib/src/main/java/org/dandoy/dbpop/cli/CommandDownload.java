@@ -3,10 +3,13 @@ package org.dandoy.dbpop.cli;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.download.Downloader;
+import org.dandoy.dbpop.download.TableDownloader;
 import org.dandoy.dbpop.utils.StringUtils;
 
 import java.io.File;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -18,9 +21,6 @@ import static picocli.CommandLine.*;
 public class CommandDownload implements Callable<Integer> {
     @Mixin
     private DatabaseOptions databaseOptions;
-
-    @Mixin
-    private StandardOptions standardOptions;
 
     @Option(names = {"-d", "--directory"}, description = "Dataset Directory")
     File directory;
@@ -34,46 +34,54 @@ public class CommandDownload implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        try (Downloader downloader = Downloader.builder()
-                .setDbUrl(databaseOptions.dbUrl)
-                .setDbUser(databaseOptions.dbUser)
-                .setDbPassword(databaseOptions.dbPassword)
-                .setDirectory(directory)
-                .setDataset(dataset)
-                .build()) {
-            for (String table : tables) {
-                List<String> split = StringUtils.split(table, '.');
+        try (Connection connection = DriverManager.getConnection(databaseOptions.dbUrl, databaseOptions.dbUser, databaseOptions.dbPassword)) {
+            try (Database database = Database.createDatabase(connection)) {
+                for (String table : tables) {
+                    List<String> split = StringUtils.split(table, '.');
 
-                if (split.size() == 1) {            // database, no catalog: "master"
-                    downloadDatabase(downloader, split.get(0));
-                } else if (split.size() == 2) {      // database and catalog: "master.dbo"
-                    downloadSchema(downloader, split.get(0), split.get(1));
-                } else if (split.size() == 3) {      // database and catalog: "master.dbo.mytable"
-                    downloadTable(downloader, split.get(0), split.get(1), split.get(2));
-                } else {
-                    throw new RuntimeException("Invalid database/schema/table: " + table);
+                    if (split.size() == 1) {            // database, no catalog: "master"
+                        downloadDatabase(database, split.get(0));
+                    } else if (split.size() == 2) {      // database and catalog: "master.dbo"
+                        downloadSchema(database, split.get(0), split.get(1));
+                    } else if (split.size() == 3) {      // database and catalog: "master.dbo.mytable"
+                        downloadTable(database, split.get(0), split.get(1), split.get(2));
+                    } else {
+                        throw new RuntimeException("Invalid database/schema/table: " + table);
+                    }
                 }
+                return 0;
             }
-            return 0;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    private static void downloadDatabase(Downloader downloader, String catalog) {
-        Database database = downloader.getDatabase();
+    private void downloadDatabase(Database database, String catalog) {
         database.getSchemas(catalog)
                 .stream()
                 .flatMap(s -> database.getTableNames(catalog, s).stream())
-                .forEach(downloader::download);
+                .forEach(tableName -> download(database, tableName));
     }
 
-    private static void downloadSchema(Downloader downloader, String catalog, String schema) {
-        downloader.getDatabase()
+    private void downloadSchema(Database database, String catalog, String schema) {
+        database
                 .getTableNames(catalog, schema)
-                .forEach(downloader::download);
+                .forEach(tableName -> download(database, tableName));
     }
 
-    private void downloadTable(Downloader downloader, String catalog, String schema, String table) {
+    private void downloadTable(Database database, String catalog, String schema, String table) {
         TableName tableName = new TableName(catalog, schema, table);
-        downloader.download(tableName);
+        download(database, tableName);
+    }
+
+    private void download(Database database, TableName tableName) {
+        try (TableDownloader tableDownloader = TableDownloader.builder()
+                .setDatabase(database)
+                .setDatasetsDirectory(directory)
+                .setDataset(dataset)
+                .setTableName(tableName)
+                .build()) {
+            tableDownloader.download();
+        }
     }
 }

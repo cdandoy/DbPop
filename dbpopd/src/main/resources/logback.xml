@@ -13,5 +13,5 @@
     <root level="info">
         <appender-ref ref="STDOUT"/>
     </root>
-    <logger name="io.micronaut.runtime.Micronaut" level="WARN"/>
+<!--    <logger name="io.micronaut.runtime.Micronaut" level="WARN"/>-->
 </configuration>

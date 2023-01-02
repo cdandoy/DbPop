@@ -76,6 +76,10 @@ public abstract class Database implements AutoCloseable {
 
     public abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
 
+    public abstract Table getTable(TableName tableName);
+
+    public abstract List<ForeignKey> getRelatedForeignKeys(TableName tableName);
+
     public List<String> getSchemas(String catalog) {
         try {
             DatabaseMetaData metaData = connection.getMetaData();
@@ -117,8 +121,9 @@ public abstract class Database implements AutoCloseable {
                 );
             } else {
                 executeSql(
-                        "ALTER TABLE %s ADD %s",
+                        "ALTER TABLE %s ADD CONSTRAINT %s %s",
                         quote(foreignKey.getFkTableName()),
+                        foreignKey.getName(),
                         constraintDef
                 );
             }
@@ -143,18 +148,18 @@ public abstract class Database implements AutoCloseable {
                     if (bindVariables.length() > 0) bindVariables.append(",");
                     bindVariables.append("?");
                 } else {
-                    log.error("Cannot load the data type of {}.{}", table.getTableName().toQualifiedName(), columnName);
+                    log.error("Cannot load the data type of {}.{}", table.tableName().toQualifiedName(), columnName);
                     dataFileHeader.setLoadable(false);
                 }
             } else {
-                log.error("Column not found: {}.{}", table.getTableName().toQualifiedName(), columnName);
+                log.error("Column not found: {}.{}", table.tableName().toQualifiedName(), columnName);
                 dataFileHeader.setLoadable(false);
             }
         }
 
         String sql = String.format(
                 "INSERT INTO %s (%s) VALUES (%s)",
-                quote(table.getTableName()),
+                quote(table.tableName()),
                 columnNames,
                 bindVariables
         );
@@ -188,7 +193,7 @@ public abstract class Database implements AutoCloseable {
     }
 
     public void deleteTable(Table table) {
-        StopWatch.record("DELETE", () -> executeSql("DELETE FROM %s", quote(table.getTableName())));
+        StopWatch.record("DELETE", () -> executeSql("DELETE FROM %s", quote(table.tableName())));
     }
 
     public abstract DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets);
@@ -196,11 +201,15 @@ public abstract class Database implements AutoCloseable {
     public boolean isBinary(ResultSetMetaData metaData, int i) throws SQLException {
         int columnType = metaData.getColumnType(i + 1);
         return columnType == Types.BINARY ||
-                columnType == Types.VARBINARY ||
-                columnType == Types.LONGVARBINARY ||
-                columnType == Types.BLOB;
+               columnType == Types.VARBINARY ||
+               columnType == Types.LONGVARBINARY ||
+               columnType == Types.BLOB;
     }
 
+    /**
+     * Searches for tables by partial name
+     */
+    public abstract Set<TableName> searchTable(String query);
 
     public class DatabaseInserter implements AutoCloseable {
         private static final int BATCH_SIZE = 10000;

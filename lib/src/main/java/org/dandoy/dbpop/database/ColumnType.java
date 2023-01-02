@@ -9,6 +9,10 @@ import java.util.Date;
 
 public abstract class ColumnType {
     public static final ColumnType VARCHAR = new ColumnType() {
+        @Override
+        public Integer toSqlType() {
+            return Types.VARCHAR;
+        }
     };
 
     public static final ColumnType INTEGER = new ColumnType() {
@@ -20,6 +24,11 @@ public abstract class ColumnType {
                 preparedStatement.setLong(jdbcPos, Long.parseLong(input));
             }
         }
+
+        @Override
+        public Integer toSqlType() {
+            return Types.INTEGER;
+        }
     };
 
     public static final ColumnType BIG_DECIMAL = new ColumnType() {
@@ -30,6 +39,11 @@ public abstract class ColumnType {
             } else {
                 preparedStatement.setBigDecimal(jdbcPos, new BigDecimal(input));
             }
+        }
+
+        @Override
+        public Integer toSqlType() {
+            return Types.DECIMAL;
         }
     };
 
@@ -61,6 +75,11 @@ public abstract class ColumnType {
                 }
             }
         }
+
+        @Override
+        public Integer toSqlType() {
+            return Types.TIMESTAMP;
+        }
     };
     public static final ColumnType TIME = new ColumnType() {
         @Override
@@ -87,6 +106,11 @@ public abstract class ColumnType {
                 }
             }
         }
+
+        @Override
+        public Integer toSqlType() {
+            return Types.TIME;
+        }
     };
     public static final ColumnType DATE = new ColumnType() {
         @Override
@@ -109,6 +133,11 @@ public abstract class ColumnType {
                 }
             }
         }
+
+        @Override
+        public Integer toSqlType() {
+            return Types.DATE;
+        }
     };
 
     public static final ColumnType BINARY = new ColumnType() {
@@ -121,6 +150,11 @@ public abstract class ColumnType {
                 preparedStatement.setBytes(jdbcPos, bytes);
             }
         }
+
+        @Override
+        public Integer toSqlType() {
+            return Types.BINARY;
+        }
     };
 
     public static final ColumnType INVALID = new ColumnType() {
@@ -128,7 +162,42 @@ public abstract class ColumnType {
         public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) {
             throw new RuntimeException("Cannot load this data type");
         }
+
+        @Override
+        public Integer toSqlType() {
+            throw new RuntimeException("Cannot load this data type");
+        }
     };
+
+    public static ColumnType getColumnType(String typeName, int typePrecision) {
+        if ("varchar".equals(typeName)) return VARCHAR;
+        if ("nvarchar".equals(typeName)) return VARCHAR;
+        if ("int".equals(typeName)) return INTEGER;
+        if ("smallint".equals(typeName)) return INTEGER;
+        if ("tinyint".equals(typeName)) return INTEGER;
+        if ("bigint".equals(typeName)) return BIG_DECIMAL;
+        if ("money".equals(typeName)) return BIG_DECIMAL;
+        if ("text".equals(typeName)) return VARCHAR;
+        if ("decimal".equals(typeName)) return typePrecision > 0 ? BIG_DECIMAL : INTEGER;
+        if ("float".equals(typeName)) return typePrecision > 0 ? BIG_DECIMAL : INTEGER;
+        if ("numeric".equals(typeName)) return typePrecision > 0 ? BIG_DECIMAL : INTEGER;
+        if ("date".equals(typeName)) return DATE;
+        if ("datetime".equals(typeName)) return TIMESTAMP;
+        if ("datetime2".equals(typeName)) return TIMESTAMP;
+        if ("time".equals(typeName)) return TIME;
+        if ("binary".equals(typeName)) return BINARY;
+        if ("bit".equals(typeName)) return INTEGER;
+        if ("char".equals(typeName)) return VARCHAR;
+        if ("nchar".equals(typeName)) return VARCHAR;
+        if ("sysname".equals(typeName)) return VARCHAR;
+        if ("image".equals(typeName)) return BINARY;
+        if ("varbinary".equals(typeName)) return BINARY;
+        if ("geometry".equals(typeName)) return INVALID;
+        if ("geography".equals(typeName)) return INVALID;
+        if ("hierarchyid".equals(typeName)) return INVALID;
+        if ("uniqueidentifier".equals(typeName)) return VARCHAR;
+        throw new RuntimeException("Unexpected type: " + typeName);
+    }
 
     public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) throws SQLException {
         preparedStatement.setString(jdbcPos, input);
@@ -141,4 +210,6 @@ public abstract class ColumnType {
     public void bind(PreparedStatement preparedStatement, int jdbcPos, Object input) throws SQLException {
         preparedStatement.setObject(jdbcPos, input);
     }
+
+    public abstract Integer toSqlType();
 }

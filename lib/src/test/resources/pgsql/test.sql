@@ -19,13 +19,16 @@ CREATE TABLE dbpop.public.products
 CREATE TABLE dbpop.public.invoices
 (
     invoice_id   SERIAL PRIMARY KEY,
-    customer_id  INT       NOT NULL REFERENCES dbpop.public.customers,
-    invoice_date TIMESTAMP NOT NULL
+    customer_id  INT       NOT NULL,
+    invoice_date TIMESTAMP NOT NULL,
+    CONSTRAINT invoices_customers_fk FOREIGN KEY (customer_id) REFERENCES dbpop.public.customers
 );
 
 CREATE TABLE dbpop.public.invoice_details
 (
     invoice_detail_id SERIAL PRIMARY KEY,
-    invoice_id        INT NOT NULL REFERENCES dbpop.public.invoices,
-    product_id        INT NOT NULL REFERENCES dbpop.public.products
+    invoice_id        INT NOT NULL,
+    product_id        INT NOT NULL,
+    CONSTRAINT invoice_details_invoices_fk FOREIGN KEY (invoice_id) REFERENCES dbpop.public.invoices,
+    CONSTRAINT invoice_details_products_fk FOREIGN KEY (product_id) REFERENCES dbpop.public.products
 );

@@ -38,15 +38,18 @@ public class SqlSetupService {
     public void loadSetup() {
         loading = true;
         try {
-            File configurationDir = configurationService.getConfigurationDir();
-            File setupFile = new File(configurationDir, "setup.sql");
-            if (setupFile.isFile()) {
-                try (Connection connection = configurationService.createConnection()) {
-                    List<String> lines = Files.readAllLines(setupFile.toPath());
-                    List<Sql> sqls = linesToSql(lines);
-                    executeSqls(setupFile, connection, sqls);
-                } catch (SQLException | IOException e) {
-                    throw new RuntimeException(e);
+            if (configurationService.hasTargetConnection()) {
+                File configurationDir = configurationService.getConfigurationDir();
+                File setupFile = new File(configurationDir, "setup.sql");
+                if (setupFile.isFile()) {
+                    // TODO: Run this in a background thread
+                    try (Connection connection = configurationService.createTargetConnection()) {
+                        List<String> lines = Files.readAllLines(setupFile.toPath());
+                        List<Sql> sqls = linesToSql(lines);
+                        executeSqls(setupFile, connection, sqls);
+                    } catch (SQLException | IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
         } catch (RuntimeException e) {
