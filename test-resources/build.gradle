@@ -3,7 +3,7 @@ plugins {
 }
 
 group 'io.github.cdandoy'
-version '0.0.1_SNAPSHOT'
+version '0.1.0'
 
 repositories {
     mavenCentral()
