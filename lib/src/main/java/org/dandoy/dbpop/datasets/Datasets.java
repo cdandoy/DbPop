@@ -8,7 +8,10 @@ import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpop.utils.StopWatch;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -16,57 +19,63 @@ public class Datasets {
     public static final String STATIC = "static";
     public static final String BASE = "base";
 
+    public static Dataset getDataset(File directory, String name) {
+        return getDataset(new File(directory, name));
+    }
+
     public static List<Dataset> getDatasets(File directory) {
         return StopWatch.record("DatasetUtils.getDatasets", () -> {
             List<Dataset> datasets = new ArrayList<>();
             File[] datasetFiles = directory.listFiles();
             if (datasetFiles == null) throw new RuntimeException("Invalid path " + directory);
             for (File datasetFile : datasetFiles) {
-                File[] catalogFiles = datasetFile.listFiles();
-                if (catalogFiles != null) {
-                    Collection<DataFile> dataFiles = new ArrayList<>();
-                    for (File catalogFile : catalogFiles) {
-                        String catalog = catalogFile.getName();
-                        File[] schemaFiles = catalogFile.listFiles();
-                        if (schemaFiles != null) {
-                            for (File schemaFile : schemaFiles) {
-                                String schema = schemaFile.getName();
-                                File[] tableFiles = schemaFile.listFiles();
-                                if (tableFiles != null) {
-                                    for (File tableFile : tableFiles) {
-                                        String tableFileName = tableFile.getName();
-                                        if (tableFileName.endsWith(".csv")) {
-                                            String table = tableFileName.substring(0, tableFileName.length() - 4);
-                                            dataFiles.add(
-                                                    new DataFile(
-                                                            tableFile,
-                                                            new TableName(catalog, schema, table)
-                                                    )
-                                            );
-                                        }
-                                    }
-                                } else {
-                                    log.warn("Unexpected file " + schemaFile);
-                                }
-                            }
-                        } else {
-                            log.warn("Unexpected file " + catalogFile);
-                        }
-                    }
-                    if (!dataFiles.isEmpty()) {
-                        datasets.add(
-                                new Dataset(
-                                        datasetFile.getName(),
-                                        dataFiles
-                                )
-                        );
-                    }
-                } else {
-                    log.warn("Unexpected file " + datasetFile);
+                Dataset dataset = getDataset(datasetFile);
+                if (dataset != null) {
+                    datasets.add(dataset);
                 }
             }
             return datasets;
         });
+    }
+
+    private static Dataset getDataset(File datasetFile) {
+        File[] catalogFiles = datasetFile.listFiles();
+        if (catalogFiles == null) return null;
+
+        Collection<DataFile> dataFiles = new ArrayList<>();
+        for (File catalogFile : catalogFiles) {
+            String catalog = catalogFile.getName();
+            File[] schemaFiles = catalogFile.listFiles();
+            if (schemaFiles != null) {
+                for (File schemaFile : schemaFiles) {
+                    String schema = schemaFile.getName();
+                    File[] tableFiles = schemaFile.listFiles();
+                    if (tableFiles != null) {
+                        for (File tableFile : tableFiles) {
+                            String tableFileName = tableFile.getName();
+                            if (tableFileName.endsWith(".csv")) {
+                                String table = tableFileName.substring(0, tableFileName.length() - 4);
+                                dataFiles.add(
+                                        new DataFile(
+                                                tableFile,
+                                                new TableName(catalog, schema, table)
+                                        )
+                                );
+                            }
+                        }
+                    } else {
+                        log.warn("Unexpected file " + schemaFile);
+                    }
+                }
+            } else {
+                log.warn("Unexpected file " + catalogFile);
+            }
+        }
+
+        return new Dataset(
+                datasetFile.getName(),
+                dataFiles
+        );
     }
 
     /**
@@ -77,7 +86,7 @@ public class Datasets {
      * @param databaseTables    the tables found in the database that are in the data sets
      */
     public static void validateAllTablesExist(List<Dataset> allDatasets, Set<TableName> datasetTableNames, Collection<Table> databaseTables) {
-        Set<TableName> databaseTableNames = databaseTables.stream().map(Table::getTableName).collect(Collectors.toSet());
+        Set<TableName> databaseTableNames = databaseTables.stream().map(Table::tableName).collect(Collectors.toSet());
         List<TableName> missingTables = datasetTableNames.stream()
                 .filter(tableName -> !databaseTableNames.contains(tableName))
                 .toList();

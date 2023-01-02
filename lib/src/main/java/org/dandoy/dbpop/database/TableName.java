@@ -1,5 +1,8 @@
 package org.dandoy.dbpop.database;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -9,7 +12,12 @@ public class TableName {
     private final String schema;
     private final String table;
 
-    public TableName(String catalog, String schema, String table) {
+    @JsonCreator
+    public TableName(
+            @JsonProperty("catalog") String catalog,
+            @JsonProperty("schema") String schema,
+            @JsonProperty("table") String table
+    ) {
         this.catalog = catalog;
         this.schema = schema;
         this.table = table;
@@ -18,10 +26,10 @@ public class TableName {
     @Override
     public String toString() {
         return "TableName{" +
-                "catalog='" + catalog + '\'' +
-                ", schema='" + schema + '\'' +
-                ", table='" + table + '\'' +
-                '}';
+               "catalog='" + catalog + '\'' +
+               ", schema='" + schema + '\'' +
+               ", table='" + table + '\'' +
+               '}';
     }
 
     @Override

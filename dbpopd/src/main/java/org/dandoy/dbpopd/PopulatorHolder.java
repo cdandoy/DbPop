@@ -64,8 +64,16 @@ public class PopulatorHolder {
     }
 
     private void createPopulator() {
+        configurationService.assertTargetConnection();
         closePopulator();
-        populator = configurationService.createPopulator();
+        populator = Populator.builder()
+                .setConnectionBuilder(configurationService.getTargetConnectionBuilder())
+                .setDirectory(configurationService.getDatasetsDirectory())
+                .build();
         lastTimestamp = System.currentTimeMillis();
+    }
+
+    public void reset() {
+        populator = null;
     }
 }

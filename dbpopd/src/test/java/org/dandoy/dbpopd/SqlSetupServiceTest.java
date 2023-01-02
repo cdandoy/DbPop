@@ -23,16 +23,16 @@ class SqlSetupServiceTest {
         assertEquals(4, sqls.size());
 
         assertEquals("sql1", sqls.get(0).sql());
-        assertEquals(0, sqls.get(0).line());
+        assertEquals(1, sqls.get(0).line());
 
         assertEquals("sql2", sqls.get(1).sql());
-        assertEquals(1, sqls.get(1).line());
+        assertEquals(2, sqls.get(1).line());
 
         assertEquals("sql3", sqls.get(2).sql());
-        assertEquals(3, sqls.get(2).line());
+        assertEquals(4, sqls.get(2).line());
 
         assertEquals("sql4", sqls.get(3).sql());
-        assertEquals(8, sqls.get(3).line());
+        assertEquals(9, sqls.get(3).line());
     }
 
     @Test

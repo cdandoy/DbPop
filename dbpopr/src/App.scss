@@ -1,0 +1,18 @@
+html, body {
+  height: 100%
+}
+
+header.app-header .nav-icon {
+  margin-right: 6px;
+}
+
+.fullheight {
+  height: 100%;
+}
+
+.btn-group-xs > .btn, .btn-xs {
+  padding: 1px 5px;
+  font-size: 12px;
+  line-height: 1.5;
+  border-radius: 3px;
+}

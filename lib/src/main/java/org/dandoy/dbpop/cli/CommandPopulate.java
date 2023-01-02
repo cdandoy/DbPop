@@ -1,6 +1,7 @@
 package org.dandoy.dbpop.cli;
 
 import lombok.extern.slf4j.Slf4j;
+import org.dandoy.dbpop.database.UrlConnectionBuilder;
 import org.dandoy.dbpop.upload.Populator;
 
 import java.util.ArrayList;
@@ -27,9 +28,6 @@ public class CommandPopulate implements Callable<Integer> {
     @Mixin
     private DatabaseOptions databaseOptions;
 
-    @Mixin
-    private StandardOptions standardOptions;
-
     @Option(names = {"-d", "--directory"}, description = "Dataset directory")
     String directory;
 
@@ -42,9 +40,7 @@ public class CommandPopulate implements Callable<Integer> {
             long t0 = System.currentTimeMillis();
             int rowCount;
             try (Populator populator = Populator.builder()
-                    .setDbUrl(databaseOptions.dbUrl)
-                    .setDbUser(databaseOptions.dbUser)
-                    .setDbPassword(databaseOptions.dbPassword)
+                    .setConnectionBuilder(new UrlConnectionBuilder(databaseOptions.dbUrl, databaseOptions.dbUser, databaseOptions.dbPassword))
                     .setDirectory(directory)
                     .build()) {
                 rowCount = populator.load(this.datasets);

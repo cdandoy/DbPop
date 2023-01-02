@@ -5,6 +5,7 @@ import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.upload.Dataset;
+import org.dandoy.dbpop.utils.StringUtils;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -70,6 +71,7 @@ public class PostgresDatabase extends Database {
             Map<TableName, List<Column>> tableColumns = new HashMap<>();
             Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
             Map<TableName, List<Index>> indexes = new HashMap<>();
+            Map<TableName, PrimaryKey> primaryKeyMap = new HashMap<>();
             String catalog = connection.getCatalog();
             try (PreparedStatement preparedStatement = connection.prepareStatement("""
                     SELECT table_schema,
@@ -134,6 +136,9 @@ public class PostgresDatabase extends Database {
                     if (datasetTableNames.contains(tableName)) {
                         Index index = new Index(name, tableName, unique, primaryKey, columns);
                         indexes.computeIfAbsent(tableName, it -> new ArrayList<>()).add(index);
+                        if (primaryKey) {
+                            primaryKeyMap.put(tableName, new PrimaryKey(name, columns));
+                        }
                     }
                 })) {
                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -208,13 +213,232 @@ public class PostgresDatabase extends Database {
             }
 
             return tableColumns.entrySet().stream()
-                    .map(entry -> new Table(
-                            entry.getKey(),
-                            entry.getValue(),
-                            indexes.computeIfAbsent(entry.getKey(), tableName -> Collections.emptyList()),
-                            foreignKeys.computeIfAbsent(entry.getKey(), tableName -> Collections.emptyList()))
+                    .map(entry -> {
+                                TableName tableName = entry.getKey();
+                                return new Table(
+                                        tableName,
+                                        entry.getValue(),
+                                        indexes.computeIfAbsent(tableName, it -> Collections.emptyList()),
+                                        primaryKeyMap.get(tableName),
+                                        foreignKeys.computeIfAbsent(tableName, it -> Collections.emptyList()));
+                            }
                     )
                     .collect(Collectors.toList());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @SuppressWarnings("DuplicatedCode")
+    @Override
+    public Table getTable(TableName tableName) {
+        checkCatalog(tableName.getCatalog());
+
+        try {
+            List<Column> tableColumns = new ArrayList<>();
+            List<ForeignKey> foreignKeys = new ArrayList<>();
+            List<Index> indexes = new ArrayList<>();
+            List<PrimaryKey> primaryKeys = new ArrayList<>();
+            String catalog = connection.getCatalog();
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT column_name,
+                           is_identity,
+                           c.data_type,
+                           c.numeric_scale,
+                           c.is_nullable
+                    FROM information_schema.columns c
+                    WHERE table_schema = ?
+                    AND table_name = ?
+                    ORDER BY ordinal_position""")) {
+                preparedStatement.setString(1, tableName.getSchema());
+                preparedStatement.setString(2, tableName.getTable());
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        String columnName = resultSet.getString("column_name");
+                        boolean isIdentity = "YES".equals(resultSet.getString("is_identity"));
+                        String dataType = resultSet.getString("data_type");
+                        int numericScale = resultSet.getInt("numeric_scale");
+                        boolean nullable = "YES".equals(resultSet.getString("is_nullable"));
+                        ColumnType columnType = getColumnType(dataType, numericScale);
+                        tableColumns.add(
+                                new Column(
+                                        columnName,
+                                        columnType,
+                                        nullable,
+                                        isIdentity
+                                )
+                        );
+                    }
+                }
+            }
+
+            // Collects the indexes
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT i.relname       AS index_name,
+                           c.attname       AS column_name,
+                           ix.indisunique  AS is_unique,
+                           ix.indisprimary AS is_primary_key
+                    FROM pg_catalog.pg_class t
+                             JOIN pg_catalog.pg_namespace s ON s.oid = t.relnamespace
+                             JOIN pg_catalog.pg_index ix ON t.oid = ix.indrelid
+                             JOIN pg_catalog.pg_class i ON i.oid = ix.indexrelid
+                             JOIN pg_catalog.pg_attribute c ON c.attrelid = t.oid
+                    WHERE c.attnum = ANY (ix.indkey)
+                      AND t.relkind = 'r'
+                      AND s.nspname = ?
+                      AND t.relname = ?
+                    ORDER BY t.relname, i.relname, c.attnum""")) {
+                preparedStatement.setString(1, tableName.getSchema());
+                preparedStatement.setString(2, tableName.getTable());
+                try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
+                    Index index = new Index(name, tableName, unique, primaryKey, columns);
+                    indexes.add(index);
+                    if (primaryKey) {
+                        primaryKeys.add(new PrimaryKey(name, columns));
+                    }
+                })) {
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            indexCollector.push(
+                                    tableName.getSchema(),
+                                    tableName.getTable(),
+                                    resultSet.getString("index_name"),
+                                    resultSet.getBoolean("is_unique"),
+                                    resultSet.getBoolean("is_primary_key"),
+                                    resultSet.getString("column_name")
+                            );
+                        }
+                    }
+                }
+            }
+            // Collects the foreign keys
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    WITH unnested_confkey AS (SELECT oid, UNNEST(confkey) AS confkey
+                                              FROM pg_constraint),
+                         unnested_conkey AS (SELECT oid, UNNEST(conkey) AS conkey
+                                             FROM pg_constraint)
+                    SELECT c.conname                      AS constraint_name,
+                           col.attname                    AS constraint_column,
+                           PG_GET_CONSTRAINTDEF(conf.oid) AS constraint_def,
+                           rs.nspname                     AS referenced_schema,
+                           rt.relname                     AS referenced_table,
+                           rf.attname                     AS referenced_column
+                    FROM pg_constraint c
+                             JOIN unnested_conkey con ON c.oid = con.oid
+                             JOIN pg_class t ON t.oid = c.conrelid
+                             JOIN pg_catalog.pg_namespace s ON s.oid = t.relnamespace
+                             JOIN pg_attribute col ON (col.attrelid = t.oid AND col.attnum = con.conkey)
+                             JOIN pg_class rt ON c.confrelid = rt.oid
+                             JOIN pg_catalog.pg_namespace rs ON rs.oid = rt.relnamespace
+                             JOIN unnested_confkey conf ON c.oid = conf.oid
+                             JOIN pg_attribute rf ON (rf.attrelid = c.confrelid AND rf.attnum = conf.confkey)
+                    WHERE c.contype = 'f'
+                      AND s.nspname = ?
+                      AND t.relname = ?
+                    ORDER BY c.conname, s.nspname, t.relname""")) {
+                preparedStatement.setString(1, tableName.getSchema());
+                preparedStatement.setString(2, tableName.getTable());
+                try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, constraintDef, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
+                    TableName pkTableName = new TableName(catalog, pkSchema, pkTable);
+                    ForeignKey foreignKey = new ForeignKey(
+                            constraint,
+                            constraintDef,
+                            pkTableName,
+                            pkColumns,
+                            tableName,
+                            fkColumns
+                    );
+                    foreignKeys.add(foreignKey);
+                })) {
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            foreignKeyCollector.push(
+                                    resultSet.getString("constraint_name"),
+                                    resultSet.getString("constraint_def"),
+                                    tableName.getSchema(),
+                                    tableName.getTable(),
+                                    resultSet.getString("constraint_column"),
+                                    resultSet.getString("referenced_schema"),
+                                    resultSet.getString("referenced_table"),
+                                    resultSet.getString("referenced_column")
+                            );
+                        }
+                    }
+                }
+            }
+
+            return new Table(
+                    tableName,
+                    tableColumns,
+                    indexes,
+                    primaryKeys.isEmpty() ? null : primaryKeys.get(0),
+                    foreignKeys);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public List<ForeignKey> getRelatedForeignKeys(TableName tableName) {
+        List<ForeignKey> foreignKeys = new ArrayList<>();
+        checkCatalog(tableName.getCatalog());
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                WITH unnested_confkey AS (SELECT oid, UNNEST(confkey) AS confkey
+                                          FROM pg_constraint),
+                     unnested_conkey AS (SELECT oid, UNNEST(conkey) AS conkey
+                                         FROM pg_constraint)
+                SELECT c.conname                      AS constraint_name,
+                       s.nspname                      AS constraint_schema,
+                       t.relname                      AS constraint_table,
+                       col.attname                    AS constraint_column,
+                       PG_GET_CONSTRAINTDEF(conf.oid) AS constraint_def,
+                       rs.nspname                     AS referenced_schema,
+                       rt.relname                     AS referenced_table,
+                       rf.attname                     AS referenced_column
+                FROM pg_constraint c
+                         JOIN unnested_conkey con ON c.oid = con.oid
+                         JOIN pg_class t ON t.oid = c.conrelid
+                         JOIN pg_catalog.pg_namespace s ON s.oid = t.relnamespace
+                         JOIN pg_attribute col ON (col.attrelid = t.oid AND col.attnum = con.conkey)
+                         JOIN pg_class rt ON c.confrelid = rt.oid
+                         JOIN pg_catalog.pg_namespace rs ON rs.oid = rt.relnamespace
+                         JOIN unnested_confkey conf ON c.oid = conf.oid
+                         JOIN pg_attribute rf ON (rf.attrelid = c.confrelid AND rf.attnum = conf.confkey)
+                WHERE c.contype = 'f'
+                  AND rs.nspname = ?
+                  AND rt.relname = ?
+                ORDER BY c.conname, s.nspname, t.relname
+                """)) {
+            preparedStatement.setString(1, tableName.getSchema());
+            preparedStatement.setString(2, tableName.getTable());
+            try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, constraintDef, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
+                TableName pkTableName = new TableName(tableName.getCatalog(), pkSchema, pkTable);
+                TableName fkTableName = new TableName(tableName.getCatalog(), fkSchema, fkTable);
+                foreignKeys.add(new ForeignKey(
+                        constraint,
+                        constraintDef,
+                        pkTableName,
+                        pkColumns,
+                        fkTableName,
+                        fkColumns
+                ));
+            })) {
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        foreignKeyCollector.push(
+                                resultSet.getString("constraint_name"),
+                                resultSet.getString("constraint_def"),
+                                resultSet.getString("constraint_schema"),
+                                resultSet.getString("constraint_table"),
+                                resultSet.getString("constraint_column"),
+                                resultSet.getString("referenced_schema"),
+                                resultSet.getString("referenced_table"),
+                                resultSet.getString("referenced_column")
+                        );
+                    }
+                }
+            }
+            return foreignKeys;
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -239,5 +463,37 @@ public class PostgresDatabase extends Database {
     @Override
     public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
         return PostgresDatabasePreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
+    }
+
+    @Override
+    public Set<TableName> searchTable(String query) {
+        Set<TableName> ret = new HashSet<>();
+        query = query.trim();
+        if (!query.isEmpty()) {
+            query = "%" + String.join("%", StringUtils.split(query, ' ')) + "%";
+            try {
+                try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                        SELECT table_catalog, table_schema, table_name
+                        FROM information_schema.tables t
+                        WHERE table_type = 'BASE TABLE'
+                          AND is_insertable_into = 'YES'
+                          AND table_schema NOT IN ('pg_catalog', 'information_schema')
+                          AND table_name LIKE ?
+                        """)) {
+                    preparedStatement.setString(1, query);
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            String catalog = resultSet.getString("table_catalog");
+                            String schema = resultSet.getString("table_schema");
+                            String table = resultSet.getString("table_name");
+                            ret.add(new TableName(catalog, schema, table));
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return ret;
     }
 }

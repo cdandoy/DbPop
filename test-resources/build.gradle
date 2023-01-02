@@ -1,0 +1,18 @@
+plugins {
+    id 'java'
+}
+
+group 'io.github.cdandoy'
+version '0.0.1_SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'commons-io:commons-io:2.11.0'
+}
+
+test {
+    useJUnitPlatform()
+}

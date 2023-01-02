@@ -12,3 +12,72 @@ Content-Type: application/json
   "table": "customers"
 }
 
+###
+GET http://localhost:8080/datasets
+
+###
+GET http://localhost:8080/datasets/content/static
+
+###
+GET http://localhost:8080/database/dependents?catalog=master&schema=dbo&table=invoices
+
+###
+POST http://localhost:8080/database/dependencies
+Content-Type: application/json
+
+{
+  "tableName" : {
+    "catalog" : "master",
+    "schema" : "advanced",
+    "table" : "invoices"
+  },
+  "selected" : true,
+  "mandatory" : true
+}
+
+###
+POST http://localhost:3000/download
+Content-Type: application/json
+
+{
+  "dataset": "base",
+  "dependency": {
+    "tableName": {
+      "catalog": "master",
+      "schema": "dbo",
+      "table": "invoices"
+    },
+    "subDependencies": [
+      {
+        "tableName": {
+          "catalog": "master",
+          "schema": "dbo",
+          "table": "customers"
+        },
+        "constraintName": "invoices_customers_fk",
+        "selected": true,
+        "mandatory": true,
+        "displayName": "master.dbo.customers"
+      },
+      {
+        "tableName": {
+          "catalog": "master",
+          "schema": "dbo",
+          "table": "invoice_details"
+        },
+        "constraintName": "invoice_details_invoices_fk",
+        "selected": false,
+        "mandatory": false,
+        "displayName": "master.dbo.invoice_details"
+      }
+    ],
+    "selected": true,
+    "mandatory": true,
+    "displayName": "master.dbo.invoices"
+  },
+  "queryValues": {},
+  "dryRun": true
+}
+
+###
+

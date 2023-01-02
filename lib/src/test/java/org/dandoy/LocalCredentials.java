@@ -1,6 +1,8 @@
 package org.dandoy;
 
-import org.dandoy.dbpop.download.Downloader;
+import org.dandoy.dbpop.database.ConnectionBuilder;
+import org.dandoy.dbpop.database.UrlConnectionBuilder;
+import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.upload.Populator;
 
 import java.io.BufferedReader;
@@ -8,12 +10,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public record LocalCredentials(String dbUrl, String dbUser, String dbPassword) {
+public record LocalCredentials(ConnectionBuilder sourceConnectionBuilder, ConnectionBuilder targetConnectionBuilder) {
 
     public static LocalCredentials from(String env) {
         String userHome = System.getProperty("user.home");
@@ -30,9 +34,12 @@ public record LocalCredentials(String dbUrl, String dbUser, String dbPassword) {
             throw new RuntimeException("Failed to read " + propertyFile, e);
         }
 
-        String dbUrl = null;
-        String dbUser = null;
-        String dbPassword = null;
+        String sourceUrl = null;
+        String sourceUser = null;
+        String sourcePassword = null;
+        String targetUrl = null;
+        String targetUser = null;
+        String targetPassword = null;
         Pattern splitKey = Pattern.compile("([^.]*)\\.(.*)");
         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
             String key = entry.getKey().toString();
@@ -43,40 +50,56 @@ public record LocalCredentials(String dbUrl, String dbUser, String dbPassword) {
                     String keyName = matcher.group(2);
                     String value = entry.getValue().toString();
                     switch (keyName) {
-                        case "jdbcurl" -> dbUrl = value;
-                        case "username" -> dbUser = value;
-                        case "password" -> dbPassword = value;
+                        case "SOURCE_JDBCURL" -> sourceUrl = value;
+                        case "SOURCE_USERNAME" -> sourceUser = value;
+                        case "SOURCE_PASSWORD" -> sourcePassword = value;
+                        case "TARGET_JDBCURL" -> targetUrl = value;
+                        case "TARGET_USERNAME" -> targetUser = value;
+                        case "TARGET_PASSWORD" -> targetPassword = value;
                     }
                 }
             }
         }
 
-        return new LocalCredentials(dbUrl, dbUser, dbPassword);
+        return new LocalCredentials(
+                sourceUrl == null ? null : new UrlConnectionBuilder(sourceUrl, sourceUser, sourcePassword),
+                targetUrl == null ? null : new UrlConnectionBuilder(targetUrl, targetUser, targetPassword)
+        );
     }
 
     public static Populator.Builder mssqlPopulator() {
         return from("mssql").populator();
     }
 
-    public static Downloader.Builder mssqlDownloader() {
-        return from("mssql").downloader();
-    }
-
     public static Populator.Builder pgsqlPopulator() {
         return from("pgsql").populator();
     }
 
-    public Populator.Builder populator() {
-        return Populator.builder()
-                .setDbUrl(dbUrl)
-                .setDbUser(dbUser)
-                .setDbPassword(dbPassword);
+    public Connection createTargetConnection() throws SQLException {
+        return targetConnectionBuilder.createConnection();
     }
 
-    public Downloader.Builder downloader() {
-        return Downloader.builder()
-                .setDbUrl(dbUrl)
-                .setDbUser(dbUser)
-                .setDbPassword(dbPassword);
+    public Connection createSourceConnection() throws SQLException {
+        return sourceConnectionBuilder.createConnection();
+    }
+
+    public Populator.Builder populator() {
+        return Populator.builder().setConnectionBuilder(targetConnectionBuilder);
+    }
+
+    public void executeSource(String... filenames) {
+        try (Connection sourceConnection = createSourceConnection()) {
+            SqlExecutor.execute(sourceConnection, filenames);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void executeTarget(String... filenames) {
+        try (Connection sourceConnection = createTargetConnection()) {
+            SqlExecutor.execute(sourceConnection, filenames);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

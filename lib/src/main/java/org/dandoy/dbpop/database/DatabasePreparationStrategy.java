@@ -22,7 +22,7 @@ public abstract class DatabasePreparationStrategy {
     protected static Set<ForeignKey> getForeignKeysToSuppress(Map<TableName, Table> tablesByName, Set<TableName> tableNamesToDelete) {
         Set<ForeignKey> foreignKeys = new HashSet<>();
         for (Table table : tablesByName.values()) {
-            for (ForeignKey foreignKey : table.getForeignKeys()) {
+            for (ForeignKey foreignKey : table.foreignKeys()) {
                 TableName pkTableName = foreignKey.getPkTableName();
                 if (tableNamesToDelete.contains(pkTableName)) {
                     foreignKeys.add(foreignKey);

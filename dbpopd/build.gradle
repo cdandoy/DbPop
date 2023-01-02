@@ -16,7 +16,6 @@ dependencies {
     annotationProcessor("io.micronaut.openapi:micronaut-openapi")
     implementation("io.micronaut:micronaut-http-client")
     implementation("io.micronaut:micronaut-jackson-databind")
-    implementation("io.micronaut.views:micronaut-views-freemarker")
     implementation("io.swagger.core.v3:swagger-annotations")
     implementation("jakarta.annotation:jakarta.annotation-api")
     compileOnly("org.projectlombok:lombok")
@@ -26,6 +25,7 @@ dependencies {
     implementation project(":lib")
     implementation 'org.apache.commons:commons-csv:1.9.0'
     testImplementation 'commons-io:commons-io:2.11.0'
+    testImplementation project(":test-resources")
 }
 
 application {
@@ -51,6 +51,11 @@ micronaut {
     }
 }
 
+task('copyClientResources', type: Copy) {
+    from "${project(':dbpopr').buildDir}"
+    into "${project(':dbpopd').buildDir}/resources/main/public"
+}
+
 task versionTxt()  {
     doLast {
         def file = new File(buildDir, "resources/main/version.txt")
@@ -59,5 +64,5 @@ task versionTxt()  {
     }
 }
 
-compileJava.finalizedBy versionTxt
+processResources.finalizedBy([copyClientResources, versionTxt])
 

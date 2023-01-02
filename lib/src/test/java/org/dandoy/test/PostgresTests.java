@@ -14,11 +14,11 @@ import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@EnabledIf("org.dandoy.TestUtils#hasPostgres")
+@EnabledIf("org.dandoy.TestUtils#hasPgsql")
 public class PostgresTests {
     @BeforeAll
     public static void prepare() {
-        TestUtils.executeSqlScript("pgsql", "/pgsql/test.sql");
+        TestUtils.preparePgsqlTarget();
     }
 
     @Test
@@ -27,7 +27,7 @@ public class PostgresTests {
                 .pgsqlPopulator()
                 .setDirectory("src/test/resources/pgsql")
                 .build()) {
-            try (Connection connection = populator.createConnection()) {
+            try (Connection connection = populator.createTargetConnection()) {
 
                 populator.load("base");
                 assertCount(connection, "customers", 3);

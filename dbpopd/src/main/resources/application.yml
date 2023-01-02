@@ -17,3 +17,5 @@ netty:
   default:
     allocator:
       max-order: 3
+jackson:
+  serialization-inclusion: non_null

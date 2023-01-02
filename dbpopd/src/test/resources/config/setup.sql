@@ -1,33 +1,44 @@
 USE master;
 
-DROP TABLE IF EXISTS invoice_details;
-DROP TABLE IF EXISTS invoices;
-DROP TABLE IF EXISTS products;
-DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS master.dbo.invoice_details;
+DROP TABLE IF EXISTS master.dbo.invoices;
+DROP TABLE IF EXISTS master.dbo.products;
+DROP TABLE IF EXISTS master.dbo.customers;
+DROP TABLE IF EXISTS master.dbo.test_binary;
 
-CREATE TABLE customers
+CREATE TABLE master.dbo.customers
 (
     customer_id INT PRIMARY KEY IDENTITY,
     name        VARCHAR(32)
 );
 
-CREATE TABLE products
+CREATE TABLE master.dbo.products
 (
     product_id INT PRIMARY KEY IDENTITY,
     part_no    VARCHAR(32)  NOT NULL,
     part_desc  VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE invoices
+CREATE TABLE master.dbo.invoices
 (
     invoice_id   INT PRIMARY KEY IDENTITY,
-    customer_id  INT      NOT NULL REFERENCES customers,
-    invoice_date DATETIME NOT NULL
+    customer_id  INT      NOT NULL,
+    invoice_date DATETIME NOT NULL,
+    CONSTRAINT invoices_customers_fk FOREIGN KEY (customer_id) REFERENCES master.dbo.customers
 );
 
-CREATE TABLE invoice_details
+CREATE TABLE master.dbo.invoice_details
 (
     invoice_detail_id INT PRIMARY KEY IDENTITY,
-    invoice_id        INT NOT NULL REFERENCES invoices,
-    product_id        INT NOT NULL REFERENCES products
+    invoice_id        INT NOT NULL,
+    product_id        INT NOT NULL,
+    CONSTRAINT invoice_details_invoices_fk FOREIGN KEY (invoice_id) REFERENCES master.dbo.invoices,
+    CONSTRAINT invoice_details_products_fk FOREIGN KEY (product_id) REFERENCES master.dbo.products
 );
+
+CREATE TABLE master.dbo.test_binary
+(
+    id          INT PRIMARY KEY,
+    test_binary BINARY(32),
+    test_blob   VARBINARY(MAX)
+)

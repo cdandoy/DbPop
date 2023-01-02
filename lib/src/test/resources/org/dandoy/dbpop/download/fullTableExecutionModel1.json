@@ -1,0 +1,15 @@
+{
+  "constraints": [
+    {
+      "constraintName": "invoices_customers_fk"
+    },
+    {
+      "constraintName": "invoice_details_invoices_fk",
+      "constraints": [
+        {
+          "constraintName": "invoice_details_products_fk"
+        }
+      ]
+    }
+  ]
+}
