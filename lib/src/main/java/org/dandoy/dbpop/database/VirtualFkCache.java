@@ -1,7 +1,6 @@
 package org.dandoy.dbpop.database;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import lombok.SneakyThrows;
 
 import java.io.File;
@@ -12,14 +11,10 @@ import java.util.List;
 public class VirtualFkCache {
     private final File file;
     private final List<ForeignKey> foreignKeys;
-    private final ObjectWriter objectWriter;
 
     private VirtualFkCache(File file, List<ForeignKey> foreignKeys) {
         this.file = file;
         this.foreignKeys = new ArrayList<>(foreignKeys);
-        this.objectWriter = file == null ? null : new ObjectMapper()
-                .writerFor(this.foreignKeys.getClass())
-                .withDefaultPrettyPrinter();
     }
 
     public static VirtualFkCache createVirtualFkCache() {
@@ -40,12 +35,20 @@ public class VirtualFkCache {
 
     @SneakyThrows
     private void save() {
-        if (objectWriter != null) {
-            objectWriter.writeValue(file, foreignKeys);
+        if (file != null) {
+            new ObjectMapper()
+                    .writerFor(this.foreignKeys.getClass())
+                    .withDefaultPrettyPrinter()
+                    .writeValue(file, foreignKeys);
         }
     }
 
+    public List<ForeignKey> getForeignKeys() {
+        return List.copyOf(foreignKeys);
+    }
+
     public void addFK(ForeignKey foreignKey) {
+        removeFK(foreignKey.getPkTableName(), foreignKey.getName());
         foreignKeys.add(foreignKey);
         save();
     }
@@ -67,5 +70,14 @@ public class VirtualFkCache {
                 .filter(it -> tableName.equals(it.getPkTableName()) && fkName.equals(it.getName()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public void removeFK(ForeignKey foreignKey) {
+        removeFK(foreignKey.getPkTableName(), foreignKey.getName());
+        save();
+    }
+
+    private void removeFK(TableName pkTableName, String fkName) {
+        foreignKeys.removeIf(it -> it.getName().equals(fkName) && it.getPkTableName().equals(pkTableName));
     }
 }

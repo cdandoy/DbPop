@@ -91,9 +91,13 @@ public class ConfigurationService {
     }
 
     public Database createSourceDatabase() {
-        File vfkFile = new File(configurationDir, "vfk.json");
-        VirtualFkCache virtualFkCache = VirtualFkCache.createVirtualFkCache(vfkFile);
+        VirtualFkCache virtualFkCache = createVirtualFkCache();
         return Database.createDatabase(sourceConnectionBuilder, virtualFkCache);
+    }
+
+    public VirtualFkCache createVirtualFkCache() {
+        File vfkFile = new File(configurationDir, "vfk.json");
+        return VirtualFkCache.createVirtualFkCache(vfkFile);
     }
 
     public boolean hasTargetConnection() {
