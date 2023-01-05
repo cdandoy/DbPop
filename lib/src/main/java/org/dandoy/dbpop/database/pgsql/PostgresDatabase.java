@@ -14,7 +14,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class PostgresDatabase extends Database {
+public class PostgresDatabase extends DefaultDatabase {
 
     public PostgresDatabase(Connection connection) {
         super(connection);

@@ -3,6 +3,7 @@ package org.dandoy.dbpop;
 import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.dandoy.dbpop.upload.Populator;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,9 +16,18 @@ import static org.dandoy.test.SqlServerTests.assertCount;
 
 @EnabledIf("org.dandoy.TestUtils#hasMssql")
 public class DbPopTests {
+
+    private static Connection targetConnection;
+
     @BeforeAll
-    static void beforeAll() {
+    static void beforeAll() throws SQLException {
+        targetConnection = LocalCredentials.from("mssql").createTargetConnection();
         TestUtils.prepareMssqlSource();
+    }
+
+    @AfterAll
+    static void afterAll() throws SQLException {
+        targetConnection.close();
     }
 
     @BeforeEach
@@ -27,45 +37,35 @@ public class DbPopTests {
 
     @Test
     void testPopulate() throws SQLException {
-        try (Populator populator = LocalCredentials
-                .mssqlPopulator()
-                .setDirectory("src/test/resources/mssql")
-                .build()) {
-            try (Connection targetConnection = populator.createTargetConnection()) {
-                populator.load("invoices");
-                assertCount(targetConnection, "customers", 3);
-                assertCount(targetConnection, "invoices", 4);
-                assertCount(targetConnection, "invoice_details", 7);
-                assertCount(targetConnection, "products", 3);
-            }
+        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql")) {
+            populator.load("invoices");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 4);
+            assertCount(targetConnection, "invoice_details", 7);
+            assertCount(targetConnection, "products", 3);
         }
     }
 
     @Test
     void testDbPopMain() throws SQLException {
-        try (Populator populator = LocalCredentials
-                .mssqlPopulator()
-                .setDirectory("src/test/resources/mssql")
-                .build()) {
-            try (Connection connection = populator.createTargetConnection()) {
-                populator.load("base");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 0);
-                assertCount(connection, "invoice_details", 0);
-                assertCount(connection, "products", 3);
+        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql")) {
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 0);
+            assertCount(targetConnection, "invoice_details", 0);
+            assertCount(targetConnection, "products", 3);
 
-                populator.load("base", "invoices");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 4);
-                assertCount(connection, "invoice_details", 7);
-                assertCount(connection, "products", 3);
+            populator.load("base", "invoices");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 4);
+            assertCount(targetConnection, "invoice_details", 7);
+            assertCount(targetConnection, "products", 3);
 
-                populator.load("base");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 0);
-                assertCount(connection, "invoice_details", 0);
-                assertCount(connection, "products", 3);
-            }
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 0);
+            assertCount(targetConnection, "invoice_details", 0);
+            assertCount(targetConnection, "products", 3);
         }
     }
 }

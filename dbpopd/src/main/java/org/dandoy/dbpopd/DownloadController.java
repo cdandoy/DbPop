@@ -10,8 +10,6 @@ import org.dandoy.dbpop.download.ExecutionMode;
 import org.dandoy.dbpop.download.ExecutionPlan;
 import org.dandoy.dbpop.download.TableExecutionModel;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,7 +22,7 @@ public class DownloadController {
     }
 
     @Post("download")
-    public DownloadResponse download(@Body DownloadRequest downloadRequest) throws SQLException {
+    public DownloadResponse download(@Body DownloadRequest downloadRequest) {
         configurationService.assertSourceConnection();
 
         ExecutionMode executionMode = downloadRequest.isDryRun() ? ExecutionMode.COUNT : ExecutionMode.SAVE;
@@ -44,21 +42,19 @@ public class DownloadController {
             pks.add(pk);
         }
 
-        try (Connection sourceConnection = configurationService.createSourceConnection()) {
-            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
-                Map<TableName, Integer> executionResult = ExecutionPlan.execute(
-                        sourceDatabase,
-                        configurationService.getDatasetsDirectory(),
-                        downloadRequest.getDataset(),
-                        downloadRequest.getDependency().getTableName(),
-                        tableExecutionModel,
-                        filteredColumns,
-                        pks,
-                        executionMode,
-                        1000
-                );
-                return new DownloadResponse(executionResult);
-            }
+        try (Database sourceDatabase = configurationService.createSourceDatabase()) {
+            Map<TableName, Integer> executionResult = ExecutionPlan.execute(
+                    sourceDatabase,
+                    configurationService.getDatasetsDirectory(),
+                    downloadRequest.getDataset(),
+                    downloadRequest.getDependency().getTableName(),
+                    tableExecutionModel,
+                    filteredColumns,
+                    pks,
+                    executionMode,
+                    1000
+            );
+            return new DownloadResponse(executionResult);
         }
     }
 

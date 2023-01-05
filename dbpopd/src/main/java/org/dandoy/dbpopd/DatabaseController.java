@@ -6,8 +6,6 @@ import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
 import org.dandoy.dbpop.database.*;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -21,38 +19,34 @@ public class DatabaseController {
     }
 
     @Get("search")
-    public List<SearchTableResponse> search(String query) throws SQLException {
+    public List<SearchTableResponse> search(String query) {
         configurationService.assertSourceConnection();
 
-        try (Connection sourceConnection = configurationService.createSourceConnection()) {
-            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
-                Set<TableName> tableNames = sourceDatabase.searchTable(query);
-                Collection<Table> tables = sourceDatabase.getTables(tableNames);
-                return tables.stream()
-                        .map(table -> new SearchTableResponse(
-                                table.tableName().toQualifiedName(),
-                                table.tableName(),
-                                table.columns().stream().map(Column::getName).toList(),
-                                table.indexes().stream()
-                                        .map(index -> new SearchTableSearchByResponse(
-                                                "%s (%s)".formatted(index.getName(), String.join(", ", index.getColumns())),
-                                                index.getColumns()
-                                        ))
-                                        .toList()
-                        ))
-                        .toList();
-            }
+        try (Database sourceDatabase = configurationService.createSourceDatabase()) {
+            Set<TableName> tableNames = sourceDatabase.searchTable(query);
+            Collection<Table> tables = sourceDatabase.getTables(tableNames);
+            return tables.stream()
+                    .map(table -> new SearchTableResponse(
+                            table.tableName().toQualifiedName(),
+                            table.tableName(),
+                            table.columns().stream().map(Column::getName).toList(),
+                            table.indexes().stream()
+                                    .map(index -> new SearchTableSearchByResponse(
+                                            "%s (%s)".formatted(index.getName(), String.join(", ", index.getColumns())),
+                                            index.getColumns()
+                                    ))
+                                    .toList()
+                    ))
+                    .toList();
         }
     }
 
     @Post("dependencies")
-    public Dependency getDependents(@Body Dependency dependency) throws SQLException {
+    public Dependency getDependents(@Body Dependency dependency) {
         configurationService.assertSourceConnection();
 
-        try (Connection sourceConnection = configurationService.createSourceConnection()) {
-            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
-                return DependencyCalculator.calculateDependencies(sourceDatabase, dependency);
-            }
+        try (Database sourceDatabase = configurationService.createSourceDatabase()) {
+            return DependencyCalculator.calculateDependencies(sourceDatabase, dependency);
         }
     }
 

@@ -66,10 +66,7 @@ public class PopulatorHolder {
     private void createPopulator() {
         configurationService.assertTargetConnection();
         closePopulator();
-        populator = Populator.builder()
-                .setConnectionBuilder(configurationService.getTargetConnectionBuilder())
-                .setDirectory(configurationService.getDatasetsDirectory())
-                .build();
+        populator = Populator.createPopulator(configurationService.createTargetDatabase(), configurationService.getDatasetsDirectory());
         lastTimestamp = System.currentTimeMillis();
     }
 

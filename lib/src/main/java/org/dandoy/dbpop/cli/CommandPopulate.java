@@ -1,9 +1,11 @@
 package org.dandoy.dbpop.cli;
 
 import lombok.extern.slf4j.Slf4j;
+import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
 import org.dandoy.dbpop.upload.Populator;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -39,15 +41,15 @@ public class CommandPopulate implements Callable<Integer> {
         try {
             long t0 = System.currentTimeMillis();
             int rowCount;
-            try (Populator populator = Populator.builder()
-                    .setConnectionBuilder(new UrlConnectionBuilder(databaseOptions.dbUrl, databaseOptions.dbUser, databaseOptions.dbPassword))
-                    .setDirectory(directory)
-                    .build()) {
-                rowCount = populator.load(this.datasets);
+            UrlConnectionBuilder connectionBuilder = new UrlConnectionBuilder(databaseOptions.dbUrl, databaseOptions.dbUser, databaseOptions.dbPassword);
+            try (Database database = Database.createDatabase(connectionBuilder)) {
+                try (Populator populator = Populator.createPopulator(database, new File(directory))) {
+                    rowCount = populator.load(this.datasets);
+                }
+                long t1 = System.currentTimeMillis();
+                log.info("Loaded {} rows in {}ms", rowCount, t1 - t0);
+                return 0;
             }
-            long t1 = System.currentTimeMillis();
-            log.info("Loaded {} rows in {}ms", rowCount, t1 - t0);
-            return 0;
         } catch (Exception e) {
             log.error("Internal error", e);
             return 1;

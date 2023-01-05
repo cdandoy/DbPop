@@ -3,13 +3,11 @@ package org.dandoy.dbpop.cli;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.database.UrlConnectionBuilder;
 import org.dandoy.dbpop.download.TableDownloader;
 import org.dandoy.dbpop.utils.StringUtils;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -34,25 +32,21 @@ public class CommandDownload implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        try (Connection connection = DriverManager.getConnection(databaseOptions.dbUrl, databaseOptions.dbUser, databaseOptions.dbPassword)) {
-            try (Database database = Database.createDatabase(connection)) {
-                for (String table : tables) {
-                    List<String> split = StringUtils.split(table, '.');
+        try (Database database = Database.createDatabase(new UrlConnectionBuilder(databaseOptions.dbUrl, databaseOptions.dbUser, databaseOptions.dbPassword))) {
+            for (String table : tables) {
+                List<String> split = StringUtils.split(table, '.');
 
-                    if (split.size() == 1) {            // database, no catalog: "master"
-                        downloadDatabase(database, split.get(0));
-                    } else if (split.size() == 2) {      // database and catalog: "master.dbo"
-                        downloadSchema(database, split.get(0), split.get(1));
-                    } else if (split.size() == 3) {      // database and catalog: "master.dbo.mytable"
-                        downloadTable(database, split.get(0), split.get(1), split.get(2));
-                    } else {
-                        throw new RuntimeException("Invalid database/schema/table: " + table);
-                    }
+                if (split.size() == 1) {            // database, no catalog: "master"
+                    downloadDatabase(database, split.get(0));
+                } else if (split.size() == 2) {      // database and catalog: "master.dbo"
+                    downloadSchema(database, split.get(0), split.get(1));
+                } else if (split.size() == 3) {      // database and catalog: "master.dbo.mytable"
+                    downloadTable(database, split.get(0), split.get(1), split.get(2));
+                } else {
+                    throw new RuntimeException("Invalid database/schema/table: " + table);
                 }
-                return 0;
             }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+            return 0;
         }
     }
 

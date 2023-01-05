@@ -7,7 +7,9 @@ import io.micronaut.http.exceptions.HttpStatusException;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import org.dandoy.dbpop.database.ConnectionBuilder;
+import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
+import org.dandoy.dbpop.database.VirtualFkCache;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -23,6 +25,7 @@ public class ConfigurationService {
     private static final String PROP_FILE_NAME = "dbpop.properties";
     @Getter
     private final File configurationDir;
+    @Getter
     private final ConnectionBuilder sourceConnectionBuilder;
     @Getter
     private final ConnectionBuilder targetConnectionBuilder;
@@ -87,8 +90,10 @@ public class ConfigurationService {
         return sourceConnectionBuilder != null;
     }
 
-    public Connection createSourceConnection() throws SQLException {
-        return sourceConnectionBuilder.createConnection();
+    public Database createSourceDatabase() {
+        File vfkFile = new File(configurationDir, "vfk.json");
+        VirtualFkCache virtualFkCache = VirtualFkCache.createVirtualFkCache(vfkFile);
+        return Database.createDatabase(sourceConnectionBuilder, virtualFkCache);
     }
 
     public boolean hasTargetConnection() {
@@ -97,5 +102,9 @@ public class ConfigurationService {
 
     public Connection createTargetConnection() throws SQLException {
         return targetConnectionBuilder.createConnection();
+    }
+
+    public Database createTargetDatabase() {
+        return Database.createDatabase(targetConnectionBuilder);
     }
 }
