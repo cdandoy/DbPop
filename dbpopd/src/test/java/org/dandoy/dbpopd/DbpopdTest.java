@@ -36,6 +36,8 @@ class DbpopdTest {
     @Inject
     DatabaseController databaseController;
     @Inject
+    DatabaseVfksController databaseVfksController;
+    @Inject
     ConfigurationService configurationService;
 
     @BeforeEach
@@ -153,10 +155,10 @@ class DbpopdTest {
 
         try {
             // Start with 0 FKs
-            assertEquals(0, databaseController.getVirtualForeignKeys().size());
+            assertEquals(0, databaseVfksController.getVirtualForeignKeys().size());
 
             // Add one, we must have one
-            databaseController.postVirtualForeignKey(
+            databaseVfksController.postVirtualForeignKey(
                     new ForeignKey(
                             "invoices_invoices_details_vfk",
                             "test1",
@@ -166,7 +168,7 @@ class DbpopdTest {
                             List.of("invoice_id")
                     )
             );
-            List<ForeignKey> vfks = databaseController.getVirtualForeignKeys();
+            List<ForeignKey> vfks = databaseVfksController.getVirtualForeignKeys();
             assertEquals(1, vfks.size());
 
             ForeignKey vfk = vfks.get(0);
@@ -174,7 +176,7 @@ class DbpopdTest {
             assertEquals("test1", vfk.getConstraintDef());
 
             // Change it
-            databaseController.postVirtualForeignKey(
+            databaseVfksController.postVirtualForeignKey(
                     new ForeignKey(
                             "invoices_invoices_details_vfk",
                             "test2",
@@ -186,14 +188,14 @@ class DbpopdTest {
             );
 
             // And verify
-            List<ForeignKey> vfks2 = databaseController.getVirtualForeignKeys();
+            List<ForeignKey> vfks2 = databaseVfksController.getVirtualForeignKeys();
             assertEquals(1, vfks2.size());
 
             ForeignKey vfk2 = vfks2.get(0);
             assertEquals("invoices_invoices_details_vfk", vfk2.getName());
             assertEquals("test2", vfk2.getConstraintDef());
 
-            databaseController.deleteVirtualForeignKey(
+            databaseVfksController.deleteVirtualForeignKey(
                     new ForeignKey(
                             "invoices_invoices_details_vfk",
                             "test2",
@@ -203,7 +205,7 @@ class DbpopdTest {
                             vfk.getFkColumns()
                     )
             );
-            assertEquals(0, databaseController.getVirtualForeignKeys().size());
+            assertEquals(0, databaseVfksController.getVirtualForeignKeys().size());
         } finally {
             if (!file.delete()) throw new RuntimeException();
         }

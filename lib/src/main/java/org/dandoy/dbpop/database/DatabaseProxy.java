@@ -45,7 +45,7 @@ public class DatabaseProxy extends Database {
     }
 
     private void addVFKs(Table table) {
-        List<ForeignKey> foreignKeys = virtualFkCache.findByPkTable(table.tableName());
+        List<ForeignKey> foreignKeys = virtualFkCache.findByFkTable(table.tableName());
         table.foreignKeys().addAll(foreignKeys);
     }
 
@@ -59,7 +59,7 @@ public class DatabaseProxy extends Database {
     @Override
     public List<ForeignKey> getRelatedForeignKeys(TableName tableName) {
         List<ForeignKey> relatedForeignKeys = delegate.getRelatedForeignKeys(tableName);
-        List<ForeignKey> foreignKeys = virtualFkCache.findByFkTable(tableName);
+        List<ForeignKey> foreignKeys = virtualFkCache.findByPkTable(tableName);
         relatedForeignKeys.addAll(foreignKeys);
         return relatedForeignKeys;
     }
