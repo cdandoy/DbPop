@@ -21,7 +21,7 @@ public class DownloadController {
         this.configurationService = configurationService;
     }
 
-    @Post("download")
+    @Post("/download")
     public DownloadResponse download(@Body DownloadRequest downloadRequest) {
         configurationService.assertSourceConnection();
 

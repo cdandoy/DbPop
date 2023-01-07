@@ -3,7 +3,6 @@ import React, {useState} from "react";
 import axios from "axios";
 import {AsyncTypeahead} from "react-bootstrap-typeahead";
 import {TableName} from "../models/TableName";
-import {Dependency} from "../models/Dependency";
 
 export interface SearchTableResult {
     displayName: string;
@@ -19,8 +18,7 @@ interface SearchTableSearchBy {
 
 export function SelectTable(props: any) {
     // Cheating with the type. See https://github.com/ericgio/react-bootstrap-typeahead/issues/738
-    const setTableSelections: ((s: Option[]) => void) = props['setTableSelections'];
-    const setDependency: ((s: Dependency) => void) = props['setDependency'];
+    const setTableSelection: ((s: Option | null) => void) = props['setTableSelection'];
     const [isLoading, setIsLoading] = useState(false);
     const [tables, setTables] = useState<SearchTableResult[]>([]);
 
@@ -52,21 +50,8 @@ export function SelectTable(props: any) {
                 spellCheck: false,
             }}
             onChange={selections => {
-                setTableSelections(selections);
-                if (selections.length) {
-                    let searchTableResult = selections[0] as SearchTableResult;
-                    const root: Dependency = {
-                        displayName: 'root',
-                        tableName: searchTableResult.tableName,
-                        constraintName: null,
-                        subDependencies: null,
-                        selected: true,
-                        mandatory: true
-                    };
-                    setDependency(root);
-                }
-            }
-            }
+                setTableSelection(selections.length ? selections[0] : null);
+            }}
         />
     )
 }

@@ -1,10 +1,12 @@
 import './App.scss';
 import 'react-bootstrap-typeahead/css/Typeahead.css';
 import React from 'react';
-import {HashRouter, Route, Routes} from "react-router-dom";
+import {HashRouter, NavLink, Route, Routes} from "react-router-dom";
 import DatasetDetails from "./components/DatasetDetails";
 import Datasets from "./components/Datasets"
 import AddData from "./components/AddData";
+import VirtualFksComponent from "./components/VirtualFksComponent";
+import AddVirtualFksComponent from "./components/AddVirtualFksComponent";
 
 function Header() {
     return (
@@ -17,6 +19,13 @@ function Header() {
                         </a>
 
                         <ul className="nav col-12 col-lg-auto my-2 justify-content-center my-md-0 text-small">
+                            <li>
+                                <NavLink to={"/vfk"} className={"nav-link text-white"}>
+                                    <i className="nav-icon fa fa-link"></i>
+                                    Virtual FKs
+                                </NavLink>
+                            </li>
+                            <li><a className="nav-link text-white" style={{cursor: "default"}}>|</a></li>
                             <li>
                                 <a href="https://github.com/cdandoy/DbPop" target="_blank" className="nav-link text-white">
                                     <i className="nav-icon fa-brands fa-docker"></i>
@@ -43,13 +52,12 @@ function Header() {
     );
 }
 
-
 export default function App() {
     return (
         <>
-            <Header/>
-            <div className="container">
-                <HashRouter>
+            <HashRouter>
+                <Header/>
+                <div className="container">
                     <div className="text-center m-5">
                         <h1>Welcome to DbPop</h1>
                         <p className="lead">The easiest way to populate your development database.</p>
@@ -58,11 +66,13 @@ export default function App() {
                         <Routes>
                             <Route path="/dataset/:dataset" element=<DatasetDetails/>/>
                             <Route path="/add/:datasetName" element=<AddData/>/>
+                            <Route path="/vfk" element=<VirtualFksComponent/>/>
+                            <Route path="/vfk/add" element=<AddVirtualFksComponent/>/>
                             <Route path="/" element=<Datasets/>/>
                         </Routes>
                     </div>
-                </HashRouter>
-            </div>
+                </div>
+            </HashRouter>
         </>
     );
 }

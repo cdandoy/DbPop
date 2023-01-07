@@ -4,6 +4,7 @@ import io.micronaut.http.annotation.*;
 import org.dandoy.dbpop.database.*;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -51,7 +52,12 @@ public class DatabaseController {
     public List<ForeignKey> getVirtualForeignKeys() {
         return configurationService
                 .createVirtualFkCache()
-                .getForeignKeys();
+                .getForeignKeys()
+                .stream()
+                .sorted(
+                        Comparator.comparing(it -> it.getFkTableName().toQualifiedName())
+                )
+                .toList();
     }
 
     @Post("vfks")
