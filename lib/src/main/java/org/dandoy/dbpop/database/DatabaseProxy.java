@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class DatabaseProxy implements Database {
+public class DatabaseProxy extends Database {
     private final Database delegate;
     private final VirtualFkCache virtualFkCache;
 
@@ -120,7 +120,7 @@ public class DatabaseProxy implements Database {
     }
 
     @Override
-    public Set<TableName> searchTable(String query) {
-        return delegate.searchTable(query);
+    protected Set<TableName> searchTableLike(String like) throws SQLException {
+        return delegate.searchTableLike(like);
     }
 }

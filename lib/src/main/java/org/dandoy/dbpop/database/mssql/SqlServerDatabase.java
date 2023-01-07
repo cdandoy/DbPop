@@ -8,7 +8,6 @@ import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.upload.DataFileHeader;
 import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpop.utils.StopWatch;
-import org.dandoy.dbpop.utils.StringUtils;
 
 import java.sql.*;
 import java.util.*;
@@ -98,17 +97,21 @@ public class SqlServerDatabase extends DefaultDatabase {
                                                 boolean identity = tablesResultSet.getBoolean("is_identity");
                                                 String typeName = tablesResultSet.getString("type_name");
                                                 int typePrecision = tablesResultSet.getInt("type_precision");
-                                                ColumnType columnType = ColumnType.getColumnType(typeName, typePrecision);
-                                                tableCollector.push(
-                                                        schema,
-                                                        table,
-                                                        new Column(
-                                                                column,
-                                                                columnType,
-                                                                nullable,
-                                                                identity
-                                                        )
-                                                );
+                                                try {
+                                                    ColumnType columnType = ColumnType.getColumnType(typeName, typePrecision);
+                                                    tableCollector.push(
+                                                            schema,
+                                                            table,
+                                                            new Column(
+                                                                    column,
+                                                                    columnType,
+                                                                    nullable,
+                                                                    identity
+                                                            )
+                                                    );
+                                                } catch (RuntimeException e) {
+                                                    // Ignore the unknown column types
+                                                }
                                             }
                                         }
                                     }
@@ -453,33 +456,26 @@ public class SqlServerDatabase extends DefaultDatabase {
     }
 
     @Override
-    public Set<TableName> searchTable(String query) {
+    public Set<TableName> searchTableLike(String like) throws SQLException {
         Set<TableName> ret = new HashSet<>();
-        query = query.trim();
-        if (!query.isEmpty()) {
-            query = "%" + String.join("%", StringUtils.split(query, ' ')) + "%";
-            try {
-                List<String> catalogs = getCatalogs();
-                for (String catalog : catalogs) {
-                    use(catalog);
-                    try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                            SELECT s.name AS "schema", t.name AS "table"
-                            FROM sys.schemas s
-                                     JOIN sys.tables t ON t.schema_id = s.schema_id
-                            WHERE t.name LIKE ?
-                            """)) {
-                        preparedStatement.setString(1, query);
-                        try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                            while (resultSet.next()) {
-                                String schema = resultSet.getString("schema");
-                                String table = resultSet.getString("table");
-                                ret.add(new TableName(catalog, schema, table));
-                            }
-                        }
+        List<String> catalogs = getCatalogs();
+        for (String catalog : catalogs) {
+            use(catalog);
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT s.name AS "schema", t.name AS "table"
+                    FROM sys.schemas s
+                             JOIN sys.tables t ON t.schema_id = s.schema_id
+                    WHERE ?+'.'+s.name+'.'+t.name LIKE ?
+                    """)) {
+                preparedStatement.setString(1, catalog);
+                preparedStatement.setString(2, like);
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        String schema = resultSet.getString("schema");
+                        String table = resultSet.getString("table");
+                        ret.add(new TableName(catalog, schema, table));
                     }
                 }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
             }
         }
         return ret;

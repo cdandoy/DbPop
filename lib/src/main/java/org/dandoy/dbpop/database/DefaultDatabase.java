@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 import static org.dandoy.dbpop.database.ColumnType.INVALID;
 
 @Slf4j
-public abstract class DefaultDatabase implements Database {
+public abstract class DefaultDatabase extends Database {
     private static final ExpressionParser EXPRESSION_PARSER = new ExpressionParser();
     private static final Base64.Decoder decoder = Base64.getDecoder();
     protected final Connection connection;

@@ -9,23 +9,20 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-public interface Database extends AutoCloseable {
+public abstract class Database implements AutoCloseable {
 
-    static DatabaseProxy createDatabase(ConnectionBuilder connectionBuilder) {
+    public static DatabaseProxy createDatabase(ConnectionBuilder connectionBuilder) {
         return createDatabase(connectionBuilder, VirtualFkCache.createVirtualFkCache());
     }
 
-    static DatabaseProxy createDatabase(ConnectionBuilder connectionBuilder, VirtualFkCache virtualFkCache) {
+    public static DatabaseProxy createDatabase(ConnectionBuilder connectionBuilder, VirtualFkCache virtualFkCache) {
         DefaultDatabase defaultDatabase = createDefaultDatabase(connectionBuilder);
         return new DatabaseProxy(defaultDatabase, virtualFkCache);
     }
 
-    private static DefaultDatabase createDefaultDatabase(ConnectionBuilder connectionBuilder) {
+    public static DefaultDatabase createDefaultDatabase(ConnectionBuilder connectionBuilder) {
         try {
             Connection connection = connectionBuilder.createConnection();
             try {
@@ -48,40 +45,59 @@ public interface Database extends AutoCloseable {
     }
 
     @Override
-    void close();
+    public abstract void close();
 
-    Connection getConnection();
+    public abstract Connection getConnection();
 
-    Collection<TableName> getTableNames(String catalog, String schema);
+    public abstract Collection<TableName> getTableNames(String catalog, String schema);
 
-    Collection<Table> getTables(Set<TableName> datasetTableNames);
+    public abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
 
-    Table getTable(TableName tableName);
+    public abstract Table getTable(TableName tableName);
 
-    List<ForeignKey> getRelatedForeignKeys(TableName tableName);
+    public abstract List<ForeignKey> getRelatedForeignKeys(TableName tableName);
 
-    List<String> getSchemas(String catalog);
+    public abstract List<String> getSchemas(String catalog);
 
-    void dropForeignKey(ForeignKey foreignKey);
+    public abstract void dropForeignKey(ForeignKey foreignKey);
 
-    void createForeignKey(ForeignKey foreignKey);
+    public abstract void createForeignKey(ForeignKey foreignKey);
 
-    DefaultDatabase.DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders) throws SQLException;
+    public abstract DefaultDatabase.DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders) throws SQLException;
 
-    String quote(Collection<String> strings);
+    public abstract String quote(Collection<String> strings);
 
-    String quote(TableName tableName);
+    public abstract String quote(TableName tableName);
 
-    String quote(String s);
+    public abstract String quote(String s);
 
-    void deleteTable(Table table);
+    public abstract void deleteTable(Table table);
 
-    DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets);
+    public abstract DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets);
 
-    boolean isBinary(ResultSetMetaData metaData, int i) throws SQLException;
+    public abstract boolean isBinary(ResultSetMetaData metaData, int i) throws SQLException;
 
     /**
      * Searches for tables by partial name
      */
-    Set<TableName> searchTable(String query);
+    public final Set<TableName> searchTable(String query) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < query.length(); i++) {
+                char c = query.charAt(i);
+                if (c != ' ' && c != '%' && c != '.') {
+                    sb.append(c).append('%');
+                }
+            }
+
+            String like = sb.toString();
+            if (like.isEmpty()) return Collections.emptySet();
+
+            return searchTableLike("%" + like);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected abstract Set<TableName> searchTableLike(String like) throws SQLException;
 }
