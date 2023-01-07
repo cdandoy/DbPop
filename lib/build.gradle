@@ -8,13 +8,14 @@ plugins {
 }
 
 group 'io.github.cdandoy'
-version '0.1.1'
+version '0.1.2'
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.0'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
     compileOnly 'org.projectlombok:lombok:1.18.24'
 

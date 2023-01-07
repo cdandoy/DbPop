@@ -41,3 +41,4 @@ bin/
 ### Mac OS ###
 .DS_Store
 /docker/.env
+/dbpopd/src/test/resources/config/vfk.json

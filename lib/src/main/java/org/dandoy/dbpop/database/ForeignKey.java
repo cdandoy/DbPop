@@ -1,5 +1,7 @@
 package org.dandoy.dbpop.database;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
 import java.util.List;
@@ -14,7 +16,14 @@ public class ForeignKey {
     private final TableName fkTableName;
     private final List<String> fkColumns;
 
-    public ForeignKey(String name, String constraintDef, TableName pkTableName, List<String> pkColumns, TableName fkTableName, List<String> fkColumns) {
+    @JsonCreator
+    public ForeignKey(
+            @JsonProperty("name") String name,
+            @JsonProperty("constraintDef") String constraintDef,
+            @JsonProperty("kTableName") TableName pkTableName,
+            @JsonProperty("pkColumns") List<String> pkColumns,
+            @JsonProperty("fkTableName") TableName fkTableName,
+            @JsonProperty("fkColumns") List<String> fkColumns) {
         this.name = name;
         this.constraintDef = constraintDef;
         this.pkTableName = pkTableName;
@@ -26,8 +35,8 @@ public class ForeignKey {
     @Override
     public String toString() {
         return "ForeignKey{" +
-                "name='" + name + '\'' +
-                '}';
+               "name='" + name + '\'' +
+               '}';
     }
 
     @Override

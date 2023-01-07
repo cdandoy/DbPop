@@ -8,9 +8,9 @@ services:
     volumes:
       - ./mssql:/var/opt/dbpop
     environment:
-#      - SOURCE_JDBCURL=jdbc:sqlserver://mssql-source;database=tempdb;trustServerCertificate=true
-#      - SOURCE_USERNAME=sa
-#      - SOURCE_PASSWORD=${SOURCE_DB_PASS}
+      - SOURCE_JDBCURL=jdbc:sqlserver://mssql-source;database=tempdb;trustServerCertificate=true
+      - SOURCE_USERNAME=sa
+      - SOURCE_PASSWORD=${SOURCE_DB_PASS}
       - TARGET_JDBCURL=jdbc:sqlserver://mssql-target;database=tempdb;trustServerCertificate=true
       - TARGET_USERNAME=sa
       - TARGET_PASSWORD=${TARGET_DB_PASS}

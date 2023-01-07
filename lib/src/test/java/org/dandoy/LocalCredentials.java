@@ -1,6 +1,7 @@
 package org.dandoy;
 
 import org.dandoy.dbpop.database.ConnectionBuilder;
+import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
 import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.upload.Populator;
@@ -67,12 +68,16 @@ public record LocalCredentials(ConnectionBuilder sourceConnectionBuilder, Connec
         );
     }
 
-    public static Populator.Builder mssqlPopulator() {
-        return from("mssql").populator();
+    public static Populator mssqlPopulator(String directory) {
+        return from("mssql").populator(directory);
     }
 
-    public static Populator.Builder pgsqlPopulator() {
-        return from("pgsql").populator();
+    public static Populator mssqlPopulator(File directory) {
+        return Populator.createPopulator(Database.createDatabase(from("mssql").targetConnectionBuilder), directory);
+    }
+
+    public static Populator pgsqlPopulator(String directory) {
+        return from("pgsql").populator(directory);
     }
 
     public Connection createTargetConnection() throws SQLException {
@@ -83,8 +88,8 @@ public record LocalCredentials(ConnectionBuilder sourceConnectionBuilder, Connec
         return sourceConnectionBuilder.createConnection();
     }
 
-    public Populator.Builder populator() {
-        return Populator.builder().setConnectionBuilder(targetConnectionBuilder);
+    public Populator populator(String directory) {
+        return Populator.createPopulator(Database.createDatabase(targetConnectionBuilder), new File(directory));
     }
 
     public void executeSource(String... filenames) {

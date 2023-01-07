@@ -3,6 +3,7 @@ package org.dandoy.test;
 import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
 import org.dandoy.dbpop.upload.Populator;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -16,37 +17,40 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @EnabledIf("org.dandoy.TestUtils#hasPgsql")
 public class PostgresTests {
+    private static Connection targetConnection;
+
     @BeforeAll
-    public static void prepare() {
+    public static void prepare() throws SQLException {
+        targetConnection = LocalCredentials.from("mssql").createTargetConnection();
         TestUtils.preparePgsqlTarget();
+    }
+
+    @AfterAll
+    static void afterAll() throws SQLException {
+        targetConnection.close();
     }
 
     @Test
     void mainTest() throws SQLException {
-        try (Populator populator = LocalCredentials
-                .pgsqlPopulator()
-                .setDirectory("src/test/resources/pgsql")
-                .build()) {
-            try (Connection connection = populator.createTargetConnection()) {
+        try (Populator populator = LocalCredentials.pgsqlPopulator("src/test/resources/pgsql")) {
 
-                populator.load("base");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 0);
-                assertCount(connection, "invoice_details", 0);
-                assertCount(connection, "products", 3);
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 0);
+            assertCount(targetConnection, "invoice_details", 0);
+            assertCount(targetConnection, "products", 3);
 
-                populator.load("base", "invoices");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 4);
-                assertCount(connection, "invoice_details", 7);
-                assertCount(connection, "products", 3);
+            populator.load("base", "invoices");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 4);
+            assertCount(targetConnection, "invoice_details", 7);
+            assertCount(targetConnection, "products", 3);
 
-                populator.load("base");
-                assertCount(connection, "customers", 3);
-                assertCount(connection, "invoices", 0);
-                assertCount(connection, "invoice_details", 0);
-                assertCount(connection, "products", 3);
-            }
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 0);
+            assertCount(targetConnection, "invoice_details", 0);
+            assertCount(targetConnection, "products", 3);
         }
     }
 

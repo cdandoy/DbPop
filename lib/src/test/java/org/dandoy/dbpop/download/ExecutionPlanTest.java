@@ -13,8 +13,6 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Map;
 
@@ -25,21 +23,18 @@ class ExecutionPlanTest {
 
     public static final File DATASETS_DIRECTORY = new File("src/test/resources/mssql");
     public static final LocalCredentials LOCAL_CREDENTIALS = LocalCredentials.from("mssql");
-    private static Connection sourceConnection;
     private static Database sourceDatabase;
 
 
     @BeforeAll
-    static void beforeAll() throws SQLException {
+    static void beforeAll() {
         TestUtils.prepareMssqlSource();
-        sourceConnection = LOCAL_CREDENTIALS.createSourceConnection();
-        sourceDatabase = Database.createDatabase(sourceConnection);
+        sourceDatabase = Database.createDatabase(LOCAL_CREDENTIALS.sourceConnectionBuilder());
     }
 
     @AfterAll
-    static void afterAll() throws SQLException {
+    static void afterAll() {
         sourceDatabase.close();
-        sourceConnection.close();
     }
 
     @BeforeEach
