@@ -42,6 +42,14 @@ class DbpopdTest {
 
     @BeforeEach
     void setUp() throws SQLException {
+        try (Connection connection = configurationService.getSourceConnectionBuilder().createConnection()) {
+            SqlExecutor.execute(
+                    connection,
+                    "/mssql/drop_tables.sql",
+                    "/mssql/create_tables.sql",
+                    "/mssql/insert_data.sql"
+            );
+        }
         try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
             SqlExecutor.execute(
                     connection,
