@@ -3,11 +3,13 @@ package org.dandoy.test;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.LocalCredentials;
 import org.dandoy.TestUtils;
+import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.TableDownloader;
 import org.dandoy.dbpop.upload.Populator;
 import org.dandoy.dbpop.utils.FileUtils;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -28,18 +30,23 @@ import static org.junit.jupiter.api.Assertions.*;
 @EnabledIf("org.dandoy.TestUtils#hasMssql")
 @Slf4j
 public class SqlServerTests {
+    private static Connection targetConnection;
+
     @BeforeEach
-    void setUp() {
+    void setUp() throws SQLException {
+        targetConnection = LocalCredentials.from("mssql").createTargetConnection();
         TestUtils.prepareMssqlTarget();
+    }
+
+    @AfterAll
+    static void afterAll() throws SQLException {
+        targetConnection.close();
     }
 
     @Test
     void datasetNotFound() {
         assertThrows(RuntimeException.class, () -> {
-            try (Populator populator = LocalCredentials
-                    .mssqlPopulator()
-                    .setDirectory("src/test/resources/tests/")
-                    .build()) {
+            try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/tests/")) {
                 populator.load("test_1_1");
             }
         });
@@ -48,10 +55,7 @@ public class SqlServerTests {
     @Test
     void tableDoesNotExist() {
         RuntimeException runtimeException = assertThrows(RuntimeException.class, () -> {
-            try (Populator ignored = LocalCredentials
-                    .mssqlPopulator()
-                    .setDirectory("src/test/resources/test_bad_table")
-                    .build()) {
+            try (Populator ignored = LocalCredentials.mssqlPopulator("src/test/resources/test_bad_table")) {
                 System.out.println("I should not be here");
             }
         });
@@ -61,92 +65,64 @@ public class SqlServerTests {
 
     @Test
     void testExpressions() {
-        try (Populator populator = LocalCredentials
-                .mssqlPopulator()
-                .setDirectory("src/test/resources/test_expressions")
-                .build()) {
+        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/test_expressions")) {
             populator.load("base");
         }
     }
 
     @Test
-    void testSingleton() {
-        LocalCredentials
-                .mssqlPopulator()
-                .setDirectory("src/test/resources/test_expressions")
-                .createSingletonInstance();
-
-        Populator.getInstance().load("base");
-    }
-
-    @Test
     void mainTest() throws SQLException {
-        try (Populator populator = LocalCredentials
-                .mssqlPopulator()
-                .setDirectory("src/test/resources/mssql")
-                .build()) {
-            try (Connection targetConnection = populator.createTargetConnection()) {
+        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql")) {
 
-                populator.load("base");
-                assertCount(targetConnection, "customers", 3);
-                assertCount(targetConnection, "invoices", 0);
-                assertCount(targetConnection, "invoice_details", 0);
-                assertCount(targetConnection, "products", 3);
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 0);
+            assertCount(targetConnection, "invoice_details", 0);
+            assertCount(targetConnection, "products", 3);
 
-                populator.load("base", "invoices");
-                assertCount(targetConnection, "customers", 3);
-                assertCount(targetConnection, "invoices", 4);
-                assertCount(targetConnection, "invoice_details", 7);
-                assertCount(targetConnection, "products", 3);
+            populator.load("base", "invoices");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 4);
+            assertCount(targetConnection, "invoice_details", 7);
+            assertCount(targetConnection, "products", 3);
 
-                populator.load("base");
-                assertCount(targetConnection, "customers", 3);
-                assertCount(targetConnection, "invoices", 0);
-                assertCount(targetConnection, "invoice_details", 0);
-                assertCount(targetConnection, "products", 3);
-            }
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 0);
+            assertCount(targetConnection, "invoice_details", 0);
+            assertCount(targetConnection, "products", 3);
         }
     }
 
     @Test
     void testStatic() throws SQLException {
         // product is in the static dataset and should only be loaded once per populator.
-        try (Populator populator = LocalCredentials
-                .mssqlPopulator()
-                .setDirectory("src/test/resources/mssql")
-                .build()) {
-            try (Connection targetConnection = populator.createTargetConnection()) {
+        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql")) {
 
-                populator.load("base");
-                assertCount(targetConnection, "customers", 3);
-                assertCount(targetConnection, "invoices", 0);
-                assertCount(targetConnection, "invoice_details", 0);
-                assertCount(targetConnection, "products", 3);
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 0);
+            assertCount(targetConnection, "invoice_details", 0);
+            assertCount(targetConnection, "products", 3);
 
-                // Insert a product (static dataset) before to load. the populator is not supposed to notice
-                try (PreparedStatement preparedStatement = targetConnection.prepareStatement("INSERT INTO master.dbo.products (part_no, part_desc) VALUES ('XXX', 'XXX')")) {
-                    preparedStatement.execute();
-                }
-                populator.load("base");
-                assertCount(targetConnection, "customers", 3);
-                assertCount(targetConnection, "invoices", 0);
-                assertCount(targetConnection, "invoice_details", 0);
-                assertCount(targetConnection, "products", 4);
+            // Insert a product (static dataset) before to load. the populator is not supposed to notice
+            try (PreparedStatement preparedStatement = targetConnection.prepareStatement("INSERT INTO master.dbo.products (part_no, part_desc) VALUES ('XXX', 'XXX')")) {
+                preparedStatement.execute();
             }
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 0);
+            assertCount(targetConnection, "invoice_details", 0);
+            assertCount(targetConnection, "products", 4);
         }
 
         // A new populator will reset products
-        try (Populator populator = LocalCredentials
-                .mssqlPopulator()
-                .setDirectory("src/test/resources/mssql")
-                .build()) {
-            try (Connection targetConnection = populator.createTargetConnection()) {
-                populator.load("base");
-                assertCount(targetConnection, "customers", 3);
-                assertCount(targetConnection, "invoices", 0);
-                assertCount(targetConnection, "invoice_details", 0);
-                assertCount(targetConnection, "products", 3);
-            }
+        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql")) {
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 0);
+            assertCount(targetConnection, "invoice_details", 0);
+            assertCount(targetConnection, "products", 3);
         }
     }
 
@@ -178,39 +154,32 @@ public class SqlServerTests {
         TestUtils.prepareMssqlSource();
         File dir = createGeneratedTestDirectory();
         TestUtils.delete(dir);
-        try (Connection sourceConnection = LocalCredentials.from("mssql").createSourceConnection()) {
-            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
-                try (TableDownloader tableDownloader = TableDownloader.builder()
-                        .setDatabase(sourceDatabase)
-                        .setDatasetsDirectory(dir)
-                        .setDataset("base")
-                        .setTableName(new TableName("master", "dbo", "test_binary"))
-                        .build()) {
+        try (Database sourceDatabase = Database.createDatabase(LocalCredentials.from("mssql").sourceConnectionBuilder())) {
+            try (TableDownloader tableDownloader = TableDownloader.builder()
+                    .setDatabase(sourceDatabase)
+                    .setDatasetsDirectory(dir)
+                    .setDataset("base")
+                    .setTableName(new TableName("master", "dbo", "test_binary"))
+                    .build()) {
 
-                    // Download the data
-                    tableDownloader.download();
-                }
+                // Download the data
+                tableDownloader.download();
             }
         }
 
-        try (Populator populator = LocalCredentials
-                .mssqlPopulator()
-                .setDirectory(dir)
-                .build()) {
+        try (Populator populator = LocalCredentials.mssqlPopulator(dir)) {
 
             // Upload the data
             populator.load("base");
 
             // Verify
-            try (Connection targetConnection = populator.createTargetConnection()) {
-                try (PreparedStatement preparedStatement = targetConnection.prepareStatement("SELECT * FROM master.dbo.test_binary")) {
-                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                        assertTrue(resultSet.next());
-                        assertEquals(1, resultSet.getInt(1));
-                        assertEquals("HELLO\0WORLD", new String(resultSet.getBytes(2)));
-                        Blob blob = resultSet.getBlob(3);
-                        assertEquals("HELLO\0WORLD", new String(blob.getBytes(1, (int) blob.length())));
-                    }
+            try (PreparedStatement preparedStatement = targetConnection.prepareStatement("SELECT * FROM master.dbo.test_binary")) {
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    assertTrue(resultSet.next());
+                    assertEquals(1, resultSet.getInt(1));
+                    assertEquals("HELLO\0WORLD", new String(resultSet.getBytes(2)));
+                    Blob blob = resultSet.getBlob(3);
+                    assertEquals("HELLO\0WORLD", new String(blob.getBytes(1, (int) blob.length())));
                 }
             }
         }
@@ -223,41 +192,42 @@ public class SqlServerTests {
         File customerCsv = new File(dir, "base/master/dbo/customers.csv");
         TestUtils.delete(dir);
 
-        try (Connection sourceConnection = LocalCredentials.from("mssql").createSourceConnection()) {
-            try (Database sourceDatabase = Database.createDatabase(sourceConnection)) {
-                // Download it in a temp directory
-                try (TableDownloader tableDownloader = TableDownloader.builder()
-                        .setDatabase(sourceDatabase)
-                        .setDatasetsDirectory(dir)
-                        .setDataset("base")
-                        .setTableName(customers)
-                        .build()) {
-                    tableDownloader.download();
-                }
+        ConnectionBuilder sourceConnectionBuilder = LocalCredentials.from("mssql").sourceConnectionBuilder();
+        try (Database sourceDatabase = Database.createDatabase(sourceConnectionBuilder)) {
+            // Download it in a temp directory
+            try (TableDownloader tableDownloader = TableDownloader.builder()
+                    .setDatabase(sourceDatabase)
+                    .setDatasetsDirectory(dir)
+                    .setDataset("base")
+                    .setTableName(customers)
+                    .build()) {
+                tableDownloader.download();
+            }
 
-                assertEquals(4, Files.readAllLines(customerCsv.toPath()).size()); // Only the header
+            assertEquals(4, Files.readAllLines(customerCsv.toPath()).size()); // Only the header
 
-                // Insert a new customer
+            // Insert a new customer
+            try (Connection sourceConnection = sourceConnectionBuilder.createConnection()) {
                 try (Statement statement = sourceConnection.createStatement()) {
                     statement.execute("INSERT INTO master.dbo.customers (name) VALUES ('HyperAir')");
                 }
-
-                // then download in append mode
-                try (TableDownloader tableDownloader = TableDownloader.builder()
-                        .setDatabase(sourceDatabase)
-                        .setDatasetsDirectory(dir)
-                        .setDataset("base")
-                        .setTableName(customers)
-                        .build()) {
-                    // This is supposed to only download the new customer
-                    tableDownloader.download();
-                }
-                List<String> lines = Files.readAllLines(customerCsv.toPath());
-                assertEquals("customer_id,name", lines.get(0));                                     // Check that the first line is the header
-                assertEquals(1, lines.stream().filter(it -> it.contains("customer_id")).count());   // Check that we only have one header
-                assertEquals(1, lines.stream().filter(it -> it.contains("AirMethod")).count());     // Check that we still have the other customers
-                assertTrue(lines.get(lines.size() - 1).contains("HyperAir"));                       // Check that the last added line is our inserted customer
             }
+
+            // then download in append mode
+            try (TableDownloader tableDownloader = TableDownloader.builder()
+                    .setDatabase(sourceDatabase)
+                    .setDatasetsDirectory(dir)
+                    .setDataset("base")
+                    .setTableName(customers)
+                    .build()) {
+                // This is supposed to only download the new customer
+                tableDownloader.download();
+            }
+            List<String> lines = Files.readAllLines(customerCsv.toPath());
+            assertEquals("customer_id,name", lines.get(0));                                     // Check that the first line is the header
+            assertEquals(1, lines.stream().filter(it -> it.contains("customer_id")).count());   // Check that we only have one header
+            assertEquals(1, lines.stream().filter(it -> it.contains("AirMethod")).count());     // Check that we still have the other customers
+            assertTrue(lines.get(lines.size() - 1).contains("HyperAir"));                       // Check that the last added line is our inserted customer
         }
     }
 }

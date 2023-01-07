@@ -5,7 +5,6 @@ import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.upload.Dataset;
-import org.dandoy.dbpop.utils.StringUtils;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -14,7 +13,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class PostgresDatabase extends Database {
+public class PostgresDatabase extends DefaultDatabase {
 
     public PostgresDatabase(Connection connection) {
         super(connection);
@@ -466,34 +465,26 @@ public class PostgresDatabase extends Database {
     }
 
     @Override
-    public Set<TableName> searchTable(String query) {
-        Set<TableName> ret = new HashSet<>();
-        query = query.trim();
-        if (!query.isEmpty()) {
-            query = "%" + String.join("%", StringUtils.split(query, ' ')) + "%";
-            try {
-                try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                        SELECT table_catalog, table_schema, table_name
-                        FROM information_schema.tables t
-                        WHERE table_type = 'BASE TABLE'
-                          AND is_insertable_into = 'YES'
-                          AND table_schema NOT IN ('pg_catalog', 'information_schema')
-                          AND table_name LIKE ?
-                        """)) {
-                    preparedStatement.setString(1, query);
-                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                        while (resultSet.next()) {
-                            String catalog = resultSet.getString("table_catalog");
-                            String schema = resultSet.getString("table_schema");
-                            String table = resultSet.getString("table_name");
-                            ret.add(new TableName(catalog, schema, table));
-                        }
-                    }
+    public Set<TableName> searchTableLike(String like) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                SELECT table_catalog, table_schema, table_name
+                FROM information_schema.tables t
+                WHERE table_type = 'BASE TABLE'
+                  AND is_insertable_into = 'YES'
+                  AND table_schema NOT IN ('pg_catalog', 'information_schema')
+                  AND table_name LIKE ?
+                """)) {
+            preparedStatement.setString(1, like);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                Set<TableName> ret = new HashSet<>();
+                while (resultSet.next()) {
+                    String catalog = resultSet.getString("table_catalog");
+                    String schema = resultSet.getString("table_schema");
+                    String table = resultSet.getString("table_name");
+                    ret.add(new TableName(catalog, schema, table));
                 }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
+                return ret;
             }
         }
-        return ret;
     }
 }

@@ -1,1 +1,0 @@
-It is ok to have files that are not CSV data files.

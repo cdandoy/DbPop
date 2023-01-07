@@ -6,8 +6,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
 
@@ -18,24 +16,21 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 public class PgSqlTests {
     private static final TableName invoices = new TableName("dbpop", "public", "invoices");
     private static final TableName customers = new TableName("dbpop", "public", "customers");
-    private static Connection targetConnection;
     private static Database targetDatabase;
 
     @BeforeAll
-    static void beforeAll() throws SQLException {
+    static void beforeAll() {
         LocalCredentials localCredentials = LocalCredentials.from("pgsql");
-        targetConnection = localCredentials.createTargetConnection();
-        targetDatabase = Database.createDatabase(targetConnection);
+        targetDatabase = Database.createDatabase(localCredentials.targetConnectionBuilder());
     }
 
     @AfterAll
-    static void afterAll() throws SQLException {
+    static void afterAll() {
         targetDatabase.close();
-        targetConnection.close();
     }
 
     @Test
-    void name()  {
+    void name() {
         Table table = targetDatabase.getTable(invoices);
         {
             assertNotNull(table);

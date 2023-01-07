@@ -14,18 +14,18 @@ function Plural({count, text}: {
 }
 
 export function Dataset({
-                                     dataset,
-                                     hasDownload,
-                                     hasUpload,
-                                     loadingDataset,
-                                     loadedDataset,
-                                     loadingResult,
-                                     loadingError,
-                                     setLoadingDataset,
-                                     setLoadedDataset,
-                                     setLoadingResult,
-                                     setLoadingError,
-                                 }: {
+                            dataset,
+                            hasDownload,
+                            hasUpload,
+                            loadingDataset,
+                            loadedDataset,
+                            loadingResult,
+                            loadingError,
+                            setLoadingDataset,
+                            setLoadedDataset,
+                            setLoadingResult,
+                            setLoadingError,
+                        }: {
     dataset: DatasetResponse;
     hasDownload: boolean;
     hasUpload: boolean;

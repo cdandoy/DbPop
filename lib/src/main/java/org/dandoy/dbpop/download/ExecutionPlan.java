@@ -1,9 +1,6 @@
 package org.dandoy.dbpop.download;
 
-import org.dandoy.dbpop.database.Database;
-import org.dandoy.dbpop.database.ForeignKey;
-import org.dandoy.dbpop.database.Table;
-import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.database.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

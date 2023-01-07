@@ -4,6 +4,7 @@ import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
 import org.apache.commons.io.FileUtils;
 import org.dandoy.dbpop.database.Dependency;
+import org.dandoy.dbpop.database.ForeignKey;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.tests.SqlExecutor;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,8 @@ class DbpopdTest {
     PopulateController populateController;
     @Inject
     DownloadController downloadController;
+    @Inject
+    DatabaseController databaseController;
     @Inject
     ConfigurationService configurationService;
 
@@ -63,7 +66,7 @@ class DbpopdTest {
     }
 
     @Test
-    void testCount() throws SQLException {
+    void testCount() {
         long t0 = System.currentTimeMillis();
         populateController.populate(List.of("invoices", "invoice_details"));
         long t1 = System.currentTimeMillis();
@@ -87,7 +90,7 @@ class DbpopdTest {
 
     @Test
     @Disabled("Rewrite this test")
-    void testDownload() throws IOException, SQLException {
+    void testDownload() throws IOException {
         populateController.populate(singletonList("customers_1000"));
 
         File dir = new File("src/test/resources/config/datasets/test_dataset/");
@@ -140,5 +143,69 @@ class DbpopdTest {
                 )
                 .setQueryValues(emptyMap())
                 .setDryRun(dryRun);
+    }
+
+    @SuppressWarnings("ThrowFromFinallyBlock")
+    @Test
+    void testVfk() {
+        File file = new File(configurationService.getConfigurationDir(), "vfk.json");
+        if (!file.delete() && file.exists()) throw new RuntimeException();
+
+        try {
+            // Start with 0 FKs
+            assertEquals(0, databaseController.getVirtualForeignKeys().size());
+
+            // Add one, we must have one
+            databaseController.postVirtualForeignKey(
+                    new ForeignKey(
+                            "invoices_invoices_details_vfk",
+                            "test1",
+                            invoices,
+                            List.of("invoice_id"),
+                            invoiceDetails,
+                            List.of("invoice_id")
+                    )
+            );
+            List<ForeignKey> vfks = databaseController.getVirtualForeignKeys();
+            assertEquals(1, vfks.size());
+
+            ForeignKey vfk = vfks.get(0);
+            assertEquals("invoices_invoices_details_vfk", vfk.getName());
+            assertEquals("test1", vfk.getConstraintDef());
+
+            // Change it
+            databaseController.postVirtualForeignKey(
+                    new ForeignKey(
+                            "invoices_invoices_details_vfk",
+                            "test2",
+                            vfk.getPkTableName(),
+                            vfk.getPkColumns(),
+                            vfk.getFkTableName(),
+                            vfk.getFkColumns()
+                    )
+            );
+
+            // And verify
+            List<ForeignKey> vfks2 = databaseController.getVirtualForeignKeys();
+            assertEquals(1, vfks2.size());
+
+            ForeignKey vfk2 = vfks2.get(0);
+            assertEquals("invoices_invoices_details_vfk", vfk2.getName());
+            assertEquals("test2", vfk2.getConstraintDef());
+
+            databaseController.deleteVirtualForeignKey(
+                    new ForeignKey(
+                            "invoices_invoices_details_vfk",
+                            "test2",
+                            vfk.getPkTableName(),
+                            vfk.getPkColumns(),
+                            vfk.getFkTableName(),
+                            vfk.getFkColumns()
+                    )
+            );
+            assertEquals(0, databaseController.getVirtualForeignKeys().size());
+        } finally {
+            if (!file.delete()) throw new RuntimeException();
+        }
     }
 }
