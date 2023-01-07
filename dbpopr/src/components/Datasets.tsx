@@ -56,8 +56,6 @@ export default function Datasets() {
     const [loadingResult, setLoadingResult] = useState<string | null>(null);
     const [loadingError, setLoadingError] = useState<string | null>(null);
 
-    const canCreateDataset = false;
-
     useEffect(() => {
         axios.get<SiteResponse>('/site')
             .then(result => {
@@ -83,7 +81,7 @@ export default function Datasets() {
 
     if (loading) return <div className="text-center"><i className="fa fa-spinner fa-spin"/> Loading</div>;
     if (error) return <div className="text-center"><i className="fa fa-error"/> {error}</div>;
-    if (datasets.length == 0) return <div className="text-center">No Datasets</div>;
+    if (datasets.length === 0) return <div className="text-center">No Datasets</div>;
 
     return (
         <>
@@ -116,12 +114,6 @@ export default function Datasets() {
                             ))}
                         </div>
                     </div>
-
-                    {canCreateDataset &&
-                        <div className="text-end">
-                            <a href="#" className="card-link">Create Dataset</a>
-                        </div>
-                    }
                 </div>
             </div>
         </>)

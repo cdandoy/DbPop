@@ -22,7 +22,7 @@ export default function RowCounts({changeNumber, dataset, dependency, queryValue
                     setRowCounts(response.data);
                 })
         }
-    }, [changeNumber]);
+    }, [changeNumber,dataset, dependency, queryValues, setRowCounts]);
 
     if (rowCounts == null) return <></>;
 

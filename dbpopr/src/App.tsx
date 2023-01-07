@@ -25,15 +25,15 @@ function Header() {
                                     Virtual FKs
                                 </NavLink>
                             </li>
-                            <li><a className="nav-link text-white" style={{cursor: "default"}}>|</a></li>
+                            <li><a className="nav-link text-white" style={{cursor: "default"}} >|</a></li>
                             <li>
-                                <a href="https://github.com/cdandoy/DbPop" target="_blank" className="nav-link text-white">
+                                <a href="https://github.com/cdandoy/DbPop" target="_blank" className="nav-link text-white" rel="noreferrer">
                                     <i className="nav-icon fa-brands fa-docker"></i>
                                     GitHub
                                 </a>
                             </li>
                             <li>
-                                <a href="https://hub.docker.com/r/cdandoy/dbpop" target="_blank" className="nav-link text-white">
+                                <a href="https://hub.docker.com/r/cdandoy/dbpop" target="_blank" className="nav-link text-white" rel="noreferrer">
                                     <i className="nav-icon fa-brands fa-github"></i>
                                     Docker
                                 </a>

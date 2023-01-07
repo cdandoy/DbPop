@@ -35,7 +35,7 @@ function SelectedColumns({allTableColumns, selectedColumns, setSelectedColumns}:
                                     setSelectedColumns(selectedColumns);
                                 }}>
                             {columns
-                                .filter(column => selectedColumns.slice(0, i).indexOf(column) == -1) // Do not include already selected columns
+                                .filter(column => selectedColumns.slice(0, i).indexOf(column) === -1) // Do not include already selected columns
                                 .map(column => {
                                     return (
                                         <option key={column} value={column}>{column}</option>
@@ -108,7 +108,7 @@ export default function EditVirtualFkComponent() {
                         })
                 }
             });
-    }, []);
+    }, [editedFkName, editedPkTable]);
 
     useEffect(() => {
         if (pkTableName && fkTableName) {
@@ -121,7 +121,7 @@ export default function EditVirtualFkComponent() {
         if (!fkTableName) return 'Please select a foreign key table';
         if (!pkTableColumns.length) return 'Please select the primary key column(s)';
         if (!fkTableColumns.length) return 'Please select the foreign key column(s)';
-        if (pkTableColumns.length != fkTableColumns.length) return 'Please select the same number of columns';
+        if (pkTableColumns.length !== fkTableColumns.length) return 'Please select the same number of columns';
         return null;
     }
 

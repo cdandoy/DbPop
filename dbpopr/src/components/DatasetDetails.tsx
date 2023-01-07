@@ -16,7 +16,7 @@ export default function DatasetDetails() {
                 setLoaded(true);
                 setDataset(result.data);
             });
-    }, []);
+    }, [datasetName]);
 
     return (
         <div>

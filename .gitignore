@@ -42,3 +42,4 @@ bin/
 .DS_Store
 /docker/.env
 /dbpopd/src/test/resources/config/vfk.json
+/docker/mssql/vfk.json
