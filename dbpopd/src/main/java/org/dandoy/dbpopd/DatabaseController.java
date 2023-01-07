@@ -1,10 +1,12 @@
 package org.dandoy.dbpopd;
 
-import io.micronaut.http.annotation.*;
+import io.micronaut.http.annotation.Body;
+import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.Post;
 import org.dandoy.dbpop.database.*;
 
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -46,32 +48,6 @@ public class DatabaseController {
         try (Database sourceDatabase = configurationService.createSourceDatabase()) {
             return DependencyCalculator.calculateDependencies(sourceDatabase, dependency);
         }
-    }
-
-    @Get("vfks")
-    public List<ForeignKey> getVirtualForeignKeys() {
-        return configurationService
-                .createVirtualFkCache()
-                .getForeignKeys()
-                .stream()
-                .sorted(
-                        Comparator.comparing(it -> it.getFkTableName().toQualifiedName())
-                )
-                .toList();
-    }
-
-    @Post("vfks")
-    public void postVirtualForeignKey(ForeignKey foreignKey) {
-        configurationService
-                .createVirtualFkCache()
-                .addFK(foreignKey);
-    }
-
-    @Delete("vfks")
-    public void deleteVirtualForeignKey(ForeignKey foreignKey) {
-        configurationService
-                .createVirtualFkCache()
-                .removeFK(foreignKey);
     }
 
     public record SearchTableSearchByResponse(String displayName, List<String> columns) {}

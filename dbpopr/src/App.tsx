@@ -6,7 +6,7 @@ import DatasetDetails from "./components/DatasetDetails";
 import Datasets from "./components/Datasets"
 import AddData from "./components/AddData";
 import VirtualFksComponent from "./components/VirtualFksComponent";
-import AddVirtualFksComponent from "./components/AddVirtualFksComponent";
+import EditVirtualFkComponent from "./components/EditVirtualFkComponent";
 
 function Header() {
     return (
@@ -67,7 +67,8 @@ export default function App() {
                             <Route path="/dataset/:dataset" element=<DatasetDetails/>/>
                             <Route path="/add/:datasetName" element=<AddData/>/>
                             <Route path="/vfk" element=<VirtualFksComponent/>/>
-                            <Route path="/vfk/add" element=<AddVirtualFksComponent/>/>
+                            <Route path="/vfk/add" element=<EditVirtualFkComponent/>/>
+                            <Route path="/vfk/:pkTable/:fkName" element=<EditVirtualFkComponent/>/>
                             <Route path="/" element=<Datasets/>/>
                         </Routes>
                     </div>

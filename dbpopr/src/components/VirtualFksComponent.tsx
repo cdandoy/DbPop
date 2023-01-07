@@ -29,6 +29,11 @@ export default function VirtualFksComponent() {
         });
     }
 
+    function getVfkLink(foreignKey: ForeignKey):string {
+        let tn = foreignKey.pkTableName;
+        return `/vfk/${tn.catalog||''}.${tn.schema||''}.${tn.table}/${foreignKey.name}`
+    }
+
     if (loading) return <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Loading...</div>;
 
     return (
@@ -57,7 +62,11 @@ export default function VirtualFksComponent() {
                 </>}
                 {foreignKeys.map(foreignKey => (
                     <tr key={tableNameToFqName(foreignKey.pkTableName) + '.' + foreignKey.name}>
-                        <td>{foreignKey.name}</td>
+                        <td>
+                            <NavLink to={getVfkLink(foreignKey)}>
+                                {foreignKey.name}
+                            </NavLink>
+                        </td>
                         <td>{tableNameToFqName(foreignKey.pkTableName)}</td>
                         <td>{tableNameToFqName(foreignKey.fkTableName)}</td>
                         <td>
