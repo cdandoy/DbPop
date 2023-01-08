@@ -4,7 +4,7 @@
 This utility allows you to quickly re-populate a development database to an initial state
 which opens the doors of fast and reliable functional tests.
 
-DbPop supports SQL Server and PostgreSQL, support for other databases will be added.
+DbPop supports SQL Server, PostgreSQL is supported in major releases, support for other databases will be added.
 
 DbPop loads CSV files from your pre-defined datasets.<br/>
 All the datasets are under one directory which also contains a configuration file.<br/>
