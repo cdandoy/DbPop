@@ -99,7 +99,7 @@ public class DatasetsController {
                 dataset.getDataFiles().stream()
                         .map(dataFile -> new DatasetDatafileResponse(
                                         dataFile.getFile().getName(),
-                                        dataFile.getFile().length()*1024,
+                                        dataFile.getFile().length(),
                                         getCsvRowCount(dataFile.getFile())
                                 )
                         ).toList()

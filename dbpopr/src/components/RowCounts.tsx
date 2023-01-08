@@ -26,7 +26,7 @@ export default function RowCounts({changeNumber, dataset, dependency, queryValue
         }
     }, [changeNumber, dataset, dependency, queryValues, setDownloadResponse, maxRows]);
 
-    if (downloadResponse == null || changeNumber == 0) return <></>;
+    if (downloadResponse == null || changeNumber === 0) return <></>;
 
     if (loading) return <div><i className={"fa fa-spinner fa-spin"}/> Loading...</div>;
 

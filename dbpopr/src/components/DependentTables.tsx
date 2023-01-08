@@ -27,10 +27,10 @@ export function DependentTables({changeNumber, setChanged, dependency, setDepend
         return (
             <>
                 {dependency.subDependencies != null && dependency.subDependencies.map(it => (
-                    <div key={it.constraintName} style={{marginLeft: "1em"}}>
+                    <div key={it.constraintName} style={{marginLeft: "2em"}}>
                         {/*Disabled - Lookups*/}
                         {it.mandatory && (
-                            <div className="form-check">
+                            <div className="form-check" title={it.constraintName || ''}>
                                 <input className="form-check-input"
                                        type="checkbox"
                                        id={`dependent-${it.constraintName}`}
@@ -43,7 +43,7 @@ export function DependentTables({changeNumber, setChanged, dependency, setDepend
                         )}
                         {/*Enabled - Data*/}
                         {it.mandatory || (
-                            <div key={it.constraintName} className="form-check">
+                            <div className="form-check" title={it.constraintName || ''}>
                                 <input className="form-check-input"
                                        type="checkbox"
                                        id={`dependent-${it.constraintName}`}

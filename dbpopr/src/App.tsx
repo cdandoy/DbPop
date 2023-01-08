@@ -1,5 +1,6 @@
 import './App.scss';
-import 'react-bootstrap-typeahead/css/Typeahead.css';
+import 'react-bootstrap-typeahead/css/Typeahead.min.css';
+import 'react-bootstrap-typeahead/css/Typeahead.bs5.min.css';
 import React from 'react';
 import {HashRouter, NavLink, Route, Routes} from "react-router-dom";
 import DatasetDetails from "./components/DatasetDetails";

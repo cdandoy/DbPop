@@ -7,6 +7,7 @@ import io.micronaut.http.annotation.Post;
 import org.dandoy.dbpop.database.*;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -37,6 +38,7 @@ public class DatabaseController {
                                     ))
                                     .toList()
                     ))
+                    .sorted(Comparator.comparing(searchTableResponse -> searchTableResponse.tableName().toQualifiedName().length()))
                     .toList();
         }
     }
