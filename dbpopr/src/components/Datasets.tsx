@@ -13,6 +13,7 @@ interface SiteResponse {
 
 function SqlSetupStatusComponent() {
     const [error, setError] = useState<string | null>(null);
+    const [connected, setConnected] = useState(false);
     const [loaded, setLoaded] = useState(false);
 
     usePollingEffect(
@@ -23,6 +24,7 @@ function SqlSetupStatusComponent() {
     function whenSqlSetupStatus(response: AxiosResponse<SqlSetupStatus>): boolean {
         let sqlSetupStatus = response.data;
         setError(sqlSetupStatus.errorMessage);
+        setConnected(sqlSetupStatus.connected);
         setLoaded(sqlSetupStatus.loaded);
         return !sqlSetupStatus.loaded;
     }
@@ -34,7 +36,14 @@ function SqlSetupStatusComponent() {
         </div>
     )
 
-    if (!loaded) {
+    if (!connected) {
+        return (
+            <div className="mb-4 alert ">
+                <div>setup.sql:</div>
+                <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Connecting...</div>
+            </div>
+        );
+    } else if (!loaded) {
         return (
             <div className="mb-4 alert ">
                 <div>setup.sql:</div>

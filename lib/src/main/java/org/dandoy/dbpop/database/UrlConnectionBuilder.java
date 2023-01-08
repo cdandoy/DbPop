@@ -8,8 +8,8 @@ import java.sql.SQLException;
 
 @Slf4j
 public class UrlConnectionBuilder implements ConnectionBuilder {
-    public static final int WAIT_COUNT = 5;    // Wait N times for a connection
-    public static final int WAIT_TIME = 3000;   // Wait N millis between each retry
+    public static final int WAIT_COUNT = 30;    // Wait N times for a connection
+    public static final int WAIT_TIME = 1000;   // Wait N millis between each retry
     private final String url;
     private final String username;
     private final String password;
@@ -35,6 +35,7 @@ public class UrlConnectionBuilder implements ConnectionBuilder {
      * When running in a Docker environment, wait for the database to be started
      */
     private Connection waitForConnection() throws SQLException {
+        DriverManager.setLoginTimeout(5);
         SQLException lastException = null;
         for (int i = 0; i < WAIT_COUNT; i++) {  // Try 20 times
             try {
@@ -42,7 +43,7 @@ public class UrlConnectionBuilder implements ConnectionBuilder {
             } catch (SQLException e) {
                 if (hasWaited) throw e;
                 lastException = e;
-                log.info("Waiting for SQL Server");
+                log.info("Waiting for the target database to be ready");
                 try {
                     Thread.sleep(WAIT_TIME); // wait then retry
                 } catch (InterruptedException ignored) {

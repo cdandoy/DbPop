@@ -38,7 +38,7 @@ public class PopulateController {
     /**
      * Used for tests only
      */
-    public void resetPopulatorHolder(){
+    public void resetPopulatorHolder() {
         populatorHolder.reset();
     }
 
@@ -48,15 +48,13 @@ public class PopulateController {
     @Get("/site/populate/setup")
     public SqlSetupStatus setupStatus() {
         return new SqlSetupStatus(
-                sqlSetupService.isLoading(),
+                sqlSetupService.isConnected(),
                 sqlSetupService.isLoaded(),
                 sqlSetupService.getErrorMessage()
         );
     }
 
-    public record SqlSetupStatus(boolean loading, boolean loaded, String errorMessage) {
-    }
+    public record SqlSetupStatus(boolean connected, boolean loaded, String errorMessage) {}
 
-    record PopulateResult(int rows, long millis) {
-    }
+    record PopulateResult(int rows, long millis) {}
 }
