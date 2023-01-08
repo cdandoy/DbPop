@@ -10,6 +10,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public abstract class Database implements AutoCloseable {
 
@@ -81,22 +82,37 @@ public abstract class Database implements AutoCloseable {
      * Searches for tables by partial name
      */
     public final Set<TableName> searchTable(String query) {
+        String like = queryToLikeWordMatch(query);
+        if (like == null) return Collections.emptySet();
+
         try {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < query.length(); i++) {
-                char c = query.charAt(i);
-                if (c != ' ' && c != '%' && c != '.') {
-                    sb.append(c).append('%');
-                }
-            }
-
-            String like = sb.toString();
-            if (like.isEmpty()) return Collections.emptySet();
-
             return searchTableLike("%" + like);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static String queryToLikeWordMatch(String query) {
+        String s = Arrays.stream(query.split(" "))
+                .filter(it -> !it.trim().isEmpty())
+                .collect(Collectors.joining("%"));
+        if (s.isEmpty()) return null;
+        return "%" + s + "%";
+    }
+
+    private static String queryToLikeAnyMatch(String query) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < query.length(); i++) {
+            char c = query.charAt(i);
+            if (c != ' ' && c != '%' && c != '.') {
+                sb.append(c).append('%');
+            }
+        }
+
+        String like = sb.toString();
+        if (like.isEmpty()) return null;
+
+        return like;
     }
 
     protected abstract Set<TableName> searchTableLike(String like) throws SQLException;
