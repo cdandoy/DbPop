@@ -33,8 +33,8 @@ export default function DatasetDetails() {
                     <thead>
                     <tr>
                         <th>File</th>
-                        <th>Rows</th>
-                        <th>Size</th>
+                        <th className={"text-end"}>Rows</th>
+                        <th className={"text-end"}>Size</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -43,8 +43,8 @@ export default function DatasetDetails() {
                         return (
                             <tr>
                                 <td>{file.name}</td>
-                                <td>{file.rows}</td>
-                                <td>{readableSize.text}</td>
+                                <td className={"text-end"}>{file.rows.toLocaleString()}</td>
+                                <td className={"text-end"}>{readableSize.text}</td>
                             </tr>
                         )
                     })}
