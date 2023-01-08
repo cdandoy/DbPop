@@ -3,30 +3,37 @@ import {Dependency} from "../models/Dependency";
 import {executeDownload} from "./executeDownload";
 import {DownloadResponse} from "../models/DownloadResponse";
 
-export default function RowCounts({changeNumber, dataset, dependency, queryValues, rowCounts, setRowCounts}: {
+export default function RowCounts({changeNumber, dataset, dependency, queryValues, downloadResponse, setDownloadResponse, maxRows, setMaxRows}: {
     dataset: string,
     changeNumber: number,
     dependency: Dependency,
     queryValues: any,
-    rowCounts: DownloadResponse | null,
-    setRowCounts: ((s: DownloadResponse) => void),
+    downloadResponse: DownloadResponse | null,
+    setDownloadResponse: ((s: DownloadResponse) => void),
+    maxRows: number,
+    setMaxRows: ((s: number) => void),
 }) {
     const [loading, setLoading] = useState<boolean>(false);
 
     useEffect(() => {
-        if (dependency != null) {
+        if (dependency != null && changeNumber > 0) {
             setLoading(true);
-            executeDownload(dataset, dependency, queryValues, true)
+            executeDownload(dataset, dependency, queryValues, true, maxRows)
                 .then(response => {
                     setLoading(false);
-                    setRowCounts(response.data);
+                    setDownloadResponse(response.data);
                 })
         }
-    }, [changeNumber,dataset, dependency, queryValues, setRowCounts]);
+    }, [changeNumber, dataset, dependency, queryValues, setDownloadResponse, maxRows]);
 
-    if (rowCounts == null) return <></>;
+    if (downloadResponse == null || changeNumber == 0) return <></>;
 
     if (loading) return <div><i className={"fa fa-spinner fa-spin"}/> Loading...</div>;
+
+    let total = 0;
+    for (let tableRowCount of downloadResponse.tableRowCounts) {
+        total += tableRowCount.rowCount;
+    }
 
     return (
         <>
@@ -34,18 +41,37 @@ export default function RowCounts({changeNumber, dataset, dependency, queryValue
                 <thead>
                 <tr>
                     <th>Table</th>
-                    <th>Rows</th>
+                    <th className={"text-end"}>Rows</th>
                 </tr>
                 </thead>
                 <tbody>
-                {rowCounts.tableRowCounts.map(tableRowCount =>
+                {downloadResponse.tableRowCounts.map(tableRowCount =>
                     <tr key={tableRowCount.displayName}>
                         <td>{tableRowCount.displayName}</td>
-                        <td>{tableRowCount.rowCount}</td>
+                        <td className={"text-end"}>{tableRowCount.rowCount.toLocaleString()}</td>
                     </tr>
                 )}
                 </tbody>
+                <tfoot>
+                <tr>
+                    <th>Total</th>
+                    <th className={"text-end"}>{total.toLocaleString()}</th>
+                </tr>
+                </tfoot>
             </table>
+            {downloadResponse && downloadResponse.maxRowsReached && (
+                <div className={"alert alert-danger"}>
+                    &nbsp;
+                    <div className={"float-start"}>Row count limit reached: {maxRows.toLocaleString()}</div>
+                    <div className={"float-end"}>
+                        <button className={"btn btn-sm btn-light"} onClick={() => {
+                            setMaxRows(maxRows + 1000)
+                        }}>
+                            Increase to {(downloadResponse.rowCount + 1000).toLocaleString()}
+                        </button>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

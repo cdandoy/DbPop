@@ -10,9 +10,10 @@ import java.util.Map;
 @Getter
 public final class DownloadResponse {
     private final List<TableRowCount> tableRowCounts;
+    private final boolean maxRowsReached;
     private final int rowCount;
 
-    public DownloadResponse(Map<TableName, Integer> rowCounts) {
+    public DownloadResponse(Map<TableName, Integer> rowCounts, boolean maxRowsReached) {
         tableRowCounts = rowCounts.entrySet().stream()
                 .sorted(Comparator.comparing(entry -> entry.getKey().toQualifiedName()))
                 .map(entry -> {
@@ -24,6 +25,7 @@ public final class DownloadResponse {
                             rowCount
                     );
                 }).toList();
+        this.maxRowsReached = maxRowsReached;
         rowCount = tableRowCounts.stream().map(TableRowCount::getRowCount).reduce(0, Integer::sum);
     }
 

@@ -1,11 +1,17 @@
 package org.dandoy.dbpop.download;
 
-import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.ForeignKey;
+import org.dandoy.dbpop.database.Table;
+import org.dandoy.dbpop.database.TableName;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class ExecutionPlan implements AutoCloseable {
     private final Database database;
@@ -44,7 +50,7 @@ public class ExecutionPlan implements AutoCloseable {
         } while (hasFlushed);
     }
 
-    public static Map<TableName, Integer> execute(
+    public static ExecutionContext execute(
             @NotNull Database database,
             @NotNull File datasetsDirectory,
             @NotNull String dataset,
@@ -55,13 +61,21 @@ public class ExecutionPlan implements AutoCloseable {
             @NotNull ExecutionMode executionMode,
             @Nullable Integer rowCountLimit
     ) {
-        ExecutionContext executionContext = new ExecutionContext(rowCountLimit == null ? Integer.MAX_VALUE : rowCountLimit);
+        int effectiveRowCountLimit = getEffectiveRowCountLimit(executionMode, rowCountLimit);
+        ExecutionContext executionContext = new ExecutionContext(effectiveRowCountLimit);
         try (ExecutionPlan executionPlan = new ExecutionPlan(database, datasetsDirectory, dataset, executionMode, executionContext)) {
             ExecutionNode executionNode = executionPlan.build(tableName, tableExecutionModel, filteredColumns);
             executionNode.download(pks);
             executionPlan.flush(executionContext);
-            return executionContext.getRowCounts();
+            return executionContext;
         }
+    }
+
+    private static int getEffectiveRowCountLimit(ExecutionMode executionMode, Integer rowCountLimit) {
+        if (executionMode == ExecutionMode.COUNT) {
+            if (rowCountLimit != null) return rowCountLimit;
+        }
+        return Integer.MAX_VALUE;
     }
 
     private ExecutionNode build(

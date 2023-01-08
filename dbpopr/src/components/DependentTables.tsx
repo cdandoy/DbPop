@@ -2,9 +2,9 @@ import React, {useEffect, useState} from "react";
 import axios, {AxiosResponse} from "axios";
 import {Dependency} from "../models/Dependency";
 
-export function DependentTables({changeNumber, setChangeNumber, dependency, setDependency}: {
+export function DependentTables({changeNumber, setChanged, dependency, setDependency}: {
     changeNumber: number,
-    setChangeNumber: ((i: number) => void),
+    setChanged: (() => void),
     dependency: Dependency | null,
     setDependency: ((d: Dependency | null) => void),
 }) {
@@ -51,7 +51,7 @@ export function DependentTables({changeNumber, setChangeNumber, dependency, setD
                                        disabled={loading}
                                        onChange={e => {
                                            it.selected = e.target.checked;
-                                           setChangeNumber(changeNumber + 1);
+                                           setChanged();
                                        }}
                                 />
                                 <label className="form-check-label" htmlFor={`dependent-${it.constraintName}`}>
