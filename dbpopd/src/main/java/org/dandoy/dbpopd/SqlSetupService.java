@@ -59,6 +59,7 @@ public class SqlSetupService {
         } catch (RuntimeException e) {
             errorMessage = e.getMessage();
         } finally {
+            connected = true;
             loaded = true;
         }
     }
