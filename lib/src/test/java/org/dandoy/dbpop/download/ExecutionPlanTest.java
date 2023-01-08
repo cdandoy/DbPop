@@ -61,7 +61,7 @@ class ExecutionPlanTest {
     @Test
     void testRowCountLimit() throws IOException {
         TableExecutionModel tableExecutionModel = readTableExecutionModel("fullTableExecutionModel1.json");
-        ExecutionContext executionContext = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, 3);
+        ExecutionContext executionContext = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.COUNT, 3);
         Map<TableName, Integer> rowCounts = executionContext.getRowCounts();
         assertRowCounts(rowCounts, invoices, 3);
         assertRowCounts(rowCounts, invoiceDetails, 0);

@@ -43,6 +43,7 @@ public class UrlConnectionBuilder implements ConnectionBuilder {
             } catch (SQLException e) {
                 if (hasWaited) throw e;
                 lastException = e;
+                log.error(e.getMessage());
                 log.info("Waiting for the target database to be ready");
                 try {
                     Thread.sleep(WAIT_TIME); // wait then retry
