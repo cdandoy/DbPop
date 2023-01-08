@@ -30,9 +30,11 @@ export default function RowCounts({changeNumber, dataset, dependency, queryValue
 
     if (loading) return <div><i className={"fa fa-spinner fa-spin"}/> Loading...</div>;
 
-    let total = 0;
+    let totalRows = 0;
+    let totalSkipped = 0;
     for (let tableRowCount of downloadResponse.tableRowCounts) {
-        total += tableRowCount.rowCount;
+        totalRows += tableRowCount.rowCount;
+        totalSkipped += tableRowCount.rowsSkipped;
     }
 
     return (
@@ -41,6 +43,7 @@ export default function RowCounts({changeNumber, dataset, dependency, queryValue
                 <thead>
                 <tr>
                     <th>Table</th>
+                    <th className={"text-end"}>Skipped</th>
                     <th className={"text-end"}>Rows</th>
                 </tr>
                 </thead>
@@ -48,6 +51,7 @@ export default function RowCounts({changeNumber, dataset, dependency, queryValue
                 {downloadResponse.tableRowCounts.map(tableRowCount =>
                     <tr key={tableRowCount.displayName}>
                         <td>{tableRowCount.displayName}</td>
+                        <td className={"text-end"}>{tableRowCount.rowsSkipped.toLocaleString()}</td>
                         <td className={"text-end"}>{tableRowCount.rowCount.toLocaleString()}</td>
                     </tr>
                 )}
@@ -55,7 +59,8 @@ export default function RowCounts({changeNumber, dataset, dependency, queryValue
                 <tfoot>
                 <tr>
                     <th>Total</th>
-                    <th className={"text-end"}>{total.toLocaleString()}</th>
+                    <th className={"text-end"}>{totalSkipped.toLocaleString()}</th>
+                    <th className={"text-end"}>{totalRows.toLocaleString()}</th>
                 </tr>
                 </tfoot>
             </table>

@@ -56,6 +56,7 @@ public class DownloadController {
             );
             return new DownloadResponse(
                     executionContext.getRowCounts(),
+                    executionContext.getRowsSkipped(),
                     !executionContext.keepRunning()
             );
         }

@@ -122,7 +122,7 @@ public class TableDownloader implements AutoCloseable {
 
     private void consumeResultSet(ResultSet resultSet) {
         if (isExistingPk(resultSet)) {
-            log.debug("{} skips a row that already exists", tableName);
+            executionContext.rowSkipped(tableName);
             return;
         }
 

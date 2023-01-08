@@ -13,7 +13,7 @@ public final class DownloadResponse {
     private final boolean maxRowsReached;
     private final int rowCount;
 
-    public DownloadResponse(Map<TableName, Integer> rowCounts, boolean maxRowsReached) {
+    public DownloadResponse(Map<TableName, Integer> rowCounts, Map<TableName, Integer> rowsSkipped, boolean maxRowsReached) {
         tableRowCounts = rowCounts.entrySet().stream()
                 .sorted(Comparator.comparing(entry -> entry.getKey().toQualifiedName()))
                 .map(entry -> {
@@ -22,7 +22,8 @@ public final class DownloadResponse {
                     return new TableRowCount(
                             tableName.toQualifiedName(),
                             tableName,
-                            rowCount
+                            rowCount,
+                            rowsSkipped.getOrDefault(tableName, 0)
                     );
                 }).toList();
         this.maxRowsReached = maxRowsReached;
@@ -34,11 +35,13 @@ public final class DownloadResponse {
         private final String displayName;
         private final TableName tableName;
         private final int rowCount;
+        private final int rowsSkipped;
 
-        public TableRowCount(String displayName, TableName tableName, int rowCount) {
+        public TableRowCount(String displayName, TableName tableName, int rowCount, int rowsSkipped) {
             this.displayName = displayName;
             this.tableName = tableName;
             this.rowCount = rowCount;
+            this.rowsSkipped = rowsSkipped;
         }
     }
 }
