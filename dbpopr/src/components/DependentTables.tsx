@@ -1,10 +1,8 @@
-import {SearchTableResult} from "./SelectTable";
 import React, {useEffect, useState} from "react";
 import axios, {AxiosResponse} from "axios";
 import {Dependency} from "../models/Dependency";
 
-export function DependentTables({rootTable, changeNumber, setChangeNumber, dependency, setDependency}: {
-    rootTable: SearchTableResult | null,
+export function DependentTables({changeNumber, setChangeNumber, dependency, setDependency}: {
     changeNumber: number,
     setChangeNumber: ((i: number) => void),
     dependency: Dependency | null,
@@ -17,15 +15,13 @@ export function DependentTables({rootTable, changeNumber, setChangeNumber, depen
     // selectedDependentTables: dependent tables with a checkbox checked
 
     useEffect(() => {
-        if (rootTable != null) {
-            setLoading(true);
-            axios.post<Dependency, AxiosResponse<Dependency>>(`/database/dependencies`, dependency)
-                .then((result) => {
-                    setLoading(false);
-                    setDependency(result.data);
-                });
-        }
-    }, [rootTable, changeNumber]);
+        setLoading(true);
+        axios.post<Dependency, AxiosResponse<Dependency>>(`/database/dependencies`, dependency)
+            .then((result) => {
+                setLoading(false);
+                setDependency(result.data);
+            });
+    }, [changeNumber]);
 
     function drawDependencies(dependency: Dependency) {
         return (

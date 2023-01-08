@@ -1,17 +1,18 @@
 import React, {useState} from "react";
 import {NavLink, useParams} from "react-router-dom";
-import {SearchTableResult, SelectTable} from "./SelectTable";
+import {SelectTable} from "./SelectTable";
 import {DependentTables} from "./DependentTables";
 import FilterForm from "./FilterForm";
 import RowCounts from "./RowCounts";
 import {executeDownload} from "./executeDownload";
 import {Dependency} from "../models/Dependency";
 import {DownloadResponse} from "../models/DownloadResponse";
+import {Table} from "../models/Table";
 
 export default function AddData() {
     const routeParams = useParams();
     const datasetName = routeParams['datasetName']
-    const [tableSelection, setTableSelection] = useState<SearchTableResult | null>(null);
+    const [table, setTable] = useState<Table | null>(null);
     const [dependency, setDependency] = useState<Dependency | null>(null);
     const [queryValues, setQueryValues] = useState<any>({})
     const [dependencyChangeNumber, setDependencyChangeNumber] = useState<number>(0);
@@ -56,40 +57,40 @@ export default function AddData() {
             {/* Table Selection drop-down*/}
             <div className="mb-3">
                 <label htmlFor="table-name" className="form-label">Table Name:</label>
-                <SelectTable setTableSelection={(searchTableResult: SearchTableResult | null) => {
-                    setTableSelection(searchTableResult);
-                    if (searchTableResult) {
-                        const root: Dependency = {
-                            displayName: 'root',
-                            tableName: searchTableResult.tableName,
-                            constraintName: null,
-                            subDependencies: null,
-                            selected: true,
-                            mandatory: true
-                        };
-                        setDependency(root);
-                    }
-                }}
-                />
+                <SelectTable setTable={(table: Table) => {
+                    setTable(table);
+                    const root: Dependency = {
+                        displayName: 'root',
+                        tableName: table.tableName,
+                        constraintName: null,
+                        subDependencies: null,
+                        selected: true,
+                        mandatory: true
+                    };
+                    setDependency(root);
+                }}/>
             </div>
 
             {/*Dependent Tables*/}
-            <div className="mb-3">
-                <label htmlFor="table-name" className="form-label">Dependent:</label>
-                <DependentTables rootTable={tableSelection}
-                                 changeNumber={dependencyChangeNumber}
-                                 setChangeNumber={setDependencyChangeNumber}
-                                 dependency={dependency}
-                                 setDependency={setDependency}
-                />
-            </div>
+            {table && (
+                <div className="mb-3">
+                    <label htmlFor="table-name" className="form-label">Dependent:</label>
+                    <DependentTables dependency={dependency}
+                                     changeNumber={dependencyChangeNumber}
+                                     setChangeNumber={setDependencyChangeNumber}
+                                     setDependency={setDependency}
+                    />
+                </div>
+            )}
 
             {/*Filter*/}
-            <FilterForm rootTable={tableSelection}
-                        queryValues={queryValues}
-                        setQueryValues={setQueryValues}
-                        whenSearchSubmitted={whenSearchSubmitted}
-            />
+            {table && (
+                <FilterForm rootTable={table}
+                            queryValues={queryValues}
+                            setQueryValues={setQueryValues}
+                            whenSearchSubmitted={whenSearchSubmitted}
+                />
+            )}
 
             {/*Row Counts*/}
             {dependency && queryValues && searchChangeNumber > 0 &&
