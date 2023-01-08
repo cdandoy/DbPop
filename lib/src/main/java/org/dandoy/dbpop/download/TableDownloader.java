@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
+import org.dandoy.dbpop.database.ColumnType;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
@@ -132,21 +133,26 @@ public class TableDownloader implements AutoCloseable {
         if (csvPrinter != null) {
             try {
                 for (SelectedColumn selectedColumn : selectedColumns) {
-                    if (selectedColumn != null) {
-                        Integer integer = selectedColumn.columnType().toSqlType();
-                        String columnName = selectedColumn.name();
-                        int jdbcPos = selectedColumn.jdbcPos();
-                        if (integer == Types.CLOB) {
-                            downloadClob(resultSet, csvPrinter, columnName, jdbcPos);
-                        } else if (integer == Types.BLOB) {
-                            downloadBlob(resultSet, csvPrinter, columnName, jdbcPos);
-                        } else if (selectedColumn.binary()) {
-                            downloadBinary(resultSet, csvPrinter, columnName, jdbcPos);
-                        } else {
-                            downloadString(resultSet, csvPrinter, columnName, jdbcPos);
-                        }
-                    } else {
+                    if (selectedColumn == null) {
                         csvPrinter.print(null);
+                        continue;
+                    }
+                    ColumnType columnType = selectedColumn.columnType();
+                    if (columnType == ColumnType.INVALID) {
+                        csvPrinter.print(null);
+                        continue;
+                    }
+                    Integer integer = columnType.toSqlType();
+                    String columnName = selectedColumn.name();
+                    int jdbcPos = selectedColumn.jdbcPos();
+                    if (integer == Types.CLOB) {
+                        downloadClob(resultSet, csvPrinter, columnName, jdbcPos);
+                    } else if (integer == Types.BLOB) {
+                        downloadBlob(resultSet, csvPrinter, columnName, jdbcPos);
+                    } else if (selectedColumn.binary()) {
+                        downloadBinary(resultSet, csvPrinter, columnName, jdbcPos);
+                    } else {
+                        downloadString(resultSet, csvPrinter, columnName, jdbcPos);
                     }
                 }
                 csvPrinter.println();
