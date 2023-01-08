@@ -3,6 +3,7 @@ import React, {useState} from "react";
 import axios from "axios";
 import {AsyncTypeahead} from "react-bootstrap-typeahead";
 import {TableName} from "../models/TableName";
+import {Table} from "../models/Table";
 
 export interface SearchTableResult {
     displayName: string;
@@ -16,15 +17,7 @@ interface SearchTableSearchBy {
     columns: string[];
 }
 
-interface TableResponse {
-    tableName: TableName,
-    columns: string[],
-}
-
-export function SelectTable(props: any) {
-    // Cheating with the type. See https://github.com/ericgio/react-bootstrap-typeahead/issues/738
-    const setTableSelection: ((s: Option | null) => void) = props['setTableSelection'];
-    const setSelection: ((tableName: TableName, columns: string[]) => void) = props['setSelection'];
+export function SelectTable({setTable}: { setTable: (table: Table) => void }) {
     const [isLoading, setIsLoading] = useState(false);
     const [tables, setTables] = useState<SearchTableResult[]>([]);
 
@@ -40,18 +33,15 @@ export function SelectTable(props: any) {
 
     function whenTableSelected(selections: Option[]) {
         let selection = selections.length ? selections[0] : null;
-        if (selection && setSelection) {
+        if (selection) {
             let searchTableResult = selection as SearchTableResult;
             let tableName = searchTableResult.tableName;
-            axios.get<TableResponse>(`/database/tables/${tableName.catalog}/${tableName.schema}/${tableName.table}`).then(result => {
-                let tableResponse = result.data;
-                if (tableResponse) {
-                    setSelection(tableResponse.tableName, tableResponse.columns);
+            axios.get<Table>(`/database/tables/${tableName.catalog}/${tableName.schema}/${tableName.table}`).then(result => {
+                let table = result.data;
+                if (table) {
+                    setTable(table);
                 }
             });
-        }
-        if (setTableSelection) {
-            setTableSelection(selection);
         }
     }
 

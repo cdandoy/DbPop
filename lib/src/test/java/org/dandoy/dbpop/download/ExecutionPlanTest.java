@@ -50,7 +50,8 @@ class ExecutionPlanTest {
     @Test
     void testFullModel() throws IOException {
         TableExecutionModel tableExecutionModel = readTableExecutionModel("fullTableExecutionModel1.json");
-        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, null);
+        ExecutionContext executionContext = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, null);
+        Map<TableName, Integer> rowCounts = executionContext.getRowCounts();
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, 7);
         assertRowCounts(rowCounts, customers, 0);
@@ -60,7 +61,8 @@ class ExecutionPlanTest {
     @Test
     void testRowCountLimit() throws IOException {
         TableExecutionModel tableExecutionModel = readTableExecutionModel("fullTableExecutionModel1.json");
-        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, 3);
+        ExecutionContext executionContext = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.COUNT, 3);
+        Map<TableName, Integer> rowCounts = executionContext.getRowCounts();
         assertRowCounts(rowCounts, invoices, 3);
         assertRowCounts(rowCounts, invoiceDetails, 0);
         assertRowCounts(rowCounts, customers, 0);
@@ -70,7 +72,8 @@ class ExecutionPlanTest {
     @Test
     void testSmallModel() throws IOException {
         TableExecutionModel tableExecutionModel = readTableExecutionModel("smallTableExecutionModel1.json");
-        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, null);
+        ExecutionContext executionContext = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, null);
+        Map<TableName, Integer> rowCounts = executionContext.getRowCounts();
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, null);
         assertRowCounts(rowCounts, customers, 0);
@@ -81,7 +84,8 @@ class ExecutionPlanTest {
     @Test
     void testCountSmallModel() throws IOException {
         TableExecutionModel tableExecutionModel = readTableExecutionModel("smallTableExecutionModel1.json");
-        Map<TableName, Integer> rowCounts = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.COUNT, null);
+        ExecutionContext executionContext = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.COUNT, null);
+        Map<TableName, Integer> rowCounts = executionContext.getRowCounts();
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, null);
         assertRowCounts(rowCounts, customers, 0);

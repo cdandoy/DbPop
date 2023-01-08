@@ -1,10 +1,15 @@
 package org.dandoy.dbpop.database;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+@Slf4j
 public class UrlConnectionBuilder implements ConnectionBuilder {
+    public static final int WAIT_COUNT = 30;    // Wait N times for a connection
+    public static final int WAIT_TIME = 1000;   // Wait N millis between each retry
     private final String url;
     private final String username;
     private final String password;
@@ -30,15 +35,18 @@ public class UrlConnectionBuilder implements ConnectionBuilder {
      * When running in a Docker environment, wait for the database to be started
      */
     private Connection waitForConnection() throws SQLException {
+        DriverManager.setLoginTimeout(5);
         SQLException lastException = null;
-        for (int i = 0; i < 20; i++) {  // Try 20 times
+        for (int i = 0; i < WAIT_COUNT; i++) {  // Try 20 times
             try {
                 return DriverManager.getConnection(url, username, password);
             } catch (SQLException e) {
                 if (hasWaited) throw e;
                 lastException = e;
+                log.error(e.getMessage());
+                log.info("Waiting for the target database to be ready");
                 try {
-                    Thread.sleep(1000); // wait 1 second then retry
+                    Thread.sleep(WAIT_TIME); // wait then retry
                 } catch (InterruptedException ignored) {
                 }
             }

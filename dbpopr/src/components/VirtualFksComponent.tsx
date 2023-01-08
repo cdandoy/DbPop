@@ -55,7 +55,7 @@ export default function VirtualFksComponent() {
                 </tr>
                 </thead>
                 <tbody>
-                {foreignKeys.length == 0 && <>
+                {foreignKeys.length === 0 && <>
                     <tr>
                         <td colSpan={3} className={"text-center"}>No Data</td>
                     </tr>

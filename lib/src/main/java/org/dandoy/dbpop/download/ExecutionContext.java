@@ -11,6 +11,8 @@ public class ExecutionContext {
     private int totalRowCount;
     @Getter
     private final Map<TableName, Integer> rowCounts = new HashMap<>();
+    @Getter
+    private final Map<TableName, Integer> rowsSkipped = new HashMap<>();
 
     public ExecutionContext() {
         this(Integer.MAX_VALUE);
@@ -31,6 +33,14 @@ public class ExecutionContext {
         }
         rowCounts.put(tableName, integer + 1);
         totalRowCount++;
+    }
+
+    public void rowSkipped(TableName tableName) {
+        Integer integer = rowsSkipped.get(tableName);
+        if (integer == null) {
+            integer = 0;
+        }
+        rowsSkipped.put(tableName, integer + 1);
     }
 
     public boolean keepRunning() {

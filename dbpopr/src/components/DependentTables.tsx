@@ -1,12 +1,10 @@
-import {SearchTableResult} from "./SelectTable";
 import React, {useEffect, useState} from "react";
 import axios, {AxiosResponse} from "axios";
 import {Dependency} from "../models/Dependency";
 
-export function DependentTables({rootTable, changeNumber, setChangeNumber, dependency, setDependency}: {
-    rootTable: SearchTableResult | null,
+export function DependentTables({changeNumber, setChanged, dependency, setDependency}: {
     changeNumber: number,
-    setChangeNumber: ((i: number) => void),
+    setChanged: (() => void),
     dependency: Dependency | null,
     setDependency: ((d: Dependency | null) => void),
 }) {
@@ -17,24 +15,22 @@ export function DependentTables({rootTable, changeNumber, setChangeNumber, depen
     // selectedDependentTables: dependent tables with a checkbox checked
 
     useEffect(() => {
-        if (rootTable != null) {
-            setLoading(true);
-            axios.post<Dependency, AxiosResponse<Dependency>>(`/database/dependencies`, dependency)
-                .then((result) => {
-                    setLoading(false);
-                    setDependency(result.data);
-                });
-        }
-    }, [rootTable, changeNumber]);
+        setLoading(true);
+        axios.post<Dependency, AxiosResponse<Dependency>>(`/database/dependencies`, dependency)
+            .then((result) => {
+                setLoading(false);
+                setDependency(result.data);
+            });
+    }, [changeNumber]);
 
     function drawDependencies(dependency: Dependency) {
         return (
             <>
                 {dependency.subDependencies != null && dependency.subDependencies.map(it => (
-                    <div key={it.constraintName} style={{marginLeft: "1em"}}>
+                    <div key={it.constraintName} style={{marginLeft: "2em"}}>
                         {/*Disabled - Lookups*/}
                         {it.mandatory && (
-                            <div className="form-check">
+                            <div className="form-check" title={it.constraintName || ''}>
                                 <input className="form-check-input"
                                        type="checkbox"
                                        id={`dependent-${it.constraintName}`}
@@ -47,7 +43,7 @@ export function DependentTables({rootTable, changeNumber, setChangeNumber, depen
                         )}
                         {/*Enabled - Data*/}
                         {it.mandatory || (
-                            <div key={it.constraintName} className="form-check">
+                            <div className="form-check" title={it.constraintName || ''}>
                                 <input className="form-check-input"
                                        type="checkbox"
                                        id={`dependent-${it.constraintName}`}
@@ -55,7 +51,7 @@ export function DependentTables({rootTable, changeNumber, setChangeNumber, depen
                                        disabled={loading}
                                        onChange={e => {
                                            it.selected = e.target.checked;
-                                           setChangeNumber(changeNumber + 1);
+                                           setChanged();
                                        }}
                                 />
                                 <label className="form-check-label" htmlFor={`dependent-${it.constraintName}`}>

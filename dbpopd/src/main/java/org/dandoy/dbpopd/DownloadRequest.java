@@ -20,4 +20,5 @@ public class DownloadRequest {
     private Dependency dependency;
     private Map<String, String> queryValues;
     private boolean dryRun;
+    private int maxRows = 1000;
 }

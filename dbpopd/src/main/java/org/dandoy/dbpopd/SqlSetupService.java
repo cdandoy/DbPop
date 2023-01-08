@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 public class SqlSetupService {
     private final ConfigurationService configurationService;
     @Getter
-    private boolean loading;
+    private boolean connected;
     @Getter
     private boolean loaded;
     @Getter
@@ -36,14 +36,18 @@ public class SqlSetupService {
 
     @PostConstruct
     public void loadSetup() {
-        loading = true;
+        new Thread(this::doit).start();
+    }
+
+    private void doit() {
         try {
             if (configurationService.hasTargetConnection()) {
                 File configurationDir = configurationService.getConfigurationDir();
                 File setupFile = new File(configurationDir, "setup.sql");
                 if (setupFile.isFile()) {
-                    // TODO: Run this in a background thread
+                    log.info("Loading " + setupFile);
                     try (Connection connection = configurationService.createTargetConnection()) {
+                        connected = true;
                         List<String> lines = Files.readAllLines(setupFile.toPath());
                         List<Sql> sqls = linesToSql(lines);
                         executeSqls(setupFile, connection, sqls);
@@ -55,7 +59,7 @@ public class SqlSetupService {
         } catch (RuntimeException e) {
             errorMessage = e.getMessage();
         } finally {
-            loading = false;
+            connected = true;
             loaded = true;
         }
     }

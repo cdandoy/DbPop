@@ -2,7 +2,6 @@ import React, {useEffect, useState} from "react";
 import {NavLink, useParams} from "react-router-dom";
 import {DatasetResponse} from "../models/DatasetResponse";
 import axios from "axios";
-import {toHumanReadableSize} from "../utils/DbPopUtils";
 
 export default function DatasetDetails() {
     const routeParams = useParams();
@@ -16,7 +15,7 @@ export default function DatasetDetails() {
                 setLoaded(true);
                 setDataset(result.data);
             });
-    }, []);
+    }, [datasetName]);
 
     return (
         <div>
@@ -27,24 +26,23 @@ export default function DatasetDetails() {
                 </ol>
             </nav>
 
-            {loaded || <div ><i className="fa fa-spinner fa-spin"/> Loading</div>}
+            {loaded || <div><i className="fa fa-spinner fa-spin"/> Loading</div>}
             {loaded && (
                 <table className="table table-hover">
                     <thead>
                     <tr>
                         <th>File</th>
-                        <th>Rows</th>
-                        <th>Size</th>
+                        <th className={"text-end"}>Rows</th>
+                        <th className={"text-end"}>Size</th>
                     </tr>
                     </thead>
                     <tbody>
                     {dataset?.files?.map(file => {
-                        let readableSize = toHumanReadableSize(file.fileSize);
                         return (
-                            <tr>
+                            <tr key={file.name}>
                                 <td>{file.name}</td>
-                                <td>{file.rows}</td>
-                                <td>{readableSize.text}</td>
+                                <td className={"text-end"}>{file.rows.toLocaleString()}</td>
+                                <td className={"text-end"}>{(file.fileSize / 1024.0).toFixed(2)} Kb</td>
                             </tr>
                         )
                     })}

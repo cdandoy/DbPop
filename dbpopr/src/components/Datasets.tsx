@@ -13,6 +13,7 @@ interface SiteResponse {
 
 function SqlSetupStatusComponent() {
     const [error, setError] = useState<string | null>(null);
+    const [connected, setConnected] = useState(false);
     const [loaded, setLoaded] = useState(false);
 
     usePollingEffect(
@@ -23,6 +24,7 @@ function SqlSetupStatusComponent() {
     function whenSqlSetupStatus(response: AxiosResponse<SqlSetupStatus>): boolean {
         let sqlSetupStatus = response.data;
         setError(sqlSetupStatus.errorMessage);
+        setConnected(sqlSetupStatus.connected);
         setLoaded(sqlSetupStatus.loaded);
         return !sqlSetupStatus.loaded;
     }
@@ -34,7 +36,14 @@ function SqlSetupStatusComponent() {
         </div>
     )
 
-    if (!loaded) {
+    if (!connected) {
+        return (
+            <div className="mb-4 alert ">
+                <div>setup.sql:</div>
+                <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Connecting...</div>
+            </div>
+        );
+    } else if (!loaded) {
         return (
             <div className="mb-4 alert ">
                 <div>setup.sql:</div>
@@ -55,8 +64,6 @@ export default function Datasets() {
     const [loadedDataset, setLoadedDataset] = useState<string | null>(null);
     const [loadingResult, setLoadingResult] = useState<string | null>(null);
     const [loadingError, setLoadingError] = useState<string | null>(null);
-
-    const canCreateDataset = false;
 
     useEffect(() => {
         axios.get<SiteResponse>('/site')
@@ -83,7 +90,7 @@ export default function Datasets() {
 
     if (loading) return <div className="text-center"><i className="fa fa-spinner fa-spin"/> Loading</div>;
     if (error) return <div className="text-center"><i className="fa fa-error"/> {error}</div>;
-    if (datasets.length == 0) return <div className="text-center">No Datasets</div>;
+    if (datasets.length === 0) return <div className="text-center">No Datasets</div>;
 
     return (
         <>
@@ -116,12 +123,6 @@ export default function Datasets() {
                             ))}
                         </div>
                     </div>
-
-                    {canCreateDataset &&
-                        <div className="text-end">
-                            <a href="#" className="card-link">Create Dataset</a>
-                        </div>
-                    }
                 </div>
             </div>
         </>)

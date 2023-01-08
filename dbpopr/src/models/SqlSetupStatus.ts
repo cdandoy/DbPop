@@ -1,5 +1,5 @@
 export interface SqlSetupStatus {
-    loading: boolean;
+    connected: boolean;
     loaded: boolean;
     errorMessage: string;
 }

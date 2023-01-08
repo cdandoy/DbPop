@@ -1,10 +1,12 @@
 package org.dandoy.dbpop.database;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 
 @Getter
 public class Column {
     private final String name;
+    @JsonIgnore // Not sure how I would serialize that
     private final ColumnType columnType;
     private final boolean nullable;
     private final boolean autoIncrement;

@@ -5,7 +5,7 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Dependency;
-import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.download.ExecutionContext;
 import org.dandoy.dbpop.download.ExecutionMode;
 import org.dandoy.dbpop.download.ExecutionPlan;
 import org.dandoy.dbpop.download.TableExecutionModel;
@@ -43,7 +43,7 @@ public class DownloadController {
         }
 
         try (Database sourceDatabase = configurationService.createSourceDatabase()) {
-            Map<TableName, Integer> executionResult = ExecutionPlan.execute(
+            ExecutionContext executionContext = ExecutionPlan.execute(
                     sourceDatabase,
                     configurationService.getDatasetsDirectory(),
                     downloadRequest.getDataset(),
@@ -52,9 +52,13 @@ public class DownloadController {
                     filteredColumns,
                     pks,
                     executionMode,
-                    1000
+                    downloadRequest.getMaxRows()
             );
-            return new DownloadResponse(executionResult);
+            return new DownloadResponse(
+                    executionContext.getRowCounts(),
+                    executionContext.getRowsSkipped(),
+                    !executionContext.keepRunning()
+            );
         }
     }
 
