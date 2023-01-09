@@ -119,12 +119,9 @@ public class DatasetsController {
         }
     }
 
-    public record DatasetDatafileResponse(String name, long fileSize, Integer rows) {
-    }
+    public record DatasetDatafileResponse(String name, long fileSize, Integer rows) {}
 
-    public record DatasetResponse(String name, List<DatasetDatafileResponse> files) {
-    }
+    public record DatasetResponse(String name, List<DatasetDatafileResponse> files) {}
 
-    public record DatasetFileRow(String datasetName, String tableName, Long fileSize, Integer rows) {
-    }
+    public record DatasetFileRow(String datasetName, String tableName, Long fileSize, Integer rows) {}
 }

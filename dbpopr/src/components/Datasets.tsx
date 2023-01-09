@@ -1,58 +1,12 @@
 import React, {useEffect, useState} from "react";
-import axios, {AxiosResponse} from "axios";
+import axios from "axios";
 import {DatasetResponse} from "../models/DatasetResponse";
 import {Configuration} from "../models/Configuration";
 import {Dataset} from "./Dataset";
-import {usePollingEffect} from "../hooks/usePollingEffect";
-import {SqlSetupStatus} from "../models/SqlSetupStatus";
 
 interface SiteResponse {
     hasSource: boolean;
     hasTarget: boolean;
-}
-
-function SqlSetupStatusComponent() {
-    const [error, setError] = useState<string | null>(null);
-    const [connected, setConnected] = useState(false);
-    const [loaded, setLoaded] = useState(false);
-
-    usePollingEffect(
-        async () => whenSqlSetupStatus(await axios.get<SqlSetupStatus>('/site/populate/setup')),
-        {interval: 5000}
-    );
-
-    function whenSqlSetupStatus(response: AxiosResponse<SqlSetupStatus>): boolean {
-        let sqlSetupStatus = response.data;
-        setError(sqlSetupStatus.errorMessage);
-        setConnected(sqlSetupStatus.connected);
-        setLoaded(sqlSetupStatus.loaded);
-        return !sqlSetupStatus.loaded;
-    }
-
-    if (error) return (
-        <div className="mb-4 alert alert-danger">
-            <div>setup.sql</div>
-            <pre className="m-3" role="alert" style={{whiteSpace: "pre-line"}}>{error}</pre>
-        </div>
-    )
-
-    if (!connected) {
-        return (
-            <div className="mb-4 alert ">
-                <div>setup.sql:</div>
-                <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Connecting...</div>
-            </div>
-        );
-    } else if (!loaded) {
-        return (
-            <div className="mb-4 alert ">
-                <div>setup.sql:</div>
-                <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Loading...</div>
-            </div>
-        );
-    } else {
-        return <></>;
-    }
 }
 
 export default function Datasets() {
@@ -94,7 +48,6 @@ export default function Datasets() {
 
     return (
         <>
-            <SqlSetupStatusComponent/>
             <div className="card datasets">
                 <div className="card-body">
                     <div className="row">

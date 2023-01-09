@@ -1,6 +1,5 @@
 package org.dandoy.dbpopd;
 
-import io.micronaut.context.annotation.Context;
 import io.micronaut.context.annotation.Property;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.exceptions.HttpStatusException;
@@ -20,7 +19,6 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 @Singleton
-@Context
 public class ConfigurationService {
     private static final String PROP_FILE_NAME = "dbpop.properties";
     @Getter
@@ -40,9 +38,6 @@ public class ConfigurationService {
 
         sourceConnectionBuilder = createConnectionBuilder(properties, "SOURCE_JDBCURL", "SOURCE_USERNAME", "SOURCE_PASSWORD");
         targetConnectionBuilder = createConnectionBuilder(properties, "TARGET_JDBCURL", "TARGET_USERNAME", "TARGET_PASSWORD");
-        if (sourceConnectionBuilder == null && targetConnectionBuilder == null) {
-            throw new RuntimeException("No database connection found. Please declare a source or target database");
-        }
     }
 
     private static UrlConnectionBuilder createConnectionBuilder(Properties properties, String jdbcurlProperty, String usernameProperty, String passwordProperty) {

@@ -51,7 +51,7 @@ export function SelectTable({setTable}: { setTable: (table: Table) => void }) {
     return (
         <AsyncTypeahead
             filterBy={filterBy}
-            id="async-example"
+            id="async-table"
             isLoading={isLoading}
             minLength={3}
             onSearch={handleSearch}

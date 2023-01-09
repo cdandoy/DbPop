@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd;
+package org.dandoy.dbpopd.setup;
 
 import org.junit.jupiter.api.Test;
 
@@ -6,7 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class SqlSetupServiceTest {
+class SetupServiceTest {
     @Test
     void testLinesToSql() {
         String scripts = "sql1;\n" +    // 0
@@ -19,7 +19,7 @@ class SqlSetupServiceTest {
                          "go;\n" +      // 7
                          "sql4\n";      // 8
 
-        List<SqlSetupService.Sql> sqls = SqlSetupService.linesToSql(List.of(scripts.split("\n")));
+        List<SetupService.Sql> sqls = SetupService.linesToSql(List.of(scripts.split("\n")));
         assertEquals(4, sqls.size());
 
         assertEquals("sql1", sqls.get(0).sql());
@@ -39,23 +39,23 @@ class SqlSetupServiceTest {
     void testLinesToSql2() {
         String scripts = """
                 01   USE master;
-                
+                                
                 03   DROP TABLE IF EXISTS invoice_details;
                 04   DROP TABLE IF EXISTS invoices;
-                
+                                
                 06   CREATE TABLE customers
                 07   (
                 08       customer_id INT PRIMARY KEY IDENTITY,
                 09       name        VARCHAR(32)
                 10   );
-                
+                                
                 12   CREATE TABLE products
                 13   (
                 14       product_id INT PRIMARY KEY IDENTITY,
                 15       part_no    VARCHAR(32)  NOT NULL,
                 16       part_desc  VARCHAR(255) NOT NULL
                 17   );""";
-        List<SqlSetupService.Sql> sqls = SqlSetupService.linesToSql(List.of(scripts.split("\n")));
+        List<SetupService.Sql> sqls = SetupService.linesToSql(List.of(scripts.split("\n")));
         assertEquals(5, sqls.size());
 
         assertEquals(1, sqls.get(0).line());
