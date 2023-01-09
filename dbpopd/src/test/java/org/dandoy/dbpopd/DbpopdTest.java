@@ -7,6 +7,7 @@ import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.ForeignKey;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.tests.SqlExecutor;
+import org.dandoy.dbpopd.populate.PopulateService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,7 @@ class DbpopdTest {
     public static final TableName customers = new TableName("master", "dbo", "customers");
     public static final TableName invoiceDetails = new TableName("master", "dbo", "invoice_details");
     @Inject
-    PopulateController populateController;
+    PopulateService populateService;
     @Inject
     DownloadController downloadController;
     @Inject
@@ -58,13 +59,13 @@ class DbpopdTest {
             );
         }
 
-        populateController.resetPopulatorHolder();
+        populateService.resetPopulatorHolder();
     }
 
     @Test
     void testUpload() {
         List<String> dataset = List.of("base", "invoices", "invoice_details");
-        PopulateController.PopulateResult result = populateController.populate(dataset);
+        PopulateService.PopulateResult result = populateService.populate(dataset);
         /*
             customers.csv         3
             invoice_details.csv   7
@@ -78,7 +79,7 @@ class DbpopdTest {
     @Test
     void testCount() {
         long t0 = System.currentTimeMillis();
-        populateController.populate(List.of("invoices", "invoice_details"));
+        populateService.populate(List.of("invoices", "invoice_details"));
         long t1 = System.currentTimeMillis();
 
         DownloadRequest downloadRequest = createInvoiceDownloadRequest("static", true);
@@ -101,7 +102,7 @@ class DbpopdTest {
     @Test
     @Disabled("Rewrite this test")
     void testDownload() throws IOException {
-        populateController.populate(singletonList("customers_1000"));
+        populateService.populate(singletonList("customers_1000"));
 
         File dir = new File("src/test/resources/config/datasets/test_dataset/");
         File file = new File(dir, "/master/dbo/customers.csv");

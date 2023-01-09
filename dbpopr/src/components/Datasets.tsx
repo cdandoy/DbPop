@@ -1,58 +1,58 @@
 import React, {useEffect, useState} from "react";
-import axios, {AxiosResponse} from "axios";
+import axios from "axios";
 import {DatasetResponse} from "../models/DatasetResponse";
 import {Configuration} from "../models/Configuration";
 import {Dataset} from "./Dataset";
-import {usePollingEffect} from "../hooks/usePollingEffect";
-import {SqlSetupStatus} from "../models/SqlSetupStatus";
 
 interface SiteResponse {
     hasSource: boolean;
     hasTarget: boolean;
 }
 
-function SqlSetupStatusComponent() {
-    const [error, setError] = useState<string | null>(null);
-    const [connected, setConnected] = useState(false);
-    const [loaded, setLoaded] = useState(false);
+interface SetupState {
+    activity: string;
+    error: string;
+}
 
-    usePollingEffect(
-        async () => whenSqlSetupStatus(await axios.get<SqlSetupStatus>('/site/populate/setup')),
-        {interval: 5000}
-    );
+function SetupStatusComponent() {
+    const [setupState, setSetupState] = useState<SetupState | null>(null);
+    const [changeNumber, setChangeNumber] = useState(0)
 
-    function whenSqlSetupStatus(response: AxiosResponse<SqlSetupStatus>): boolean {
-        let sqlSetupStatus = response.data;
-        setError(sqlSetupStatus.errorMessage);
-        setConnected(sqlSetupStatus.connected);
-        setLoaded(sqlSetupStatus.loaded);
-        return !sqlSetupStatus.loaded;
+    function updateSetupState(setupState: SetupState) {
+        setSetupState(setupState);
+        if (setupState.activity) {
+            setTimeout(() => {
+                setChangeNumber(changeNumber + 1);
+            }, 2000);
+        }
     }
 
-    if (error) return (
-        <div className="mb-4 alert alert-danger">
-            <div>setup.sql</div>
-            <pre className="m-3" role="alert" style={{whiteSpace: "pre-line"}}>{error}</pre>
+    useEffect(() => {
+        axios.get<SetupState>('/site/status')
+            .then(result => {
+                updateSetupState(result.data);
+            })
+            .catch(error => {
+                updateSetupState({
+                    activity: "Load State",
+                    error: error?.message || 'Internal Error',
+                });
+            })
+    }, [changeNumber])
+
+    if (!setupState?.activity) return <></>;
+
+    return (
+        <div className={"m-3"}>
+            {setupState.error == null && (
+                <div><i className="fa fa-fw fa-spinner fa-spin"/>&nbsp;{setupState.activity}</div>
+            )}
+            {setupState.error != null && (<>
+                <div>{setupState.activity}:</div>
+                <pre className="m-3" role="alert" style={{whiteSpace: "pre-line"}}>{setupState.error}</pre>
+            </>)}
         </div>
     )
-
-    if (!connected) {
-        return (
-            <div className="mb-4 alert ">
-                <div>setup.sql:</div>
-                <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Connecting...</div>
-            </div>
-        );
-    } else if (!loaded) {
-        return (
-            <div className="mb-4 alert ">
-                <div>setup.sql:</div>
-                <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Loading...</div>
-            </div>
-        );
-    } else {
-        return <></>;
-    }
 }
 
 export default function Datasets() {
@@ -94,7 +94,7 @@ export default function Datasets() {
 
     return (
         <>
-            <SqlSetupStatusComponent/>
+            <SetupStatusComponent/>
             <div className="card datasets">
                 <div className="card-body">
                     <div className="row">

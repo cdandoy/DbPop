@@ -1,9 +1,10 @@
-package org.dandoy.dbpopd;
+package org.dandoy.dbpopd.populate;
 
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.upload.Populator;
+import org.dandoy.dbpopd.ConfigurationService;
 
 import java.io.File;
 import java.io.IOException;
