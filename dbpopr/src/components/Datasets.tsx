@@ -9,52 +9,6 @@ interface SiteResponse {
     hasTarget: boolean;
 }
 
-interface SetupState {
-    activity: string;
-    error: string;
-}
-
-function SetupStatusComponent() {
-    const [setupState, setSetupState] = useState<SetupState | null>(null);
-    const [changeNumber, setChangeNumber] = useState(0)
-
-    function updateSetupState(setupState: SetupState) {
-        setSetupState(setupState);
-        if (setupState.activity) {
-            setTimeout(() => {
-                setChangeNumber(changeNumber + 1);
-            }, 2000);
-        }
-    }
-
-    useEffect(() => {
-        axios.get<SetupState>('/site/status')
-            .then(result => {
-                updateSetupState(result.data);
-            })
-            .catch(error => {
-                updateSetupState({
-                    activity: "Load State",
-                    error: error?.message || 'Internal Error',
-                });
-            })
-    }, [changeNumber])
-
-    if (!setupState?.activity) return <></>;
-
-    return (
-        <div className={"m-3"}>
-            {setupState.error == null && (
-                <div><i className="fa fa-fw fa-spinner fa-spin"/>&nbsp;{setupState.activity}</div>
-            )}
-            {setupState.error != null && (<>
-                <div>{setupState.activity}:</div>
-                <pre className="m-3" role="alert" style={{whiteSpace: "pre-line"}}>{setupState.error}</pre>
-            </>)}
-        </div>
-    )
-}
-
 export default function Datasets() {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState(null);
@@ -94,7 +48,6 @@ export default function Datasets() {
 
     return (
         <>
-            <SetupStatusComponent/>
             <div className="card datasets">
                 <div className="card-body">
                     <div className="row">
