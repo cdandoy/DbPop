@@ -1,9 +1,9 @@
-import {DatasetResponse} from "../models/DatasetResponse";
-import {toHumanReadableSize} from "../utils/DbPopUtils";
+import {DatasetResponse} from "../../models/DatasetResponse";
+import {toHumanReadableSize} from "../../utils/DbPopUtils";
 import {NavLink} from "react-router-dom";
 import React from "react";
 import axios from "axios";
-import {PopulateResult} from "../models/PopulateResult";
+import {PopulateResult} from "../../models/PopulateResult";
 
 function Plural({count, text}: {
     count: number;

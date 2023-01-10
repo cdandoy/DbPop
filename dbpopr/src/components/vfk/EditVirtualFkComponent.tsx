@@ -1,10 +1,10 @@
 import React, {useEffect, useState} from "react";
-import {SelectTable} from "./SelectTable";
+import {SelectTable} from "../SelectTable";
 import axios from "axios";
-import {ForeignKey} from "../models/ForeignKey";
+import {ForeignKey} from "../../models/ForeignKey";
 import {NavLink, useNavigate, useParams} from "react-router-dom";
-import {TableName, tableNameToFqName} from "../models/TableName";
-import {Index, Table} from "../models/Table";
+import {TableName, tableNameToFqName} from "../../models/TableName";
+import {Index, Table} from "../../models/Table";
 
 function SelectedColumns({allTableColumns, selectedColumns, setSelectedColumns, matchColumns}: {
     allTableColumns: string[] | null,

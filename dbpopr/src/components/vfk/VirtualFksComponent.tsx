@@ -1,8 +1,8 @@
 import React, {useEffect, useState} from "react";
 import axios from "axios";
-import {tableNameToFqName} from "../models/TableName";
+import {tableNameToFqName} from "../../models/TableName";
 import {NavLink} from "react-router-dom";
-import {ForeignKey} from "../models/ForeignKey";
+import {ForeignKey} from "../../models/ForeignKey";
 
 export default function VirtualFksComponent() {
     const [foreignKeys, setForeignKeys] = useState<ForeignKey[]>([]);

@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 import axios from "axios";
-import {DatasetResponse} from "../models/DatasetResponse";
-import {Configuration} from "../models/Configuration";
+import {DatasetResponse} from "../../models/DatasetResponse";
+import {Configuration} from "../../models/Configuration";
 import {Dataset} from "./Dataset";
 
 interface SiteResponse {
@@ -9,7 +9,7 @@ interface SiteResponse {
     hasTarget: boolean;
 }
 
-export default function Datasets() {
+export default function Dashboard() {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState(null);
     const [configuration, setConfiguration] = useState<Configuration>({hasSource: false, hasTarget: false});
@@ -48,13 +48,14 @@ export default function Datasets() {
 
     return (
         <>
+            <div className="text-center m-5">
+                <div style={{display: "flex", justifyContent: "center"}}>
+                    <h1>Welcome to DbPop </h1>
+                </div>
+                <p className="lead">The easiest way to populate your development database.</p>
+            </div>
             <div className="card datasets">
                 <div className="card-body">
-                    <div className="row">
-                        <div className="col-6 text-start">
-                            <h5 className="card-title">Datasets</h5>
-                        </div>
-                    </div>
                     <div className="datasets p-3">
                         <div className={"row"}>
                             {datasets.map(dataset => (
