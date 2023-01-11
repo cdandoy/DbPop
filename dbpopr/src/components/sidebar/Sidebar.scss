@@ -23,19 +23,23 @@
     background: var(--sidebar-color);
     transition: var(--tran-05);
     z-index: 100;
+
+    li {
+      height: 50px;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+
+      a.active {
+        background-color: var(--primary-color);
+        color: #fff;
+      }
+    }
   }
 
   .sidebar.close {
     width: 88px;
-  }
-
-  /* ===== Reusable code - Here ===== */
-  .sidebar li {
-    height: 50px;
-    list-style: none;
-    display: flex;
-    align-items: center;
-    margin-top: 10px;
   }
 
   .sidebar header .image,
