@@ -1,9 +1,9 @@
-import {DatasetResponse} from "../../models/DatasetResponse";
 import {toHumanReadableSize} from "../../utils/DbPopUtils";
 import {NavLink} from "react-router-dom";
 import React from "react";
 import axios from "axios";
 import {PopulateResult} from "../../models/PopulateResult";
+import {DatasetContent} from "../../api/datasetContent";
 
 function Plural({count, text}: {
     count: number;
@@ -14,7 +14,7 @@ function Plural({count, text}: {
 }
 
 export function Dataset({
-                            dataset,
+                            datasetContent,
                             hasDownload,
                             hasUpload,
                             loadingDataset,
@@ -26,7 +26,7 @@ export function Dataset({
                             setLoadingResult,
                             setLoadingError,
                         }: {
-    dataset: DatasetResponse;
+    datasetContent: DatasetContent;
     hasDownload: boolean;
     hasUpload: boolean;
     loadingDataset: string | null,
@@ -38,17 +38,12 @@ export function Dataset({
     setLoadingResult: (result: string | null) => void,
     setLoadingError: (error: string | null) => void
 }) {
-    const files = dataset.files;
-    let size = 0;
-    let rows = 0;
-    for (const file of files) {
-        size += file.fileSize;
-        rows += file.rows;
-    }
-    let readableSize = toHumanReadableSize(size);
+    let readableSize = toHumanReadableSize(datasetContent.size);
+
+    const datasetName = datasetContent.name;
 
     function buttonContent() {
-        if (dataset.name === "static") return <div style={{display: "inline", paddingLeft: "23px"}}>&nbsp;</div>;
+        if (datasetName === "static") return <div style={{display: "inline", paddingLeft: "23px"}}>&nbsp;</div>;
         if (loadingDataset === null) {
             if (!hasUpload) {
                 return (
@@ -64,7 +59,7 @@ export function Dataset({
                 </button>
             )
         } else {
-            if (loadingDataset === dataset.name) {
+            if (loadingDataset === datasetName) {
                 return (
                     <button className="btn btn-xs btn-primary" disabled={true}>
                         <i className="fa fa-fw fa-spinner fa-spin"/>
@@ -81,7 +76,7 @@ export function Dataset({
     }
 
     function statusContent() {
-        if (loadedDataset === dataset.name) {
+        if (loadedDataset === datasetName) {
             if (loadingError) {
                 return (
                     <div className="mb-2">
@@ -104,9 +99,9 @@ export function Dataset({
         } else {
             return (
                 <div className="mb-2 text-muted">
-                    <Plural count={files.length} text="file"/>
+                    <Plural count={datasetContent.fileCount} text="table"/>
                     <>,&nbsp;</>
-                    <Plural count={rows} text="row"/>
+                    <Plural count={datasetContent.rows} text="row"/>
                     <>,&nbsp;</>
                     {readableSize.text}
                 </div>
@@ -115,15 +110,15 @@ export function Dataset({
     }
 
     function loadDataset(): void {
-        setLoadingDataset(dataset.name);
+        setLoadingDataset(datasetName);
         setLoadingResult(null);
         setLoadingError(null);
-        axios.get<PopulateResult>("/populate", {params: {dataset: dataset.name}})
+        axios.get<PopulateResult>("/populate", {params: {dataset: datasetName}})
             .then(result => {
                 setLoadingDataset(null);
                 const rows = result.data.rows + (result.data.rows === 1 ? ' row' : ' rows')
                 setLoadingResult(`Loaded ${rows} in ${result.data.millis}ms`);
-                setLoadedDataset(dataset.name);
+                setLoadedDataset(datasetName);
             })
             .catch(error => {
                 setLoadingDataset(null);
@@ -133,25 +128,22 @@ export function Dataset({
                     })
                     ?.join('<br/>');
                 setLoadingError(errorMessages);
-                setLoadedDataset(dataset.name);
+                setLoadedDataset(datasetName);
             })
     }
 
-    const cardStyle = loadedDataset === dataset.name ? {borderColor: "limegreen", borderWidth: "2px"} : {};
+    const cardStyle = loadedDataset === datasetName ? {borderColor: "limegreen", borderWidth: "2px"} : {};
     return (
         <div className="card m-3" style={cardStyle}>
             <div className="card-body">
                 <div className="row mb-2">
                     <div className="col-9">
                         {buttonContent()}
-                        <strong className="ms-1" style={{fontSize: "120%"}}>{dataset.name}</strong>
+                        <strong className="ms-1" style={{fontSize: "120%"}}>{datasetName}</strong>
                     </div>
                     <div className="col-3 text-end">
-                        <NavLink to={`dataset/${dataset.name}`} className="btn btn-xs btn-primary" title="Information">
-                            <i className="fa fa-fw fa-info"/>
-                        </NavLink>
                         {hasDownload &&
-                            <NavLink to={`add/${dataset.name}`} className="btn btn-xs btn-primary ms-1" title="Add Data">
+                            <NavLink to={`add/${datasetName}`} className="btn btn-xs btn-primary ms-1" title="Add Data">
                                 <i className="fa fa-fw fa-plus"/>
                             </NavLink>
                         }

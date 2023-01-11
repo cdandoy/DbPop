@@ -16,7 +16,7 @@ Content-Type: application/json
 GET http://localhost:8080/datasets
 
 ###
-GET http://localhost:8080/datasets/content/static
+GET http://localhost:8080/datasets/content
 
 ###
 GET http://localhost:8080/database/dependents?catalog=master&schema=dbo&table=invoices

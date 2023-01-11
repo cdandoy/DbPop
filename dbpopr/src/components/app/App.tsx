@@ -3,7 +3,6 @@ import 'react-bootstrap-typeahead/css/Typeahead.min.css';
 import 'react-bootstrap-typeahead/css/Typeahead.bs5.min.css';
 import React, {useState} from 'react';
 import {HashRouter, Route, Routes} from "react-router-dom";
-import DatasetDetails from "../DatasetDetails";
 import Dashboard from "../dashboard/Dashboard"
 import AddData from "../AddData";
 import VirtualFksComponent from "../vfk/VirtualFksComponent";
@@ -29,7 +28,6 @@ export default function App() {
             return (
                 <div>
                     <Routes>
-                        <Route path="/dataset/:dataset" element=<DatasetDetails/>/>
                         <Route path="/add/:datasetName" element=<AddData/>/>
                         <Route path="/datasets" element=<Datasets/>/>
                         <Route path="/vfk" element=<VirtualFksComponent/>/>

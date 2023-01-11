@@ -1,5 +1,5 @@
 import React, {useState} from "react";
-import {NavLink, useParams} from "react-router-dom";
+import {useParams} from "react-router-dom";
 import {SelectTable} from "./SelectTable";
 import {DependentTables} from "./DependentTables";
 import FilterForm from "./FilterForm";
@@ -8,6 +8,7 @@ import {executeDownload} from "./executeDownload";
 import {Dependency} from "../models/Dependency";
 import {DownloadResponse} from "../models/DownloadResponse";
 import {Table} from "../models/Table";
+import PageHeader from "./pageheader/PageHeader";
 
 export default function AddData() {
     const routeParams = useParams();
@@ -65,13 +66,7 @@ export default function AddData() {
 
     return (
         <div>
-            {/*Breadcrumbs*/}
-            <nav aria-label="breadcrumb">
-                <ol className="breadcrumb">
-                    <li className="breadcrumb-item"><NavLink to="/">Home</NavLink></li>
-                    <li className="breadcrumb-item active" aria-current="page">Add to: <strong>{datasetName}</strong></li>
-                </ol>
-            </nav>
+            <PageHeader title={`Download`} subtitle={`Download Data to "${datasetName}"`}/>
 
             {/* Table Selection drop-down*/}
             <div className="mb-3">

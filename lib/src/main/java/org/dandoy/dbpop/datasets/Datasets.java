@@ -8,16 +8,20 @@ import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpop.utils.StopWatch;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class Datasets {
     public static final String STATIC = "static";
     public static final String BASE = "base";
+    public static final Comparator<String> DATASET_NAME_COMPARATOR = (s1, s2) -> {
+        if (STATIC.equals(s1)) return -2;
+        if (STATIC.equals(s2)) return 2;
+        if (BASE.equals(s1)) return -1;
+        if (BASE.equals(s2)) return 1;
+        return s1.compareTo(s2);
+    };
 
     public static Dataset getDataset(File directory, String name) {
         return getDataset(new File(directory, name));
