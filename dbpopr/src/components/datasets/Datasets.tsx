@@ -4,6 +4,7 @@ import {NavLink} from "react-router-dom";
 import PageHeader from "../pageheader/PageHeader";
 import {tableNameToFqName} from "../../models/TableName";
 import {DatasetContent, datasetContent, DatasetContentResponse, TableContent} from "../../api/datasetContent";
+import LoadingOverlay from "../utils/LoadingOverlay";
 
 export default function Datasets() {
     const [loading, setLoading] = useState(false);
@@ -71,7 +72,8 @@ export default function Datasets() {
 
     return (
         <div id={"datasets-component"}>
-            <PageHeader title={"Datasets"} loading={loading} error={error}/>
+            <LoadingOverlay active={loading}/>
+            <PageHeader title={"Datasets"} error={error}/>
             <div className={"table-container"}>
                 {datasetContentResponse && (
                     <table id={"datasets-component"} className={"table table-hover"}>

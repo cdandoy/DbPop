@@ -6,7 +6,7 @@ import {NavLink, useNavigate, useParams} from "react-router-dom";
 import {TableName, tableNameToFqName} from "../../models/TableName";
 import {Index, Table} from "../../models/Table";
 import PageHeader from "../pageheader/PageHeader";
-import Spinner from "../Spinner";
+import LoadingOverlay from "../utils/LoadingOverlay";
 
 function SelectedColumns({allTableColumns, selectedColumns, setSelectedColumns, matchColumns}: {
     allTableColumns: string[] | null,
@@ -190,10 +190,9 @@ export default function EditVirtualFkComponent() {
         });
     }
 
-    if (loading) return <Spinner/>;
-
     return (
         <>
+            <LoadingOverlay active={loading}/>
             <PageHeader title={"Virtual Foreign Keys"}/>
             <form onSubmit={event => whenSave(event)}>
                 <div className={"row"}>

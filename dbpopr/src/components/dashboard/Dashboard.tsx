@@ -3,10 +3,10 @@ import {Configuration} from "../../models/Configuration";
 import {Dataset} from "./Dataset";
 import {datasetContent, DatasetContentResponse} from "../../api/datasetContent";
 import {siteApi} from "../../api/siteApi";
-import Spinner from "../Spinner";
+import LoadingOverlay from "../utils/LoadingOverlay";
 
 export default function Dashboard() {
-    const [loading, setLoading] = useState<boolean>(true);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [configuration, setConfiguration] = useState<Configuration>({hasSource: false, hasTarget: false});
     const [contentResponse, setContentResponse] = useState<DatasetContentResponse | null>(null);
@@ -16,6 +16,7 @@ export default function Dashboard() {
     const [loadingError, setLoadingError] = useState<string | null>(null);
 
     useEffect(() => {
+        setLoading(true);
         siteApi()
             .then(result => {
                 setConfiguration({
@@ -38,13 +39,13 @@ export default function Dashboard() {
             });
     }, []);
 
-    if (loading) return <Spinner/>;
     if (error) return <div className="text-center"><i className="fa fa-error"/> {error}</div>;
     if (!contentResponse) return <></>;
     if (contentResponse.datasetContents.length === 0) return <div className="text-center">No Datasets</div>;
 
     return (
         <>
+            <LoadingOverlay active={loading}/>
             <div className="text-center m-5">
                 <div style={{display: "flex", justifyContent: "center"}}>
                     <h1>Welcome to DbPop </h1>

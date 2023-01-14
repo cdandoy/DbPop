@@ -2,12 +2,12 @@ import React, {useEffect, useState} from "react";
 import {TableName, tableNameToFqName} from "../../../models/TableName";
 import {Plural} from "../../../utils/DbPopUtils";
 import {content, RowCount, TableInfo} from "../../../api/content";
-import Spinner from "../../Spinner";
 import './DownloadBulkComponent.scss'
 import {bulkDownload} from "../../../api/bulkDownload";
 import {DownloadResponse} from "../../../models/DownloadResponse";
 import PageHeader from "../../pageheader/PageHeader";
 import {FilterComponent} from "./FilterComponent";
+import LoadingOverlay from "../../utils/LoadingOverlay";
 
 export default function SelectTables({
                                          nameFilter, setNameFilter,
@@ -95,6 +95,7 @@ export default function SelectTables({
     }
 
     function download() {
+        setLoading(true);
         bulkDownload(dataset, bulkTables)
             .then(result => {
                 setDownloadResponse(result.data);
@@ -103,10 +104,9 @@ export default function SelectTables({
             })
     }
 
-    if (loading) return <Spinner/>;
-
     function SelectTables() {
         return <>
+            <LoadingOverlay active={loading}/>
             <div id={"select-bulk-tables-component"}>
                 <PageHeader title={"Bulk Download"} subtitle={"Download Individual Tables"}/>
                 <div className={"mt-3"}>

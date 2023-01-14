@@ -4,7 +4,7 @@ import {tableNameToFqName} from "../../models/TableName";
 import {NavLink} from "react-router-dom";
 import {ForeignKey} from "../../models/ForeignKey";
 import PageHeader from "../pageheader/PageHeader";
-import Spinner from "../Spinner";
+import LoadingOverlay from "../utils/LoadingOverlay";
 
 export default function VirtualFksComponent() {
     const [foreignKeys, setForeignKeys] = useState<ForeignKey[]>([]);
@@ -36,10 +36,9 @@ export default function VirtualFksComponent() {
         return `/vfk/${tn.catalog || ''}.${tn.schema || ''}.${tn.table}/${foreignKey.name}`
     }
 
-    if (loading) return <Spinner/>;
-
     return (
         <>
+            <LoadingOverlay active={loading}/>
             <PageHeader title={"Virtual Foreign Keys"}/>
 
             <table className={"table table-hover"}>

@@ -9,7 +9,7 @@ import {Dependency} from "../models/Dependency";
 import {DownloadResponse} from "../models/DownloadResponse";
 import {Table} from "../models/Table";
 import PageHeader from "./pageheader/PageHeader";
-import Spinner from "./Spinner";
+import LoadingOverlay from "./utils/LoadingOverlay";
 
 export default function AddData() {
     const routeParams = useParams();
@@ -61,10 +61,9 @@ export default function AddData() {
         return <div>Missing Dataset</div>
     }
 
-    if (dowloading) return <Spinner text={'Downloading'}/>
-
     return (
         <div>
+            <LoadingOverlay active={dowloading} text={"Downloading"}/>
             <PageHeader title={`Download`} subtitle={`Download Data to "${datasetName}"`}/>
 
             {/* Table Selection drop-down*/}

@@ -1,11 +1,9 @@
 import React from "react";
 import './PageHeader.scss'
-import Spinner from "../Spinner";
 
-export default function PageHeader({title, subtitle, loading, error}: {
+export default function PageHeader({title, subtitle, error}: {
     title: string,
     subtitle?: string,
-    loading?: boolean,
     error?: string,
 }) {
     return <>
@@ -13,7 +11,6 @@ export default function PageHeader({title, subtitle, loading, error}: {
             <header>{title}</header>
             <p><small>{subtitle}</small></p>
         </div>
-        {loading && <Spinner/>}
         {error && (
             <div className={"alert alert-danger"}>{error}</div>
         )}
