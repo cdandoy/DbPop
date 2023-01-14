@@ -53,6 +53,175 @@ public class SqlServerDatabase extends DefaultDatabase {
 
     @SuppressWarnings("DuplicatedCode")
     @Override
+    public Collection<Table> getTables() {
+        Map<TableName, List<Column>> tableColumns = new HashMap<>();
+        Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
+        Map<TableName, List<Index>> indexes = new HashMap<>();
+        Map<TableName, PrimaryKey> primaryKeyMap = new HashMap<>();
+        try (PreparedStatement databasesStatement = connection.prepareStatement("SELECT name FROM sys.databases WHERE name NOT IN ('tempdb')")) {
+            try (Statement statement = connection.createStatement()) {
+                try (ResultSet databaseResultSet = databasesStatement.executeQuery()) {
+                    while (databaseResultSet.next()) {
+                        String catalog = databaseResultSet.getString("name");
+                        statement.execute("USE " + catalog);
+                        // Collects the tables and columns
+                        try (PreparedStatement tablesStatement = connection.prepareStatement("""
+                                SELECT s.name       AS s,
+                                       t.name       AS t,
+                                       c.name       AS c,
+                                       c.is_nullable,
+                                       c.is_identity,
+                                       ty.name      AS type_name,
+                                       ty.precision AS type_precision
+                                FROM sys.schemas s
+                                         JOIN sys.tables t ON t.schema_id = s.schema_id
+                                         JOIN sys.columns c ON c.object_id = t.object_id
+                                         LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                                WHERE t.is_ms_shipped = 0
+                                ORDER BY s.name, t.name, c.column_id""")) {
+                            try (TableCollector tableCollector = new TableCollector((schema, table, columns) -> {
+                                TableName tableName = new TableName(catalog, schema, table);
+                                tableColumns.put(tableName, columns);
+                            })) {
+                                try (ResultSet tablesResultSet = tablesStatement.executeQuery()) {
+                                    while (tablesResultSet.next()) {
+                                        String schema = tablesResultSet.getString("s");
+                                        String table = tablesResultSet.getString("t");
+                                        String column = tablesResultSet.getString("c");
+                                        boolean nullable = tablesResultSet.getBoolean("is_nullable");
+                                        boolean identity = tablesResultSet.getBoolean("is_identity");
+                                        String typeName = tablesResultSet.getString("type_name");
+                                        int typePrecision = tablesResultSet.getInt("type_precision");
+                                        try {
+                                            ColumnType columnType = ColumnType.getColumnType(typeName, typePrecision);
+                                            tableCollector.push(
+                                                    schema,
+                                                    table,
+                                                    new Column(
+                                                            column,
+                                                            columnType,
+                                                            nullable,
+                                                            identity
+                                                    )
+                                            );
+                                        } catch (RuntimeException e) {
+                                            // Ignore the unknown column types
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Collects the indexes
+                        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+
+                                SELECT s.name AS s,
+                                       t.name AS t,
+                                       i.name AS i,
+                                       i.is_unique,
+                                       i.is_primary_key,
+                                       c.name AS c
+                                FROM sys.schemas s
+                                         JOIN sys.tables t ON t.schema_id = s.schema_id
+                                         LEFT JOIN sys.indexes i ON i.object_id = t.object_id
+                                         LEFT JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
+                                         LEFT JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
+                                WHERE i.name IS NOT NULL
+                                  AND c.name IS NOT NULL
+                                  AND t.is_ms_shipped = 0
+                                ORDER BY s.name, t.name, i.index_id, ic.key_ordinal""")) {
+                            try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
+                                TableName tableName = new TableName(catalog, schema, table);
+                                Index index = new Index(name, tableName, unique, primaryKey, columns);
+                                indexes.computeIfAbsent(tableName, it -> new ArrayList<>()).add(index);
+                                if (primaryKey) {
+                                    primaryKeyMap.put(tableName, new PrimaryKey(name, columns));
+                                }
+                            })) {
+                                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                                    while (resultSet.next()) {
+                                        indexCollector.push(
+                                                resultSet.getString("s"),
+                                                resultSet.getString("t"),
+                                                resultSet.getString("i"),
+                                                resultSet.getBoolean("is_unique"),
+                                                resultSet.getBoolean("is_primary_key"),
+                                                resultSet.getString("c")
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        // Collects the foreign keys
+                        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+
+                                SELECT s.name   AS s,
+                                       t.name   AS t,
+                                       fk.name  AS fk_name,
+                                       m_c.name AS col,
+                                       r_s.name AS ref_schema,
+                                       r_t.name AS ref_table,
+                                       o_c.name AS rec_col
+                                FROM sys.schemas s
+                                         JOIN sys.tables t ON t.schema_id = s.schema_id
+                                         JOIN sys.foreign_keys fk ON fk.parent_object_id = t.object_id
+                                         JOIN sys.tables r_t ON r_t.object_id = fk.referenced_object_id
+                                         JOIN sys.schemas r_s ON r_s.schema_id = r_t.schema_id
+                                         JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+                                         JOIN sys.columns o_c ON o_c.object_id = fkc.referenced_object_id AND o_c.column_id = fkc.referenced_column_id
+                                         JOIN sys.columns m_c ON m_c.object_id = fkc.parent_object_id AND m_c.column_id = fkc.parent_column_id
+                                WHERE t.is_ms_shipped = 0
+                                ORDER BY fk.name, s.name, t.name, m_c.column_id""")) {
+                            try (ForeignKeyCollector foreignKeyCollector = new ForeignKeyCollector((constraint, constraintDef, fkSchema, fkTable, fkColumns, pkSchema, pkTable, pkColumns) -> {
+                                TableName pkTableName = new TableName(catalog, pkSchema, pkTable);
+                                TableName fkTableName = new TableName(catalog, fkSchema, fkTable);
+                                ForeignKey foreignKey = new ForeignKey(
+                                        constraint,
+                                        null,
+                                        pkTableName,
+                                        pkColumns,
+                                        fkTableName,
+                                        fkColumns
+                                );
+                                foreignKeys.computeIfAbsent(fkTableName, tableName -> new ArrayList<>()).add(foreignKey);
+                            })) {
+                                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                                    while (resultSet.next()) {
+                                        foreignKeyCollector.push(
+                                                resultSet.getString("fk_name"),
+                                                null,
+                                                resultSet.getString("s"),
+                                                resultSet.getString("t"),
+                                                resultSet.getString("col"),
+                                                resultSet.getString("ref_schema"),
+                                                resultSet.getString("ref_table"),
+                                                resultSet.getString("rec_col")
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return tableColumns.entrySet().stream()
+                .map(entry -> {
+                            TableName tableName = entry.getKey();
+                            return new Table(
+                                    tableName,
+                                    entry.getValue(),
+                                    indexes.computeIfAbsent(tableName, it -> Collections.emptyList()),
+                                    primaryKeyMap.get(tableName),
+                                    foreignKeys.computeIfAbsent(tableName, it -> Collections.emptyList()));
+                        }
+                )
+                .collect(Collectors.toList());
+    }
+
+    @SuppressWarnings("DuplicatedCode")
+    @Override
     public Collection<Table> getTables(Set<TableName> datasetTableNames) {
         Set<String> catalogs = datasetTableNames.stream().map(TableName::getCatalog).collect(Collectors.toSet());
         Map<TableName, List<Column>> tableColumns = new HashMap<>();
@@ -465,8 +634,8 @@ public class SqlServerDatabase extends DefaultDatabase {
                     SELECT s.name AS "schema", t.name AS "table"
                     FROM sys.schemas s
                              JOIN sys.tables t ON t.schema_id = s.schema_id
-                    WHERE ?+'.'+s.name+'.'+t.name LIKE ?
-                    """)) {
+                    WHERE ? + '.' + s.name + '.' + t.name LIKE ?
+                    AND t.is_ms_shipped = 0""")) {
                 preparedStatement.setString(1, catalog);
                 preparedStatement.setString(2, like);
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -481,13 +650,20 @@ public class SqlServerDatabase extends DefaultDatabase {
         return ret;
     }
 
+    @Override
+    public RowCount getRowCount(TableName tableName) {
+        return getRowCount("SELECT TOP (%d) 1 FROM %s".formatted(ROW_COUNT_MAX + 1, quote(tableName)));
+    }
+
     private List<String> getCatalogs() {
         List<String> ret = new ArrayList<>();
         try (PreparedStatement databasesStatement = connection.prepareStatement("SELECT name FROM sys.databases")) {
             try (ResultSet resultSet = databasesStatement.executeQuery()) {
                 while (resultSet.next()) {
                     String database = resultSet.getString(1);
-                    ret.add(database);
+                    if (!"msdb".equals(database) && !"tempdb".equals(database)) {
+                        ret.add(database);
+                    }
                 }
             }
         } catch (SQLException e) {

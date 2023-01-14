@@ -36,6 +36,11 @@ public class DatabaseProxy extends Database {
     }
 
     @Override
+    public Collection<Table> getTables() {
+        return delegate.getTables();
+    }
+
+    @Override
     public Collection<Table> getTables(Set<TableName> datasetTableNames) {
         Collection<Table> tables = delegate.getTables(datasetTableNames);
         for (Table table : tables) {
@@ -122,5 +127,10 @@ public class DatabaseProxy extends Database {
     @Override
     protected Set<TableName> searchTableLike(String like) throws SQLException {
         return delegate.searchTableLike(like);
+    }
+
+    @Override
+    public RowCount getRowCount(TableName tableName) {
+        return delegate.getRowCount(tableName);
     }
 }

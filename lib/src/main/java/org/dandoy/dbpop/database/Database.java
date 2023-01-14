@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 
 public abstract class Database implements AutoCloseable {
 
+    public static final int ROW_COUNT_MAX = 1000;
+
     public static DatabaseProxy createDatabase(ConnectionBuilder connectionBuilder) {
         return createDatabase(connectionBuilder, VirtualFkCache.createVirtualFkCache());
     }
@@ -52,6 +54,8 @@ public abstract class Database implements AutoCloseable {
 
     public abstract Collection<TableName> getTableNames(String catalog, String schema);
 
+    public abstract Collection<Table> getTables();
+
     public abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
 
     public abstract Table getTable(TableName tableName);
@@ -83,7 +87,6 @@ public abstract class Database implements AutoCloseable {
      */
     public final Set<TableName> searchTable(String query) {
         String like = queryToLikeWordMatch(query);
-        if (like == null) return Collections.emptySet();
 
         try {
             return searchTableLike("%" + like);
@@ -96,7 +99,6 @@ public abstract class Database implements AutoCloseable {
         String s = Arrays.stream(query.split(" "))
                 .filter(it -> !it.trim().isEmpty())
                 .collect(Collectors.joining("%"));
-        if (s.isEmpty()) return null;
         return "%" + s + "%";
     }
 
@@ -116,4 +118,6 @@ public abstract class Database implements AutoCloseable {
     }
 
     protected abstract Set<TableName> searchTableLike(String like) throws SQLException;
+
+    public abstract RowCount getRowCount(TableName tableName);
 }

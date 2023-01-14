@@ -1,13 +1,9 @@
 import React, {useEffect, useState} from "react";
-import axios from "axios";
 import {Configuration} from "../../models/Configuration";
 import {Dataset} from "./Dataset";
 import {datasetContent, DatasetContentResponse} from "../../api/datasetContent";
-
-interface SiteResponse {
-    hasSource: boolean;
-    hasTarget: boolean;
-}
+import {siteApi} from "../../api/siteApi";
+import Spinner from "../Spinner";
 
 export default function Dashboard() {
     const [loading, setLoading] = useState<boolean>(true);
@@ -20,7 +16,7 @@ export default function Dashboard() {
     const [loadingError, setLoadingError] = useState<string | null>(null);
 
     useEffect(() => {
-        axios.get<SiteResponse>('/site')
+        siteApi()
             .then(result => {
                 setConfiguration({
                     hasSource: result.data.hasSource,
@@ -42,7 +38,7 @@ export default function Dashboard() {
             });
     }, []);
 
-    if (loading) return <div className="text-center"><i className="fa fa-spinner fa-spin"/> Loading</div>;
+    if (loading) return <Spinner/>;
     if (error) return <div className="text-center"><i className="fa fa-error"/> {error}</div>;
     if (!contentResponse) return <></>;
     if (contentResponse.datasetContents.length === 0) return <div className="text-center">No Datasets</div>;

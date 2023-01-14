@@ -5,15 +5,13 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Dependency;
-import org.dandoy.dbpop.download.ExecutionContext;
-import org.dandoy.dbpop.download.ExecutionMode;
-import org.dandoy.dbpop.download.ExecutionPlan;
-import org.dandoy.dbpop.download.TableExecutionModel;
+import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.download.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Controller
+@Controller("/download")
 public class DownloadController {
     private final ConfigurationService configurationService;
 
@@ -21,7 +19,7 @@ public class DownloadController {
         this.configurationService = configurationService;
     }
 
-    @Post("/download")
+    @Post("/model")
     public DownloadResponse download(@Body DownloadRequest downloadRequest) {
         configurationService.assertSourceConnection();
 
@@ -62,6 +60,30 @@ public class DownloadController {
         }
     }
 
+    @Post("/bulk")
+    public DownloadResponse downloadBulk(@Body DownloadBulkBody downloadBulkBody) {
+        ExecutionContext executionContext = new ExecutionContext();
+        try (Database sourceDatabase = configurationService.createSourceDatabase()) {
+            for (TableName tableName : downloadBulkBody.tableNames) {
+                try (TableDownloader tableDownloader = TableDownloader.builder()
+                        .setDatabase(sourceDatabase)
+                        .setDatasetsDirectory(configurationService.getDatasetsDirectory())
+                        .setDataset(downloadBulkBody.dataset())
+                        .setTableName(tableName)
+                        .setExecutionMode(ExecutionMode.SAVE)
+                        .setExecutionContext(executionContext)
+                        .build()) {
+                    tableDownloader.download();
+                }
+            }
+        }
+        return new DownloadResponse(
+                executionContext.getRowCounts(),
+                executionContext.getRowsSkipped(),
+                !executionContext.keepRunning()
+        );
+    }
+
     private TableExecutionModel toTableExecutionModel(Dependency dependency) {
         return new TableExecutionModel(
                 dependency.getConstraintName(),
@@ -71,4 +93,6 @@ public class DownloadController {
                         .collect(Collectors.toCollection(ArrayList::new))
         );
     }
+
+    record DownloadBulkBody(String dataset, List<TableName> tableNames) {}
 }

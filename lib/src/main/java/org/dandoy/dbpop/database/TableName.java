@@ -2,12 +2,13 @@ package org.dandoy.dbpop.database;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class TableName {
+public class TableName implements Comparable<TableName> {
     private final String catalog;
     private final String schema;
     private final String table;
@@ -59,5 +60,18 @@ public class TableName {
 
     public String toQualifiedName() {
         return Stream.of(catalog, schema, table).filter(Objects::nonNull).collect(Collectors.joining("."));
+    }
+
+    @Override
+    public int compareTo(@NotNull TableName that) {
+        int ret = this.getCatalog().compareTo(that.getCatalog());
+        if (ret == 0) {
+            ret = this.getSchema().compareTo(that.getSchema());
+        }
+        if (ret == 0) {
+            ret = this.getTable().compareTo(that.getTable());
+        }
+        return ret;
+
     }
 }

@@ -15,6 +15,8 @@ import {useSetupStatusEffect} from "./useSetupStatusEffect";
 import {SetupStatusComponent} from "../SetupStatusComponent";
 import Sidebar from "../sidebar/Sidebar";
 import Datasets from "../datasets/Datasets";
+import DownloadComponent from "../download/DownloadComponent";
+import DownloadBulkComponent from "../download/bulk/DownloadBulkComponent";
 
 export default function App() {
     const [setupState, setSetupState] = useState<SetupState>({activity: "Loading", error: null});
@@ -30,6 +32,8 @@ export default function App() {
                     <Routes>
                         <Route path="/add/:datasetName" element=<AddData/>/>
                         <Route path="/datasets" element=<Datasets/>/>
+                        <Route path="/download" element=<DownloadComponent/>/>
+                        <Route path="/download/Bulk" element=<DownloadBulkComponent/>/>
                         <Route path="/vfk" element=<VirtualFksComponent/>/>
                         <Route path="/vfk/add" element=<EditVirtualFkComponent/>/>
                         <Route path="/vfk/:pkTable/:fkName" element=<EditVirtualFkComponent/>/>

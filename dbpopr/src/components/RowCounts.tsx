@@ -2,6 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dependency} from "../models/Dependency";
 import {executeDownload} from "./executeDownload";
 import {DownloadResponse} from "../models/DownloadResponse";
+import Spinner from "./Spinner";
 
 export default function RowCounts({changeNumber, dataset, dependency, queryValues, downloadResponse, setDownloadResponse, maxRows, setMaxRows}: {
     dataset: string,
@@ -28,7 +29,7 @@ export default function RowCounts({changeNumber, dataset, dependency, queryValue
 
     if (downloadResponse == null || changeNumber === 0) return <></>;
 
-    if (loading) return <div><i className={"fa fa-spinner fa-spin"}/> Loading...</div>;
+    if (loading) return <Spinner/>
 
     let totalRows = 0;
     let totalSkipped = 0;

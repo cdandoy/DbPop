@@ -4,6 +4,7 @@ import {tableNameToFqName} from "../../models/TableName";
 import {NavLink} from "react-router-dom";
 import {ForeignKey} from "../../models/ForeignKey";
 import PageHeader from "../pageheader/PageHeader";
+import Spinner from "../Spinner";
 
 export default function VirtualFksComponent() {
     const [foreignKeys, setForeignKeys] = useState<ForeignKey[]>([]);
@@ -35,7 +36,7 @@ export default function VirtualFksComponent() {
         return `/vfk/${tn.catalog || ''}.${tn.schema || ''}.${tn.table}/${foreignKey.name}`
     }
 
-    if (loading) return <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Loading...</div>;
+    if (loading) return <Spinner/>;
 
     return (
         <>

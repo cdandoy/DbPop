@@ -9,6 +9,7 @@ import {Dependency} from "../models/Dependency";
 import {DownloadResponse} from "../models/DownloadResponse";
 import {Table} from "../models/Table";
 import PageHeader from "./pageheader/PageHeader";
+import Spinner from "./Spinner";
 
 export default function AddData() {
     const routeParams = useParams();
@@ -60,9 +61,7 @@ export default function AddData() {
         return <div>Missing Dataset</div>
     }
 
-    if (dowloading) {
-        return <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Downloading...</div>;
-    }
+    if (dowloading) return <Spinner text={'Downloading'}/>
 
     return (
         <div>

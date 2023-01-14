@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.upload.DataFileHeader;
 import org.dandoy.dbpop.utils.StopWatch;
+import org.jetbrains.annotations.NotNull;
 
 import java.sql.*;
 import java.util.*;
@@ -186,6 +187,22 @@ public abstract class DefaultDatabase extends Database {
                columnType == Types.VARBINARY ||
                columnType == Types.LONGVARBINARY ||
                columnType == Types.BLOB;
+    }
+
+    @NotNull
+    protected RowCount getRowCount(String sql) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            int rows = 0;
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                for (int i = 0; i < ROW_COUNT_MAX && resultSet.next(); i++) {
+                    rows++;
+                }
+                boolean plus = resultSet.next();
+                return new RowCount(rows, plus);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public class DatabaseInserter implements AutoCloseable {

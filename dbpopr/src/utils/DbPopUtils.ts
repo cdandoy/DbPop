@@ -15,3 +15,9 @@ export function toHumanReadableSize(bytes: number) {
         text: `${size.toLocaleString()} ${unit}`
     }
 }
+
+export function Plural(count: number, text: string) {
+    if (count === 1) return `1 ${text}`
+    if (text.endsWith('y')) return `${count} ${text.substring(0, text.length - 1)}ies`;
+    return `${count} ${text}s`
+}
