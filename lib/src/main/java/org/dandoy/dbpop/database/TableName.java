@@ -64,12 +64,12 @@ public class TableName implements Comparable<TableName> {
 
     @Override
     public int compareTo(@NotNull TableName that) {
-        int ret = this.getCatalog().compareTo(that.getCatalog());
+        int ret = this.getCatalog().compareToIgnoreCase(that.getCatalog());
         if (ret == 0) {
-            ret = this.getSchema().compareTo(that.getSchema());
+            ret = this.getSchema().compareToIgnoreCase(that.getSchema());
         }
         if (ret == 0) {
-            ret = this.getTable().compareTo(that.getTable());
+            ret = this.getTable().compareToIgnoreCase(that.getTable());
         }
         return ret;
 

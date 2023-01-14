@@ -4,6 +4,7 @@ import SelectTables from "./SelectTables";
 import DownloadResultComponent from "./DownloadResultComponent";
 
 export default function DownloadBulkComponent() {
+    const [schema, setSchema] = useState("");
     const [nameFilter, setNameFilter] = useState("");
     const [nameRegExp, setNameRegExp] = useState<RegExp>(/.*/);
     const [emptyFilter, setEmptyFilter] = useState(false);
@@ -15,6 +16,7 @@ export default function DownloadBulkComponent() {
 
     if (downloadResponse == null) {
         return <SelectTables
+            schema={schema} setSchema={setSchema}
             nameFilter={nameFilter} setNameFilter={setNameFilter}
             nameRegExp={nameRegExp} setNameRegExp={setNameRegExp}
             emptyFilter={emptyFilter} setEmptyFilter={setEmptyFilter}

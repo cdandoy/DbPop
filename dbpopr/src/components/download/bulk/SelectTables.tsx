@@ -10,6 +10,7 @@ import {FilterComponent} from "./FilterComponent";
 import LoadingOverlay from "../../utils/LoadingOverlay";
 
 export default function SelectTables({
+                                         schema, setSchema,
                                          nameFilter, setNameFilter,
                                          nameRegExp, setNameRegExp,
                                          emptyFilter, setEmptyFilter,
@@ -18,6 +19,8 @@ export default function SelectTables({
                                          dataset, setDataset,
                                          setDownloadResponse
                                      }: {
+    schema: string,
+    setSchema: ((p: string) => void),
     nameFilter: string,
     setNameFilter: ((p: string) => void),
     nameRegExp: RegExp,
@@ -35,6 +38,7 @@ export default function SelectTables({
     const [bulkTables, setBulkTables] = useState<TableName[]>([])
     const [loading, setLoading] = useState(false);
     const [tableInfos, setTableInfos] = useState<TableInfo[]>([])
+    const [schemas, setSchemas] = useState<string[]>([])
     const [changeNumber, setChangeNumber] = useState(0);
 
     useEffect(() => {
@@ -42,22 +46,28 @@ export default function SelectTables({
         content()
             .then(result => {
                 setTableInfos(result.data);
+                const uniqueSchemas = new Set<string>();
+                result.data.map(it => it.tableName.catalog + "." + it.tableName.schema).forEach(it => uniqueSchemas.add(it));
+                setSchemas(Array.from(uniqueSchemas));
                 setLoading(false);
             })
     }, [changeNumber])
 
     function filterTableInfo(tableInfo: TableInfo) {
-        const countRows = (rowCount: RowCount) => rowCount.rows + (rowCount.plus ? 1 : 0);
-        if (!emptyFilter && tableInfo.sourceRowCount.rows === 0) return 0;
-        if (!nameRegExp.test(tableNameToFqName(tableInfo.tableName))) return false;
+        const countRows = (rowCount?: RowCount) => rowCount ? rowCount.rows + (rowCount.plus ? 1 : 0) : 0;
+        if (!emptyFilter && tableInfo.sourceRowCount && tableInfo.sourceRowCount.rows === 0) return 0;
         if (!downloadedFilter) {
-            const sourceRows = countRows(tableInfo.sourceRowCount);
-            const csvRows = countRows(tableInfo.staticRowCount) + countRows(tableInfo.baseRowCount)
-            if (sourceRows <= csvRows) return false;
+            if (tableInfo.sourceRowCount) {
+                const sourceRows = countRows(tableInfo.sourceRowCount);
+                const csvRows = countRows(tableInfo.staticRowCount) + countRows(tableInfo.baseRowCount)
+                if (sourceRows <= csvRows) return false;
+            }
         }
         if (!dependenciesFilter) {
             if (tableInfo.dependencies.length > 0) return false;
         }
+        if (schema !== tableInfo.tableName.catalog + "." + tableInfo.tableName.schema) return false;
+        if (!nameRegExp.test(tableNameToFqName(tableInfo.tableName))) return false;
         return true;
     }
 
@@ -110,7 +120,10 @@ export default function SelectTables({
             <div id={"select-bulk-tables-component"}>
                 <PageHeader title={"Bulk Download"} subtitle={"Download Individual Tables"}/>
                 <div className={"mt-3"}>
-                    <FilterComponent nameFilter={nameFilter}
+                    <FilterComponent schemas={schemas}
+                                     schema={schema}
+                                     setSchema={setSchema}
+                                     nameFilter={nameFilter}
                                      setNameFilter={s => {
                                          setNameFilter(s);
                                          setNameRegExp(new RegExp(s));
@@ -127,9 +140,9 @@ export default function SelectTables({
                             <thead>
                             <tr>
                                 <th>Table</th>
-                                <th>Database Rows</th>
-                                <th>Static Rows</th>
-                                <th>Base Rows</th>
+                                <th className={"text-end"}>Database Rows</th>
+                                <th className={"text-end"}>Static Rows</th>
+                                <th className={"text-end"}>Base Rows</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -173,14 +186,14 @@ export default function SelectTables({
                                                     </label>
                                                 </div>
                                             </td>
-                                            <td>
-                                                {tableInfo.sourceRowCount.rows}{tableInfo.sourceRowCount.plus ? '+' : ''}
+                                            <td className={"text-end"}>
+                                                {tableInfo.sourceRowCount && <>{tableInfo.sourceRowCount.rows.toLocaleString()}{tableInfo.sourceRowCount.plus ? '+' : ''}</>}
                                             </td>
-                                            <td>
-                                                {tableInfo.staticRowCount.rows}{tableInfo.staticRowCount.plus ? '+' : ''}
+                                            <td className={"text-end"}>
+                                                {tableInfo.staticRowCount.rows.toLocaleString()}{tableInfo.staticRowCount.plus ? '+' : ''}
                                             </td>
-                                            <td>
-                                                {tableInfo.baseRowCount.rows}{tableInfo.baseRowCount.plus ? '+' : ''}
+                                            <td className={"text-end"}>
+                                                {tableInfo.baseRowCount.rows.toLocaleString()}{tableInfo.baseRowCount.plus ? '+' : ''}
                                             </td>
                                         </tr>
                                     )

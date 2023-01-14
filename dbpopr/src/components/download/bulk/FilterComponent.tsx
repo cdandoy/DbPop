@@ -1,6 +1,9 @@
 import React from "react";
 
-export function FilterComponent({nameFilter, setNameFilter, downloaded, setDownloaded, empty, setEmpty, dependencies, setDependencies}: {
+export function FilterComponent({schemas, schema, setSchema, nameFilter, setNameFilter, downloaded, setDownloaded, empty, setEmpty, dependencies, setDependencies}: {
+    schemas: string[];
+    schema: string;
+    setSchema: ((s: string) => void)
     nameFilter: string;
     setNameFilter: ((s: string) => void)
     downloaded: boolean;
@@ -12,7 +15,13 @@ export function FilterComponent({nameFilter, setNameFilter, downloaded, setDownl
 }) {
     return (
         <div className={"row"}>
-            <div className="mb-3 col-3">
+            <div key={"filterSchema"} className="col-3">
+                <label htmlFor="filterSchema" className="form-label">Schema:</label>
+                <select className="form-select" defaultValue={schema} onChange={e => setSchema(e.target.value)}>
+                    {schemas.map(schema => <option key={schema} value={schema}>{schema}</option>)}
+                </select>
+            </div>
+            <div key={"filterTable"} className="col-3">
                 <label htmlFor="filterTable" className="form-label">Filter:</label>
                 <input type="text"
                        className="form-control"
@@ -25,7 +34,7 @@ export function FilterComponent({nameFilter, setNameFilter, downloaded, setDownl
                        onChange={(e) => setNameFilter(e.target.value)}
                 />
             </div>
-            <div className={"col-2"}>
+            <div key={"filter-empty"} className={"col-2"}>
                 <div className="form-check" style={{paddingTop: "38px"}}>
                     <input className="form-check-input"
                            type="checkbox"
@@ -37,7 +46,7 @@ export function FilterComponent({nameFilter, setNameFilter, downloaded, setDownl
                     </label>
                 </div>
             </div>
-            <div className={"col-2"}>
+            <div key={"filter-downloaded"} className={"col-2"}>
                 <div className="form-check" style={{paddingTop: "38px"}}>
                     <input className="form-check-input"
                            type="checkbox"
@@ -49,7 +58,7 @@ export function FilterComponent({nameFilter, setNameFilter, downloaded, setDownl
                     </label>
                 </div>
             </div>
-            <div className={"col-2"}>
+            <div key={"filter-dependencies"} className={"col-2"}>
                 <div className="form-check" style={{paddingTop: "38px"}}>
                     <input className="form-check-input"
                            type="checkbox"
