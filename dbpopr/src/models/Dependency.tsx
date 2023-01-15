@@ -1,5 +1,10 @@
 import {TableName} from "./TableName";
 
+export interface Query {
+    column: string,
+    value: string,
+}
+
 export interface Dependency {
     displayName: string;
     tableName: TableName,
@@ -7,4 +12,5 @@ export interface Dependency {
     subDependencies: Dependency[] | null,
     selected: boolean,
     mandatory: boolean,
+    queries?: Query[],
 }

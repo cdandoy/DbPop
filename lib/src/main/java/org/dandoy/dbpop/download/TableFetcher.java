@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.download;
 
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ColumnType;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Table;
@@ -10,40 +11,88 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Slf4j
 public class TableFetcher implements AutoCloseable {
+    public static final int BATCH_SIZE = 10;
     private final Database database;
     private final String sql;
     private final PreparedStatement preparedStatement;
+    private final int skipBind;
     private final int batchSize;
     private final List<ColumnType> pkColumnTypes;
 
-    private TableFetcher(Database database, String sql, PreparedStatement preparedStatement, int batchSize, List<ColumnType> pkColumnTypes) {
+    private TableFetcher(Database database, String sql, PreparedStatement preparedStatement, int skipBind, int batchSize, List<ColumnType> pkColumnTypes) {
         this.database = database;
         this.sql = sql;
         this.preparedStatement = preparedStatement;
+        this.skipBind = skipBind;
         this.batchSize = batchSize;
         this.pkColumnTypes = pkColumnTypes;
     }
 
-    public static TableFetcher createTableFetcher(Database database, Table table, List<String> filteredColumns) {
-        String sql = ("SELECT *\nFROM %s").formatted(database.quote(table.tableName()));
+    public static TableFetcher createTableFetcher(Database database, Table table, List<TableJoin> tableJoins, List<TableQuery> where, List<String> filteredColumns) {
+        String sql = ("SELECT %s.*\nFROM %s").formatted(
+                database.quote(table.tableName()),
+                database.quote(table.tableName())
+        );
+
+        String joins = tableJoins.stream()
+                .map(tableJoin -> {
+                    String join = tableJoin.tableConditions().stream()
+                            .map(tableCondition -> "(%s.%s = %s.%s)".formatted(
+                                    database.quote(tableJoin.leftTable()),
+                                    database.quote(tableCondition.leftColumn()),
+                                    database.quote(tableJoin.rightTable()),
+                                    database.quote(tableCondition.rightColumn())
+                            ))
+                            .collect(Collectors.joining(" AND "));
+                    return "\nJOIN %s ON %s".formatted(
+                            database.quote(tableJoin.leftTable()),
+                            join
+                    );
+                })
+                .collect(Collectors.joining("\n"));
+        sql += joins;
+
+        String whereClause = where.stream()
+                .map(tableQuery -> "(%s.%s = ?)".formatted(
+                        database.quote(tableQuery.tableName()),
+                        database.quote(tableQuery.column())
+                ))
+                .collect(Collectors.joining(" AND "));
+
+        String childFilterClause = "";
         int batchSize = Integer.MAX_VALUE;
         List<ColumnType> pkColumnTypes = null;
         if (!filteredColumns.isEmpty()) {
             String pkWhereClause = filteredColumns.stream()
-                    .map("(%s = ?)"::formatted)
+                    .map(filteredColumn -> "(%s.%s = ?)".formatted(
+                            database.quote(table.tableName()),
+                            filteredColumn
+                    ))
                     .collect(Collectors.joining(" AND "));
-            batchSize = 2000 / filteredColumns.size();
-            String whereClause = Stream.generate(() -> pkWhereClause)
+            batchSize = BATCH_SIZE / filteredColumns.size();
+            childFilterClause = Stream.generate(() -> pkWhereClause)
                     .limit(batchSize)
                     .collect(Collectors.joining("\nOR "));
-            sql = sql + "\nWHERE " + whereClause;
             pkColumnTypes = filteredColumns.stream().map(it -> table.getColumn(it).getColumnType()).toList();
         }
+        if (!whereClause.isEmpty() || !childFilterClause.isEmpty()) {
+            sql = sql + "\nWHERE " + Stream.of(whereClause, childFilterClause)
+                    .filter(it -> !it.isEmpty())
+                    .map(it -> "(" + it + ")")
+                    .collect(Collectors.joining(" AND "));
+        }
+
+        log.info(sql);
+
         Connection connection = database.getConnection();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(sql);
-            return new TableFetcher(database, sql, preparedStatement, batchSize, pkColumnTypes);
+            for (int i = 0; i < where.size(); i++) {
+                preparedStatement.setString(i + 1, where.get(i).value());
+            }
+            return new TableFetcher(database, sql, preparedStatement, where.size(), batchSize, pkColumnTypes);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to execute " + sql, e);
         }
@@ -80,12 +129,12 @@ public class TableFetcher implements AutoCloseable {
         int jdbcPos = 1;
         for (List<Object> pk : pks) {
             for (Object o : pk) {
-                preparedStatement.setObject(jdbcPos++, o);
+                preparedStatement.setObject(skipBind + jdbcPos++, o);
             }
         }
         while (jdbcPos <= batchSize) {
             for (ColumnType columnType : pkColumnTypes) {
-                preparedStatement.setObject(jdbcPos++, columnType.toSqlType());
+                preparedStatement.setObject(skipBind + jdbcPos++, columnType.toSqlType());
             }
         }
     }

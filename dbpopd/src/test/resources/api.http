@@ -1,3 +1,214 @@
+POST http://localhost:3000/download/model
+Content-Type: application/json
+
+{
+  "dataset": "static",
+  "dependency": {
+    "displayName": "ops_dfw_prod.dbo.dealers",
+    "tableName": {
+      "catalog": "ops_dfw_prod",
+      "schema": "dbo",
+      "table": "dealers"
+    },
+    "subDependencies": [
+      {
+        "displayName": "ops_dfw_prod.dbo.contact_list",
+        "tableName": {
+          "catalog": "ops_dfw_prod",
+          "schema": "dbo",
+          "table": "contact_list"
+        },
+        "constraintName": "dealers_account_rep_fk",
+        "subDependencies": [
+          {
+            "displayName": "ops_dfw_prod.dbo.contact_type_lk",
+            "tableName": {
+              "catalog": "ops_dfw_prod",
+              "schema": "dbo",
+              "table": "contact_type_lk"
+            },
+            "constraintName": "contact_list_contact_type_lk_fk",
+            "subDependencies": [],
+            "selected": true,
+            "mandatory": true,
+            "queries": []
+          },
+          {
+            "displayName": "ops_dfw_prod.dbo.users",
+            "tableName": {
+              "catalog": "ops_dfw_prod",
+              "schema": "dbo",
+              "table": "users"
+            },
+            "constraintName": "user_id_contact_fk",
+            "subDependencies": [],
+            "selected": true,
+            "mandatory": true,
+            "queries": []
+          }
+        ],
+        "selected": true,
+        "mandatory": true,
+        "queries": []
+      },
+      {
+        "displayName": "ops_dfw_prod.dbo.companies",
+        "tableName": {
+          "catalog": "ops_dfw_prod",
+          "schema": "dbo",
+          "table": "companies"
+        },
+        "constraintName": "dealers_companies_fk",
+        "subDependencies": [],
+        "selected": true,
+        "mandatory": true,
+        "queries": [
+          {
+            "column": "name",
+            "value": "Autobahn"
+          }
+        ]
+      },
+      {
+        "displayName": "ops_dfw_prod.dbo.supplier_group_lk",
+        "tableName": {
+          "catalog": "ops_dfw_prod",
+          "schema": "dbo",
+          "table": "supplier_group_lk"
+        },
+        "constraintName": "dealers_supplier_group_lk_fk",
+        "subDependencies": [],
+        "selected": true,
+        "mandatory": true,
+        "queries": []
+      },
+      {
+        "displayName": "ops_dfw_prod.dbo.tz_lk",
+        "tableName": {
+          "catalog": "ops_dfw_prod",
+          "schema": "dbo",
+          "table": "tz_lk"
+        },
+        "constraintName": "dealers_tz_lk_fk",
+        "subDependencies": [
+          {
+            "displayName": "ops_dfw_prod.dbo.timezone_lk",
+            "tableName": {
+              "catalog": "ops_dfw_prod",
+              "schema": "dbo",
+              "table": "timezone_lk"
+            },
+            "constraintName": "tzlk_timezone_lk_fk",
+            "subDependencies": [],
+            "selected": true,
+            "mandatory": true,
+            "queries": []
+          }
+        ],
+        "selected": true,
+        "mandatory": true,
+        "queries": []
+      },
+      {
+        "displayName": "ops_dfw_prod.dbo.external_reps",
+        "tableName": {
+          "catalog": "ops_dfw_prod",
+          "schema": "dbo",
+          "table": "external_reps"
+        },
+        "constraintName": "FK_external_rep_dealer",
+        "subDependencies": [],
+        "selected": true,
+        "mandatory": true,
+        "queries": []
+      },
+      {
+        "displayName": "ops_dfw_prod.dbo.make_types",
+        "tableName": {
+          "catalog": "ops_dfw_prod",
+          "schema": "dbo",
+          "table": "make_types"
+        },
+        "constraintName": "make_types_dealer_fk",
+        "subDependencies": [
+          {
+            "displayName": "ops_dfw_prod.dbo.makes_shops",
+            "tableName": {
+              "catalog": "ops_dfw_prod",
+              "schema": "dbo",
+              "table": "makes_shops"
+            },
+            "constraintName": "makes_shops_make_types",
+            "subDependencies": [
+              {
+                "displayName": "ops_dfw_prod.dbo.shops",
+                "tableName": {
+                  "catalog": "ops_dfw_prod",
+                  "schema": "dbo",
+                  "table": "shops"
+                },
+                "constraintName": "makes_shops_shops",
+                "subDependencies": [
+                  {
+                    "displayName": "ops_dfw_prod.dbo.package_shop_lk",
+                    "tableName": {
+                      "catalog": "ops_dfw_prod",
+                      "schema": "dbo",
+                      "table": "package_shop_lk"
+                    },
+                    "constraintName": "FK_shops_package_lk",
+                    "subDependencies": [],
+                    "selected": true,
+                    "mandatory": true,
+                    "queries": []
+                  },
+                  {
+                    "displayName": "ops_dfw_prod.dbo.mso_type_lk",
+                    "tableName": {
+                      "catalog": "ops_dfw_prod",
+                      "schema": "dbo",
+                      "table": "mso_type_lk"
+                    },
+                    "constraintName": "shops_mso_type_fk",
+                    "subDependencies": [],
+                    "selected": true,
+                    "mandatory": true,
+                    "queries": []
+                  }
+                ],
+                "selected": true,
+                "mandatory": true,
+                "queries": [
+                  {
+                    "column": "name",
+                    "value": "Cedric P&B"
+                  }
+                ]
+              }
+            ],
+            "selected": true,
+            "mandatory": false,
+            "queries": []
+          }
+        ],
+        "selected": true,
+        "mandatory": false,
+        "queries": []
+      }
+    ],
+    "selected": true,
+    "mandatory": true,
+    "queries": [
+      {
+        "column": "id",
+        "value": "1"
+      }
+    ]
+  },
+  "queryValues": {},
+  "dryRun": true,
+  "maxRows": 1000
+}
+
 ###
-GET http://localhost:8080/content/
 

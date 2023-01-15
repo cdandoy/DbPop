@@ -43,9 +43,9 @@ public class TableDownloader implements AutoCloseable {
         return new Builder();
     }
 
-    private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, List<String> filteredColumns, boolean forceEmpty, ExecutionMode executionMode, ExecutionContext executionContext) {
+    private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, List<TableJoin> tableJoins, List<TableQuery> where, List<String> filteredColumns, boolean forceEmpty, ExecutionMode executionMode, ExecutionContext executionContext) {
         Table table = database.getTable(tableName);
-        TableFetcher tableFetcher = TableFetcher.createTableFetcher(database, table, filteredColumns);
+        TableFetcher tableFetcher = TableFetcher.createTableFetcher(database, table, tableJoins, where, filteredColumns);
         List<SelectedColumn> selectedColumns = tableFetcher.getSelectedColumns();
         TablePrimaryKeys tablePrimaryKeys = TablePrimaryKeys.createTablePrimaryKeys(datasetsDirectory, dataset, table, selectedColumns);
 
@@ -258,6 +258,8 @@ public class TableDownloader implements AutoCloseable {
         private ExecutionMode executionMode = ExecutionMode.SAVE;
         private ExecutionContext executionContext = new ExecutionContext();
         private List<String> filteredColumns = Collections.emptyList();
+        private List<TableJoin> tableJoins=Collections.emptyList();
+        private List<TableQuery> wheres=Collections.emptyList();
 
         public TableDownloader build() {
             if (database == null) throw new RuntimeException("database not set");
@@ -269,7 +271,7 @@ public class TableDownloader implements AutoCloseable {
             // Having an empty CSV file in /static/ or /base/ will make sure the table is deleted
             // However, we do not want to have empty CSV files in other dataset directories
             boolean forceEmpty = dataset.equals(Datasets.STATIC) || dataset.equals(Datasets.BASE);
-            return createTableDownloader(database, datasetsDirectory, dataset, tableName, filteredColumns, forceEmpty, executionMode, executionContext);
+            return createTableDownloader(database, datasetsDirectory, dataset, tableName, tableJoins, wheres, filteredColumns, forceEmpty, executionMode, executionContext);
         }
     }
 }

@@ -15,17 +15,19 @@ export default function DownloadBulkComponent() {
     const [dataset, setDataset] = useState("static")
 
     if (downloadResponse == null) {
-        return <SelectTables
-            schema={schema} setSchema={setSchema}
-            nameFilter={nameFilter} setNameFilter={setNameFilter}
-            nameRegExp={nameRegExp} setNameRegExp={setNameRegExp}
-            emptyFilter={emptyFilter} setEmptyFilter={setEmptyFilter}
-            downloadedFilter={downloadedFilter}
-            setDownloadedFilter={setDownloadedFilter}
-            dependenciesFilter={dependenciesFilter} setDependenciesFilter={setDependenciesFilter}
-            dataset={dataset} setDataset={setDataset}
-            setDownloadResponse={setDownloadResponse}
-        />
+        return (
+            <SelectTables
+                schema={schema} setSchema={setSchema}
+                nameFilter={nameFilter} setNameFilter={setNameFilter}
+                nameRegExp={nameRegExp} setNameRegExp={setNameRegExp}
+                emptyFilter={emptyFilter} setEmptyFilter={setEmptyFilter}
+                downloadedFilter={downloadedFilter}
+                setDownloadedFilter={setDownloadedFilter}
+                dependenciesFilter={dependenciesFilter} setDependenciesFilter={setDependenciesFilter}
+                dataset={dataset} setDataset={setDataset}
+                setDownloadResponse={setDownloadResponse}
+            />
+        )
     } else {
         return <DownloadResultComponent downloadResponse={downloadResponse} setDownloadResponse={setDownloadResponse}/>
     }

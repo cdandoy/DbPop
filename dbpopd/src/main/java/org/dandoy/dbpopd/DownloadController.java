@@ -24,6 +24,7 @@ public class DownloadController {
         configurationService.assertSourceConnection();
 
         ExecutionMode executionMode = downloadRequest.isDryRun() ? ExecutionMode.COUNT : ExecutionMode.SAVE;
+        // TableExecutionModel is the recursive description at the TableName level
         TableExecutionModel tableExecutionModel = toTableExecutionModel(downloadRequest.getDependency());
 
         List<String> filteredColumns = new ArrayList<>();
@@ -41,6 +42,7 @@ public class DownloadController {
         }
 
         try (Database sourceDatabase = configurationService.createSourceDatabase()) {
+            // ExecutionPlan is the recursive description at the Table level
             ExecutionContext executionContext = ExecutionPlan.execute(
                     sourceDatabase,
                     configurationService.getDatasetsDirectory(),
@@ -87,6 +89,7 @@ public class DownloadController {
     private TableExecutionModel toTableExecutionModel(Dependency dependency) {
         return new TableExecutionModel(
                 dependency.getConstraintName(),
+                dependency.getQueries(),
                 dependency.getSubDependencies().stream()
                         .filter(Dependency::isSelected)
                         .map(this::toTableExecutionModel)

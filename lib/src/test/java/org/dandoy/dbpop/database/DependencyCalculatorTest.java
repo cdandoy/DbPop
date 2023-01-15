@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Collections;
 import java.util.List;
 
+import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -56,11 +57,13 @@ class DependencyCalculatorTest {
                                         "invoice_details_invoices_fk",
                                         Collections.emptyList(),
                                         true,
-                                        false
+                                        false,
+                                        emptyList()
                                 )
                         ),
                         true,
-                        true
+                        true,
+                        emptyList()
                 );
                 Dependency result = DependencyCalculator.calculateDependencies(sourceDatabase, dependency);
                 assertEquals("invoices", result.getTableName().getTable());
