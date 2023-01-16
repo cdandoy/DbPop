@@ -50,7 +50,7 @@ public final class Dependency {
         return new Dependency(tableName, constraintName, emptyList(), mandatory, mandatory, emptyList());
     }
 
-    Optional<Dependency> getSubDependencyByConstraint(String constraintName) {
+    public Optional<Dependency> getSubDependencyByConstraint(String constraintName) {
         for (Dependency subDependency : subDependencies) {
             if (constraintName.equals(subDependency.constraintName)) {
                 return Optional.of(subDependency);

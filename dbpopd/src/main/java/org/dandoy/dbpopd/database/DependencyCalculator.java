@@ -1,18 +1,23 @@
-package org.dandoy.dbpop.database;
+package org.dandoy.dbpopd.database;
+
+import org.dandoy.dbpop.database.Dependency;
+import org.dandoy.dbpop.database.ForeignKey;
+import org.dandoy.dbpop.database.Table;
+import org.dandoy.dbpop.database.TableName;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public class DependencyCalculator {
-    private final Database database;
     private final Set<String> processedConstraints = new HashSet<>();
+    private final DatabaseService databaseService;
 
-    public DependencyCalculator(Database database) {
-        this.database = database;
+    public DependencyCalculator(DatabaseService databaseService) {
+        this.databaseService = databaseService;
     }
 
-    public static Dependency calculateDependencies(Database database, Dependency root) {
-        DependencyCalculator dependencyCalculator = new DependencyCalculator(database);
+    public static Dependency calculateDependencies(DatabaseService databaseService, Dependency root) {
+        DependencyCalculator dependencyCalculator = new DependencyCalculator(databaseService);
         return dependencyCalculator.calculateDependencies(root);
     }
 
@@ -20,7 +25,8 @@ public class DependencyCalculator {
         Dependency ret = Dependency.mutableCopy(dependency);
 
         if (dependency.isSelected()) {
-            Table table = database.getTable(dependency.getTableName());
+            TableName tableName = dependency.getTableName();
+            Table table = databaseService.getSourceTable(tableName);
 
             // If we are on invoices, look for customers
             for (ForeignKey foreignKey : table.foreignKeys()) {
@@ -35,7 +41,7 @@ public class DependencyCalculator {
             }
 
             // If we are on invoices, look for invoice_details
-            for (ForeignKey foreignKey : database.getRelatedForeignKeys(dependency.getTableName())) {
+            for (ForeignKey foreignKey : databaseService.getRelatedSourceForeignKeys(tableName)) {
                 String constraintName = foreignKey.getName();
                 if (processedConstraints.add(constraintName)) {
                     Dependency subDependency = dependency

@@ -4,16 +4,10 @@ import io.micronaut.context.annotation.Context;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.Getter;
-import org.dandoy.dbpop.database.Database;
-import org.dandoy.dbpop.database.RowCount;
-import org.dandoy.dbpop.database.Table;
-import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpopd.ConfigurationService;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @SuppressWarnings("DuplicatedCode")
 @Singleton
@@ -104,12 +98,6 @@ public class DatabaseService {
         }
     }
 
-    public Set<TableName> getSourceTableNames() {
-        synchronized (sourceTablesLock) {
-            return sourceTables.keySet();
-        }
-    }
-
     public Set<TableName> getTargetTableNames() {
         synchronized (targetTablesLock) {
             return targetTables.keySet();
@@ -122,9 +110,9 @@ public class DatabaseService {
         }
     }
 
-    public Collection<Table> getTargetTables() {
-        synchronized (targetTablesLock) {
-            return targetTables.values();
+    public Table getSourceTable(TableName tableName) {
+        synchronized (sourceTablesLock) {
+            return sourceTables.get(tableName);
         }
     }
 
@@ -134,5 +122,14 @@ public class DatabaseService {
 
     public RowCount getTargetRowCount(TableName tableName) {
         return targetRowCounts.get(tableName);
+    }
+
+    public List<ForeignKey> getRelatedSourceForeignKeys(TableName pkTableName) {
+        synchronized (sourceTablesLock) {
+            return sourceTables.values().stream()
+                    .flatMap(it -> it.foreignKeys().stream())
+                    .filter(it -> it.getPkTableName().equals(pkTableName))
+                    .toList();
+        }
     }
 }

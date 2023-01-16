@@ -4,8 +4,11 @@ import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
-import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.database.Column;
+import org.dandoy.dbpop.database.Dependency;
+import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpopd.database.DatabaseService;
+import org.dandoy.dbpopd.database.DependencyCalculator;
 
 import java.util.Comparator;
 import java.util.List;
@@ -21,8 +24,7 @@ public class DatabaseController {
         this.databaseService = databaseService;
     }
 
-    @Get("" +
-         "search")
+    @Get("/search")
     public List<SearchTableResponse> search(String query) {
         configurationService.assertSourceConnection();
 
@@ -47,9 +49,7 @@ public class DatabaseController {
     public Dependency getDependents(@Body Dependency dependency) {
         configurationService.assertSourceConnection();
 
-        try (Database sourceDatabase = configurationService.createSourceDatabase()) {
-            return DependencyCalculator.calculateDependencies(sourceDatabase, dependency);
-        }
+        return DependencyCalculator.calculateDependencies(databaseService, dependency);
     }
 
     public record SearchTableSearchByResponse(String displayName, List<String> columns) {}
