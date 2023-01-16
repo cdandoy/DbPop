@@ -9,14 +9,14 @@
     overflow-y: auto;
   }
 
-  .button-bar {
-    .float-start {
-      padding-left: 32px;
-    }
+  .button-bar button {
+    width: 8rem;
+  }
+}
 
-    .float-end {
-      display: flex;
-    }
+#select-model-dependencies {
+  .button-bar button {
+    width: 8rem;
   }
 }
 
@@ -24,6 +24,10 @@
   .filter {
     padding-left: 1em;
     font-family: monospace;
+  }
+
+  .button-bar button {
+    width: 8rem;
   }
 }
 

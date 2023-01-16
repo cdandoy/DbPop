@@ -8,10 +8,16 @@ import './DownloadModelComponent.scss'
 import {TableName, tableNameToFqName} from "../../../models/TableName";
 import dependenciesApi from "../../../api/dependenciesApi";
 import DataFilterComponent from "./DataFilterComponent";
+import DownloadResultsComponent from "./DownloadResultsComponent";
+import {DownloadResponse} from "../../../models/DownloadResponse";
+import datasetsApi from "../../../api/datasetsApi";
 
 export default function DownloadModelComponent() {
     const [page, setPage] = useState("baseTable");
-    const [loading, setLoading] = useState(false);
+    const [loadingDatasets, setLoadingDatasets] = useState(false);
+    const [loadingContent, setLoadingContent] = useState(false);
+    const [loadingUniqueSchemas, setLoadingUniqueSchemas] = useState(false);
+    const [loadingDependencies, setLoadingDependencies] = useState(false);
     const [tableInfos, setTableInfos] = useState<TableInfo[]>([])
     const [schemas, setSchemas] = useState<string[]>([])
     const [changeNumber, setChangeNumber] = useState(0);
@@ -29,30 +35,47 @@ export default function DownloadModelComponent() {
         recommended: true,
         optional: false
     })
+    // DataFilterComponent
+    const [datasets, setDatasets] = useState<string[]>([])
+    const [dataset, setDataset] = useState('static')
+    const [downloadResponse, setDownloadResponse] = useState<DownloadResponse | undefined>();
 
     useEffect(() => {
-        setLoading(true);
+        setLoadingDatasets(true);
+        datasetsApi()
+            .then(result => {
+                setDatasets(result.data);
+                setLoadingDatasets(false);
+            })
+    }, [])
+
+    useEffect(() => {
+        setLoadingContent(true);
         content()
             .then(result => {
                 setTableInfos(result.data);
-                setLoading(false);
+                setLoadingContent(false);
             })
     }, [changeNumber])
 
     useEffect(() => {
-        setLoading(true);
+        setLoadingUniqueSchemas(true);
         const uniqueSchemas = new Set<string>();
         tableInfos
             .filter(tableInfo => !tableDependenciesFilter || tableInfo.dependencies.length > 0)
             .map(it => it.tableName.catalog + "." + it.tableName.schema).forEach(it => uniqueSchemas.add(it));
         setSchemas(Array.from(uniqueSchemas));
-        setLoading(false);
+        setLoadingUniqueSchemas(false);
     }, [tableInfos, tableDependenciesFilter])
 
     useEffect(() => {
         if (dependency) {
+            setLoadingDependencies(true)
             dependenciesApi(dependency)
-                .then(result => setDependency(result.data));
+                .then(result => {
+                    setDependency(result.data);
+                    setLoadingDependencies(false);
+                });
         }
     }, [changeNumber])
 
@@ -61,7 +84,7 @@ export default function DownloadModelComponent() {
     }
 
     return <>
-        <LoadingOverlay active={loading}/>
+        <LoadingOverlay active={loadingDatasets || loadingContent || loadingUniqueSchemas || loadingDependencies}/>
         {page === "baseTable" && (
             <SelectTableComponent
                 schemas={schemas}
@@ -94,8 +117,14 @@ export default function DownloadModelComponent() {
         )}
         {page === "dataFilter" && (
             <DataFilterComponent setPage={setPage}
-                                 dependency={dependency!}
-                                 setDependency={setDependency}/>
+                                 datasets={datasets}
+                                 dataset={dataset} setDataset={setDataset}
+                                 dependency={dependency!} setDependency={setDependency}
+                                 setDownloadResponse={setDownloadResponse}
+            />
+        )}
+        {page === "download-result" && (
+            <DownloadResultsComponent downloadResponse={downloadResponse!}/>
         )}
     </>
 }

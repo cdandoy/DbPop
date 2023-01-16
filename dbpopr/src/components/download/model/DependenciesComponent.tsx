@@ -1,6 +1,5 @@
 import React from "react"
 import PageHeader from "../../pageheader/PageHeader";
-import BackNextComponent from "../BackNextComponent";
 import {Dependency} from "../../../models/Dependency";
 import {tableNameToFqName} from "../../../models/TableName";
 import {Plural} from "../../../utils/DbPopUtils";
@@ -61,7 +60,20 @@ export default function DependenciesComponent({
     return <>
         <div id={"select-model-dependencies"}>
             <PageHeader title={"Model Download"} subtitle={"Select related tables"}/>
-            <BackNextComponent onBack={() => setPage("baseTable")} onNext={() => setPage("dataFilter")}/>
+            <div className={"mt-3 mb-3 button-bar"}>
+                <div className={"btn-group"}>
+                    <button className={"btn btn-primary"} onClick={() => setPage("baseTable")}>
+                        <i className={"fa fa-arrow-left"}/>
+                        &nbsp;
+                        Back
+                    </button>
+                    <button className={"btn btn-primary"} onClick={() => setPage("dataFilter")}>
+                        Next
+                        &nbsp;
+                        <i className={"fa fa-arrow-right"}/>
+                    </button>
+                </div>
+            </div>
             <div>{Plural(countSelectedTables(dependency), "table")} selected</div>
             <FilterComponent dependenciesFilter={dependenciesFilter} setDependenciesFilter={setDependenciesFilter}/>
             <div className={"mt-3"}>

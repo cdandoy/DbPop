@@ -37,10 +37,9 @@ export default function SelectTableComponent({
     }
 
     return <>
-        <div>Selected: {tableName?.table}</div>
         <div id={"select-model-root"}>
             <PageHeader title={"Model Download"} subtitle={"Select the root table"}/>
-            <div className={"mt-3 mb-3"}>
+            <div className={"mt-3 mb-3 button-bar"}>
                 <div className={"btn-group"}>
                     <button className={"btn btn-primary"}
                             disabled={tableName == null}

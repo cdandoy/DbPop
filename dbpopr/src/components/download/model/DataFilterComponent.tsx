@@ -1,12 +1,12 @@
 import React, {useEffect, useState} from "react"
 import PageHeader from "../../pageheader/PageHeader";
-import BackNextComponent from "../BackNextComponent";
 import {Dependency, Query} from "../../../models/Dependency";
 import {tableNameEquals, tableNameToFqName} from "../../../models/TableName";
 import {executeDownload} from "../../executeDownload";
 import {TableRowCounts} from "../../../models/TableRowCounts";
 import LoadingOverlay from "../../utils/LoadingOverlay";
 import EditDependency from "./EditDependency";
+import {DownloadResponse} from "../../../models/DownloadResponse";
 
 interface DependencyAndRowCounts {
     dependency: Dependency;
@@ -25,21 +25,27 @@ function findDependency(dependency: Dependency, search: Dependency): Dependency 
     }
 }
 
-export default function DataFilterComponent({setPage, dependency, setDependency}: {
+export default function DataFilterComponent({setPage, datasets, dataset, setDataset, dependency, setDependency, setDownloadResponse}: {
     setPage: ((p: string) => void),
+    datasets: string[],
+    dataset: string,
+    setDataset: ((d: string) => void),
     dependency: Dependency,
     setDependency: ((d: Dependency) => void),
+    setDownloadResponse: ((p: DownloadResponse) => void),
 }) {
     const [loading, setLoading] = useState(false);
+    const [previewResponse, setPreviewResponse] = useState<DownloadResponse | undefined>();
     const [dependencyAndRowCounts, setDependencyAndRowCounts] = useState<DependencyAndRowCounts[]>([]);
     const [editDependency, setEditDependency] = useState<Dependency | null>(null)
+    const [rowLimit, setRowLimit] = useState(1000);
 
     useEffect(() => {
         setLoading(true);
         const pruned = prunedDependency(dependency)
-        executeDownload('static', pruned, {}, true, 1000)
+        executeDownload(dataset, pruned, {}, true, rowLimit)
             .then(result => {
-
+                setPreviewResponse(result.data);
                 const selectedDependencies: Dependency[] = [];
                 pushSelectedDependency(selectedDependencies, dependency);
                 selectedDependencies.sort((a, b) => {
@@ -65,7 +71,17 @@ export default function DataFilterComponent({setPage, dependency, setDependency}
                 setDependencyAndRowCounts(ret);
                 setLoading(false);
             })
-    }, [dependency]);
+    }, [dependency, dataset, rowLimit]);
+
+    function onDownload() {
+        setLoading(true);
+        const pruned = prunedDependency(dependency)
+        executeDownload(dataset, pruned, {}, false, rowLimit)
+            .then(result => {
+                setDownloadResponse(result.data);
+                setPage("download-result");
+            });
+    }
 
     function prunedDependency(dependency: Dependency): Dependency {
         return {
@@ -102,13 +118,58 @@ export default function DataFilterComponent({setPage, dependency, setDependency}
         <LoadingOverlay active={loading}/>
         <PageHeader title={"Model Download"} subtitle={"Filter the data"}/>
         {editDependency == null && <>
-            <BackNextComponent onBack={() => setPage("dependencies")}/>
-            <div className={"table-container"}>
+            <div className={"mt-3 mb-3 button-bar"}>
+                <div className={"btn-group"}>
+                    <button className={"btn btn-primary"} onClick={() => setPage("dependencies")}>
+                        <i className={"fa fa-arrow-left"}/>
+                        &nbsp;
+                        Back
+                    </button>
+                    <button className={"btn btn-primary"} onClick={onDownload} disabled={previewResponse?.maxRowsReached || previewResponse?.rowCount === 0}>
+                        Download
+                        &nbsp;
+                        <i className={"fa fa-arrow-right"}/>
+                    </button>
+                </div>
+            </div>
+
+            {previewResponse?.maxRowsReached && (
+                <div className={"alert alert-danger clearfix"}>
+                    <div className={"float-start "}>Row limit reached: {rowLimit}</div>
+                    <div className={"float-end"}>
+                        <button className={"btn btn-primary btn-sm"} onClick={() => {
+                            setRowLimit(rowLimit + 1000);
+                        }}>
+                            Increase
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {previewResponse?.rowCount === 0 && (
+                <div className={"alert alert-danger"}>
+                    Nothing to download
+                </div>
+            )}
+
+            <div className={"row"}>
+                <div className={"col-3"}>
+                    <label htmlFor="dataset" className="form-label">Dataset:</label>
+                    <select id={"dataset"} className="form-select" aria-label="Dataset" defaultValue={dataset} onChange={e => setDataset(e.target.value)}>
+                        {datasets.map(ds => (
+                            <option key={ds} value={ds}>{ds}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            <div className={"table-container mt-3"}>
                 <table className={"table table-hover"}>
                     <thead>
                     <tr>
                         <th>Table</th>
-                        <th>Rows</th>
+                        <th className={"text-end"}>Rows</th>
+                        <th className={"text-end"}>Skipped</th>
                         <th>Filter</th>
                         <th></th>
                     </tr>
@@ -121,8 +182,11 @@ export default function DataFilterComponent({setPage, dependency, setDependency}
                             <td>
                                 {tableNameToFqName(tableName)}
                             </td>
-                            <td>
+                            <td className={"text-end"}>
                                 {tableRowCounts.rowCount.toLocaleString()}
+                            </td>
+                            <td className={"text-end"}>
+                                {tableRowCounts.rowsSkipped.toLocaleString()}
                             </td>
                             <td>
                                 <button className={"btn btn-xs btn-primary"} onClick={() => setEditDependency(dependencyAndRowCount.dependency)}>
@@ -139,6 +203,16 @@ export default function DataFilterComponent({setPage, dependency, setDependency}
                         </tr>
                     })}
                     </tbody>
+                    <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th className={"text-end"}>{previewResponse?.rowCount}</th>
+                        <th className={"text-end"}>
+                            {previewResponse?.tableRowCounts?.map(it => it.rowsSkipped).reduce((previousValue, currentValue) => previousValue + currentValue, 0)}
+                        </th>
+                        <th></th>
+                    </tr>
+                    </tfoot>
                 </table>
             </div>
         </>}

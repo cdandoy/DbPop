@@ -84,7 +84,7 @@ public class TableFetcher implements AutoCloseable {
                     .collect(Collectors.joining(" AND "));
         }
 
-        log.info(sql);
+        log.debug(sql);
 
         Connection connection = database.getConnection();
         try {
