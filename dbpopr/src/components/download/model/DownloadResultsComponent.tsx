@@ -16,21 +16,25 @@ export default function DownloadResultsComponent({downloadResponse}: {
                 <thead>
                 <tr>
                     <th>Table</th>
-                    <th>Rows</th>
+                    <th className={"text-end"}>Rows</th>
                 </tr>
                 </thead>
                 <tbody>
                 {downloadResponse.tableRowCounts.map(tableRowCount => (
                     <tr key={tableNameToFqName(tableRowCount.tableName)}>
                         <td>{tableNameToFqName(tableRowCount.tableName)}</td>
-                        <td>{Plural(tableRowCount.rowCount, "row")}</td>
+                        <td className={"text-end"}>
+                            {tableRowCount.rowCount ? Plural(tableRowCount.rowCount, "row") : '-'}
+                        </td>
                     </tr>
                 ))}
                 </tbody>
                 <tfoot>
                 <tr>
                     <th>Total</th>
-                    <th>{Plural(downloadResponse.rowCount, "row")}</th>
+                    <th className={"text-end"}>
+                        {downloadResponse.rowCount ? Plural(downloadResponse.rowCount, "row") : '-'}
+                    </th>
                 </tr>
                 </tfoot>
             </table>

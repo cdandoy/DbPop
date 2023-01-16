@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 
 @Slf4j
 public class TableFetcher implements AutoCloseable {
-    public static final int BATCH_SIZE = 10;
+    public static final int BATCH_SIZE = 100;
     private final Database database;
     private final String sql;
     private final PreparedStatement preparedStatement;
@@ -134,7 +134,7 @@ public class TableFetcher implements AutoCloseable {
         }
         while (jdbcPos <= batchSize) {
             for (ColumnType columnType : pkColumnTypes) {
-                preparedStatement.setObject(skipBind + jdbcPos++, columnType.toSqlType());
+                preparedStatement.setNull(skipBind + jdbcPos++, columnType.toSqlType());
             }
         }
     }

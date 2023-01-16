@@ -69,6 +69,8 @@ export default function DataFilterComponent({setPage, datasets, dataset, setData
                     }
                 });
                 setDependencyAndRowCounts(ret);
+            })
+            .finally(()=>{
                 setLoading(false);
             })
     }, [dependency, dataset, rowLimit]);

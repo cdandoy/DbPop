@@ -48,7 +48,7 @@ export default function Datasets() {
                     const contentElement = tableContent.content[datasetContent.name];
                     if (showLinks) {
                         return (
-                            <td key={datasetContent.name}>
+                            <td key={datasetContent.name} className={"text-end"}>
                                 {contentElement?.rows && (
                                     <NavLink to={`/data/${datasetContent.name}/${tableName.catalog}/${tableName.schema}/${tableName.table}`}>
                                         {contentElement.rows} rows
@@ -58,7 +58,7 @@ export default function Datasets() {
                         )
                     } else {
                         return (
-                            <td key={datasetContent.name}>
+                            <td key={datasetContent.name} className={"text-end"}>
                                 {contentElement?.rows && (
                                     <>{contentElement.rows} rows</>
                                 )}
@@ -80,12 +80,26 @@ export default function Datasets() {
                         <thead>
                         <tr>
                             <th style={{width: colWidth}}>Table</th>
-                            {datasetContentResponse.datasetContents.map(datasetContent => <th style={{width: colWidth}} key={datasetContent.name}>{datasetContent.name}</th>)}
+                            {datasetContentResponse.datasetContents.map(datasetContent => (
+                                <th style={{width: colWidth}} key={datasetContent.name} className={"text-end"}>
+                                    {datasetContent.name}
+                                </th>
+                            ))}
                         </tr>
                         </thead>
                         <tbody>
                         {datasetContentResponse.tableContents.map(tableContent => <Row key={tableNameToFqName(tableContent.tableName)} datasetContents={datasetContentResponse?.datasetContents} tableContent={tableContent}/>)}
                         </tbody>
+                        <tfoot>
+                        <tr>
+                            <th>Total</th>
+                            {datasetContentResponse.datasetContents.map(datasetContent => (
+                                <th key={datasetContent.name} className={"text-end"}>
+                                    {datasetContent.rows} rows
+                                </th>
+                            ))}
+                        </tr>
+                        </tfoot>
                     </table>
                 )}
             </div>

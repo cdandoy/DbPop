@@ -37,7 +37,7 @@ export default function DownloadModelComponent() {
     })
     // DataFilterComponent
     const [datasets, setDatasets] = useState<string[]>([])
-    const [dataset, setDataset] = useState('static')
+    const [dataset, setDataset] = useState('base');
     const [downloadResponse, setDownloadResponse] = useState<DownloadResponse | undefined>();
 
     useEffect(() => {
