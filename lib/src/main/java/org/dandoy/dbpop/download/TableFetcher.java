@@ -20,17 +20,19 @@ public class TableFetcher implements AutoCloseable {
     private final int skipBind;
     private final int batchSize;
     private final List<ColumnType> pkColumnTypes;
+    private final ExecutionContext executionContext;
 
-    private TableFetcher(Database database, String sql, PreparedStatement preparedStatement, int skipBind, int batchSize, List<ColumnType> pkColumnTypes) {
+    private TableFetcher(Database database, String sql, PreparedStatement preparedStatement, int skipBind, int batchSize, List<ColumnType> pkColumnTypes, ExecutionContext executionContext) {
         this.database = database;
         this.sql = sql;
         this.preparedStatement = preparedStatement;
         this.skipBind = skipBind;
         this.batchSize = batchSize;
         this.pkColumnTypes = pkColumnTypes;
+        this.executionContext = executionContext;
     }
 
-    public static TableFetcher createTableFetcher(Database database, Table table, List<TableJoin> tableJoins, List<TableQuery> where, List<String> filteredColumns) {
+    public static TableFetcher createTableFetcher(Database database, Table table, List<TableJoin> tableJoins, List<TableQuery> where, List<String> filteredColumns, ExecutionContext executionContext) {
         String sql = ("SELECT %s.*\nFROM %s").formatted(
                 database.quote(table.tableName()),
                 database.quote(table.tableName())
@@ -92,7 +94,7 @@ public class TableFetcher implements AutoCloseable {
             for (int i = 0; i < where.size(); i++) {
                 preparedStatement.setString(i + 1, where.get(i).value());
             }
-            return new TableFetcher(database, sql, preparedStatement, where.size(), batchSize, pkColumnTypes);
+            return new TableFetcher(database, sql, preparedStatement, where.size(), batchSize, pkColumnTypes, executionContext);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to execute " + sql, e);
         }
@@ -143,6 +145,9 @@ public class TableFetcher implements AutoCloseable {
         if (!pks.isEmpty()) {
             bind(pks);
         }
+        int rowsLeft = executionContext.getTotalRowCountLimit() - executionContext.getTotalRowCount();
+        if (rowsLeft <= 0) return;
+        preparedStatement.setMaxRows(rowsLeft);
         try (ResultSet resultSet = preparedStatement.executeQuery()) {
             while (resultSet.next()) {
                 if (!consumer.test(resultSet)) {

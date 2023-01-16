@@ -210,7 +210,7 @@ public class PostgresDatabase extends DefaultDatabase {
                                         entry.getValue(),
                                         indexes.computeIfAbsent(tableName, it -> Collections.emptyList()),
                                         primaryKeyMap.get(tableName),
-                                        foreignKeys.computeIfAbsent(tableName, it -> Collections.emptyList()));
+                                        foreignKeys.computeIfAbsent(tableName, it -> new ArrayList<>()));
                             }
                     )
                     .collect(Collectors.toList());

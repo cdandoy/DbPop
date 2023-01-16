@@ -43,9 +43,12 @@ public class TableDownloader implements AutoCloseable {
         return new Builder();
     }
 
-    private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset, TableName tableName, List<TableJoin> tableJoins, List<TableQuery> where, List<String> filteredColumns, boolean forceEmpty, ExecutionMode executionMode, ExecutionContext executionContext) {
+    private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset,
+                                                         TableName tableName, List<TableJoin> tableJoins, List<TableQuery> where,
+                                                         List<String> filteredColumns, boolean forceEmpty,
+                                                         ExecutionMode executionMode, ExecutionContext executionContext) {
         Table table = database.getTable(tableName);
-        TableFetcher tableFetcher = TableFetcher.createTableFetcher(database, table, tableJoins, where, filteredColumns);
+        TableFetcher tableFetcher = TableFetcher.createTableFetcher(database, table, tableJoins, where, filteredColumns, executionContext);
         List<SelectedColumn> selectedColumns = tableFetcher.getSelectedColumns();
         TablePrimaryKeys tablePrimaryKeys = TablePrimaryKeys.createTablePrimaryKeys(datasetsDirectory, dataset, table, selectedColumns);
 
