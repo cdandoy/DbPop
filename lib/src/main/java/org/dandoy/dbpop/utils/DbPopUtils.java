@@ -1,13 +1,16 @@
 package org.dandoy.dbpop.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.database.TableName;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
+@Slf4j
 public class DbPopUtils {
 
     public static CSVParser createCsvParser(File file) throws IOException {
@@ -29,5 +32,18 @@ public class DbPopUtils {
             throw new RuntimeException("Cannot create the directory " + dir);
         }
         return new File(dir, tableName.getTable() + ".csv");
+    }
+
+    public static Integer getCsvRowCount(File file) {
+        try (CSVParser csvParser = createCsvParser(file)) {
+            int rows = 0;
+            for (CSVRecord ignored : csvParser) {
+                rows++;
+            }
+            return rows;
+        } catch (IOException e) {
+            log.error("Failed to read " + file);
+            return null;
+        }
     }
 }

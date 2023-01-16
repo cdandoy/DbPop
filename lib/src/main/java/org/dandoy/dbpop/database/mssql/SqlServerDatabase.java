@@ -625,51 +625,8 @@ public class SqlServerDatabase extends DefaultDatabase {
     }
 
     @Override
-    public Set<TableName> searchTableLike(String like) throws SQLException {
-        Set<TableName> ret = new HashSet<>();
-        List<String> catalogs = getCatalogs();
-        for (String catalog : catalogs) {
-            use(catalog);
-            try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                    SELECT s.name AS "schema", t.name AS "table"
-                    FROM sys.schemas s
-                             JOIN sys.tables t ON t.schema_id = s.schema_id
-                    WHERE ? + '.' + s.name + '.' + t.name LIKE ?
-                    AND t.is_ms_shipped = 0""")) {
-                preparedStatement.setString(1, catalog);
-                preparedStatement.setString(2, like);
-                try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                    while (resultSet.next()) {
-                        String schema = resultSet.getString("schema");
-                        String table = resultSet.getString("table");
-                        ret.add(new TableName(catalog, schema, table));
-                    }
-                }
-            }
-        }
-        return ret;
-    }
-
-    @Override
     public RowCount getRowCount(TableName tableName) {
         return getRowCount("SELECT TOP (%d) 1 FROM %s".formatted(ROW_COUNT_MAX + 1, quote(tableName)));
-    }
-
-    private List<String> getCatalogs() {
-        List<String> ret = new ArrayList<>();
-        try (PreparedStatement databasesStatement = connection.prepareStatement("SELECT name FROM sys.databases")) {
-            try (ResultSet resultSet = databasesStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    String database = resultSet.getString(1);
-                    if (!"msdb".equals(database) && !"tempdb".equals(database)) {
-                        ret.add(database);
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        return ret;
     }
 
     void disableForeignKey(ForeignKey foreignKey) {

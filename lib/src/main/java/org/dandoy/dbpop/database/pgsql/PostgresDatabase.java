@@ -624,30 +624,6 @@ public class PostgresDatabase extends DefaultDatabase {
     }
 
     @Override
-    public Set<TableName> searchTableLike(String like) throws SQLException {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT table_catalog, table_schema, table_name
-                FROM information_schema.tables t
-                WHERE table_type = 'BASE TABLE'
-                  AND is_insertable_into = 'YES'
-                  AND table_schema NOT IN ('pg_catalog', 'information_schema')
-                  AND table_name LIKE ?
-                """)) {
-            preparedStatement.setString(1, like);
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                Set<TableName> ret = new HashSet<>();
-                while (resultSet.next()) {
-                    String catalog = resultSet.getString("table_catalog");
-                    String schema = resultSet.getString("table_schema");
-                    String table = resultSet.getString("table_name");
-                    ret.add(new TableName(catalog, schema, table));
-                }
-                return ret;
-            }
-        }
-    }
-
-    @Override
     public RowCount getRowCount(TableName tableName) {
         return getRowCount("SELECT 1 FROM %s LIMIT (%d)".formatted(quote(tableName), ROW_COUNT_MAX + 1));
     }

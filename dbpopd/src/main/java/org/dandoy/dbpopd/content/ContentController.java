@@ -10,8 +10,8 @@ import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.upload.DataFile;
 import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpopd.ConfigurationService;
-import org.dandoy.dbpopd.DatasetsController;
 import org.dandoy.dbpopd.database.DatabaseService;
+import org.dandoy.dbpopd.datasets.FileCacheService;
 
 import java.util.Collection;
 import java.util.List;
@@ -21,10 +21,12 @@ import java.util.Set;
 public class ContentController {
     private final ConfigurationService configurationService;
     private final DatabaseService databaseService;
+    private final FileCacheService fileCacheService;
 
-    public ContentController(ConfigurationService configurationService, DatabaseService databaseService) {
+    public ContentController(ConfigurationService configurationService, DatabaseService databaseService, FileCacheService fileCacheService) {
         this.configurationService = configurationService;
         this.databaseService = databaseService;
+        this.fileCacheService = fileCacheService;
     }
 
     @Get("/content/")
@@ -57,13 +59,13 @@ public class ContentController {
                 .toList();
     }
 
-    private static RowCount countCsvRows(List<Dataset> datasets, String datasetName, TableName tableName) {
+    private RowCount countCsvRows(List<Dataset> datasets, String datasetName, TableName tableName) {
         int rows = 0;
         for (Dataset dataset : datasets) {
             if (datasetName.equals(dataset.getName())) {
                 for (DataFile dataFile : dataset.getDataFiles()) {
                     if (tableName.equals(dataFile.getTableName())) {
-                        Integer csvRowCount = DatasetsController.getCsvRowCount(dataFile.getFile());
+                        Integer csvRowCount = fileCacheService.getFileInfo(dataFile.getFile()).rowCount();
                         if (csvRowCount != null) {
                             rows += csvRowCount;
                         }

@@ -127,11 +127,6 @@ public class DatabaseProxy extends Database {
     }
 
     @Override
-    protected Set<TableName> searchTableLike(String like) throws SQLException {
-        return delegate.searchTableLike(like);
-    }
-
-    @Override
     public RowCount getRowCount(TableName tableName) {
         long t0 = System.currentTimeMillis();
         try {

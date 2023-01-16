@@ -7,6 +7,7 @@ import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.upload.DataFile;
 import org.dandoy.dbpop.upload.Dataset;
+import org.dandoy.dbpopd.datasets.FileCacheService;
 
 import java.io.File;
 import java.util.Comparator;
@@ -20,9 +21,11 @@ import static org.dandoy.dbpop.datasets.Datasets.DATASET_NAME_COMPARATOR;
 @Slf4j
 public class DatasetsContentController {
     private final ConfigurationService configurationService;
+    private final FileCacheService fileCacheService;
 
-    public DatasetsContentController(ConfigurationService configurationService) {
+    public DatasetsContentController(ConfigurationService configurationService, FileCacheService fileCacheService) {
         this.configurationService = configurationService;
+        this.fileCacheService = fileCacheService;
     }
 
     @Get("/datasets/content")
@@ -35,18 +38,19 @@ public class DatasetsContentController {
             for (DataFile dataFile : dataset.getDataFiles()) {
                 TableName tableName = dataFile.getTableName();
                 File file = dataFile.getFile();
+                FileCacheService.FileInfo fileInfo = fileCacheService.getFileInfo(file);
                 datasetContentTables.computeIfAbsent(tableName, tableName1 -> new HashMap<>())
                         .put(datasetName,
                                 new FileContent(
-                                        file.length(),
-                                        DatasetsController.getCsvRowCount(file)
+                                        fileInfo.length(),
+                                        fileInfo.rowCount()
                                 )
                         );
             }
         }
         return new DatasetContentResponse(
                 datasets.stream()
-                        .map(DatasetsContentController::toDatasetContent)
+                        .map(this::toDatasetContent)
                         .sorted((o1, o2) -> DATASET_NAME_COMPARATOR.compare(o1.name, o2.name))
                         .toList(),
                 datasetContentTables.entrySet()
@@ -59,13 +63,14 @@ public class DatasetsContentController {
         );
     }
 
-    private static DatasetContent toDatasetContent(Dataset dataset) {
+    private DatasetContent toDatasetContent(Dataset dataset) {
         long size = 0;
         int rows = 0;
         for (DataFile dataFile : dataset.getDataFiles()) {
             File file = dataFile.getFile();
-            size += file.length();
-            Integer csvRowCount = DatasetsController.getCsvRowCount(file);
+            FileCacheService.FileInfo fileInfo = fileCacheService.getFileInfo(file);
+            size += fileInfo.length();
+            Integer csvRowCount = fileInfo.rowCount();
             if (csvRowCount != null) {
                 rows += csvRowCount;
             }
