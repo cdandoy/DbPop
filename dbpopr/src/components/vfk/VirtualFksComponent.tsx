@@ -1,8 +1,10 @@
 import React, {useEffect, useState} from "react";
 import axios from "axios";
-import {tableNameToFqName} from "../models/TableName";
+import {tableNameToFqName} from "../../models/TableName";
 import {NavLink} from "react-router-dom";
-import {ForeignKey} from "../models/ForeignKey";
+import {ForeignKey} from "../../models/ForeignKey";
+import PageHeader from "../pageheader/PageHeader";
+import LoadingOverlay from "../utils/LoadingOverlay";
 
 export default function VirtualFksComponent() {
     const [foreignKeys, setForeignKeys] = useState<ForeignKey[]>([]);
@@ -29,21 +31,15 @@ export default function VirtualFksComponent() {
         });
     }
 
-    function getVfkLink(foreignKey: ForeignKey):string {
+    function getVfkLink(foreignKey: ForeignKey): string {
         let tn = foreignKey.pkTableName;
-        return `/vfk/${tn.catalog||''}.${tn.schema||''}.${tn.table}/${foreignKey.name}`
+        return `/vfk/${tn.catalog || ''}.${tn.schema || ''}.${tn.table}/${foreignKey.name}`
     }
-
-    if (loading) return <div className="m-3"><i className="fa fa-fw fa-spinner fa-spin"></i> Loading...</div>;
 
     return (
         <>
-            <div className={"mb-3"}>
-                <NavLink to={"/"}>
-                    <i className={"fa fa-arrow-left"}/>
-                    Back
-                </NavLink>
-            </div>
+            <LoadingOverlay active={loading}/>
+            <PageHeader title={"Virtual Foreign Keys"}/>
 
             <table className={"table table-hover"}>
                 <thead>

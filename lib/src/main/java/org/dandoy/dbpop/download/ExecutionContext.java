@@ -6,12 +6,11 @@ import org.dandoy.dbpop.database.TableName;
 import java.util.HashMap;
 import java.util.Map;
 
+@Getter
 public class ExecutionContext {
     private final int totalRowCountLimit;
     private int totalRowCount;
-    @Getter
     private final Map<TableName, Integer> rowCounts = new HashMap<>();
-    @Getter
     private final Map<TableName, Integer> rowsSkipped = new HashMap<>();
 
     public ExecutionContext() {

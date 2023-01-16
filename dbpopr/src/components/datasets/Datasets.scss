@@ -1,0 +1,17 @@
+#datasets-component {
+  a {
+    text-decoration: none;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  th, td {
+    text-align: center;
+  }
+
+  th:nth-child(1), td:nth-child(1) {
+    text-align: left;
+  }
+}

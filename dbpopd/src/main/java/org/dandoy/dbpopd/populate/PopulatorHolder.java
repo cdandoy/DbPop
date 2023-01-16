@@ -43,8 +43,7 @@ public class PopulatorHolder {
 
     private boolean hasUpdatedFiles() {
         File datasetsDirectory = configurationService.getDatasetsDirectory();
-        File staticDirectory = new File(datasetsDirectory, "static");
-        return lastTimestamp < getTimestamp(staticDirectory);
+        return lastTimestamp < getTimestamp(datasetsDirectory);
     }
 
     private long getTimestamp(File file) {

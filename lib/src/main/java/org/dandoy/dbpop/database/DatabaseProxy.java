@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.database;
 
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.upload.DataFileHeader;
 import org.dandoy.dbpop.upload.Dataset;
 
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@Slf4j
 public class DatabaseProxy extends Database {
     private final Database delegate;
     private final VirtualFkCache virtualFkCache;
@@ -33,6 +35,11 @@ public class DatabaseProxy extends Database {
     @Override
     public Collection<TableName> getTableNames(String catalog, String schema) {
         return delegate.getTableNames(catalog, schema);
+    }
+
+    @Override
+    public Collection<Table> getTables() {
+        return delegate.getTables();
     }
 
     @Override
@@ -120,7 +127,13 @@ public class DatabaseProxy extends Database {
     }
 
     @Override
-    protected Set<TableName> searchTableLike(String like) throws SQLException {
-        return delegate.searchTableLike(like);
+    public RowCount getRowCount(TableName tableName) {
+        long t0 = System.currentTimeMillis();
+        try {
+            return delegate.getRowCount(tableName);
+        } finally {
+            long t1 = System.currentTimeMillis();
+            log.debug("{}: {}ms", tableName.toQualifiedName(), t1 - t0);
+        }
     }
 }

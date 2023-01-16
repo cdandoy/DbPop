@@ -2,16 +2,15 @@ import './App.scss';
 import 'react-bootstrap-typeahead/css/Typeahead.min.css';
 import 'react-bootstrap-typeahead/css/Typeahead.bs5.min.css';
 import React, {useState} from 'react';
-import {HashRouter, Route, Routes} from "react-router-dom";
-import DatasetDetails from "../DatasetDetails";
-import Datasets from "../Datasets"
-import AddData from "../AddData";
-import VirtualFksComponent from "../VirtualFksComponent";
-import EditVirtualFkComponent from "../EditVirtualFkComponent";
+import {HashRouter} from "react-router-dom";
 import {Header} from "./Header";
+import Menu from "./Menu";
+import BottomMenu from "./BottomMenu";
 import {SetupState} from "./SetupState";
 import {useSetupStatusEffect} from "./useSetupStatusEffect";
 import {SetupStatusComponent} from "../SetupStatusComponent";
+import Sidebar from "../sidebar/Sidebar";
+import RoutesComponent from "../RoutesComponent";
 
 export default function App() {
     const [setupState, setSetupState] = useState<SetupState>({activity: "Loading", error: null});
@@ -21,17 +20,10 @@ export default function App() {
     function Content() {
         if (setupState.activity) {
             return <SetupStatusComponent setupState={setupState}/>
-        }else{
+        } else {
             return (
                 <div>
-                    <Routes>
-                        <Route path="/dataset/:dataset" element=<DatasetDetails/>/>
-                        <Route path="/add/:datasetName" element=<AddData/>/>
-                        <Route path="/vfk" element=<VirtualFksComponent/>/>
-                        <Route path="/vfk/add" element=<EditVirtualFkComponent/>/>
-                        <Route path="/vfk/:pkTable/:fkName" element=<EditVirtualFkComponent/>/>
-                        <Route path="/" element=<Datasets/>/>
-                    </Routes>
+                    <RoutesComponent/>
                 </div>
             );
         }
@@ -40,14 +32,12 @@ export default function App() {
     return (
         <>
             <HashRouter>
-                <Header/>
-                <div className="container">
-                    <div className="text-center m-5">
-                        <h1>Welcome to DbPop</h1>
-                        <p className="lead">The easiest way to populate your development database.</p>
+                <Sidebar title1={"DbPop"} title2={`v${process.env.REACT_APP_VERSION}`} menu=<Menu/> bottomMenu=<BottomMenu/> >
+                    <Header/>
+                    <div className="container">
+                        <Content/>
                     </div>
-                    <Content/>
-                </div>
+                </Sidebar>
             </HashRouter>
         </>
     );

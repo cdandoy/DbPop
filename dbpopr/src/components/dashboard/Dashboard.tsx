@@ -1,35 +1,32 @@
 import React, {useEffect, useState} from "react";
-import axios from "axios";
-import {DatasetResponse} from "../models/DatasetResponse";
-import {Configuration} from "../models/Configuration";
+import {Configuration} from "../../models/Configuration";
 import {Dataset} from "./Dataset";
+import {datasetContent, DatasetContentResponse} from "../../api/datasetContent";
+import {siteApi} from "../../api/siteApi";
+import LoadingOverlay from "../utils/LoadingOverlay";
 
-interface SiteResponse {
-    hasSource: boolean;
-    hasTarget: boolean;
-}
-
-export default function Datasets() {
-    const [loading, setLoading] = useState<boolean>(true);
+export default function Dashboard() {
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [configuration, setConfiguration] = useState<Configuration>({hasSource: false, hasTarget: false});
-    const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
+    const [contentResponse, setContentResponse] = useState<DatasetContentResponse | null>(null);
     const [loadingDataset, setLoadingDataset] = useState<string | null>(null);
     const [loadedDataset, setLoadedDataset] = useState<string | null>(null);
     const [loadingResult, setLoadingResult] = useState<string | null>(null);
     const [loadingError, setLoadingError] = useState<string | null>(null);
 
     useEffect(() => {
-        axios.get<SiteResponse>('/site')
+        setLoading(true);
+        siteApi()
             .then(result => {
                 setConfiguration({
                     hasSource: result.data.hasSource,
                     hasTarget: result.data.hasTarget,
                 })
-                axios.get<DatasetResponse[]>("/datasets/content")
+                datasetContent()
                     .then((result) => {
                         setLoading(false);
-                        setDatasets(result.data);
+                        setContentResponse(result.data);
                     })
                     .catch(error => {
                         setLoading(false);
@@ -42,26 +39,27 @@ export default function Datasets() {
             });
     }, []);
 
-    if (loading) return <div className="text-center"><i className="fa fa-spinner fa-spin"/> Loading</div>;
     if (error) return <div className="text-center"><i className="fa fa-error"/> {error}</div>;
-    if (datasets.length === 0) return <div className="text-center">No Datasets</div>;
+    if (!contentResponse) return <></>;
+    if (contentResponse.datasetContents.length === 0) return <div className="text-center">No Datasets</div>;
 
     return (
         <>
+            <LoadingOverlay active={loading}/>
+            <div className="text-center m-5">
+                <div style={{display: "flex", justifyContent: "center"}}>
+                    <h1>Welcome to DbPop </h1>
+                </div>
+                <p className="lead">The easiest way to populate your development database.</p>
+            </div>
             <div className="card datasets">
                 <div className="card-body">
-                    <div className="row">
-                        <div className="col-6 text-start">
-                            <h5 className="card-title">Datasets</h5>
-                        </div>
-                    </div>
                     <div className="datasets p-3">
                         <div className={"row"}>
-                            {datasets.map(dataset => (
-                                <div key={dataset.name} className={"col-4"}>
+                            {contentResponse.datasetContents.map(datasetContent => (
+                                <div key={datasetContent.name} className={"col-4"}>
                                     <Dataset
-                                        dataset={dataset}
-                                        hasDownload={configuration.hasSource}
+                                        datasetContent={datasetContent}
                                         hasUpload={configuration.hasTarget}
                                         loadingDataset={loadingDataset}
                                         loadedDataset={loadedDataset}
@@ -78,5 +76,6 @@ export default function Datasets() {
                     </div>
                 </div>
             </div>
-        </>)
+        </>
+    )
 }

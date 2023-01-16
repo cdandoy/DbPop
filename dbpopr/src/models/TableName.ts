@@ -11,3 +11,7 @@ export function tableNameToFqName(tableName: TableName) {
     ret += tableName.table;
     return ret;
 }
+
+export function tableNameEquals(tableName1: TableName, tableName2: TableName) {
+    return tableName1.table === tableName2.table && tableName1.schema === tableName2.schema && tableName1.catalog === tableName2.catalog;
+}

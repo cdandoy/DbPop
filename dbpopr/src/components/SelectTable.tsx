@@ -2,20 +2,8 @@ import {Option} from "react-bootstrap-typeahead/types/types";
 import React, {useState} from "react";
 import axios from "axios";
 import {AsyncTypeahead} from "react-bootstrap-typeahead";
-import {TableName} from "../models/TableName";
 import {Table} from "../models/Table";
-
-export interface SearchTableResult {
-    displayName: string;
-    tableName: TableName;
-    columns: string[];
-    searches: SearchTableSearchBy[];
-}
-
-interface SearchTableSearchBy {
-    displayName: string;
-    columns: string[];
-}
+import {databaseSearch, SearchTableResult} from "../api/databaseSearch";
 
 export function SelectTable({setTable}: { setTable: (table: Table) => void }) {
     const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +12,7 @@ export function SelectTable({setTable}: { setTable: (table: Table) => void }) {
     const handleSearch = (query: string) => {
         setIsLoading(true);
 
-        axios.get<SearchTableResult[]>('/database/search', {params: {query}})
+        databaseSearch(query)
             .then(result => {
                 setTables(result.data);
                 setIsLoading(false);

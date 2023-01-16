@@ -45,9 +45,10 @@ public class SetupService {
         setupState = new SetupState(activity, null);
     }
 
-    private void setError(String error) {
-        if (error == null) error = "Unknown Error";
-        setupState = new SetupState(setupState.activity(), error);
+    private boolean setError(String format, Object... params) {
+        if (format == null) format = "Unknown Error";
+        setupState = new SetupState(setupState.activity(), format.formatted(params));
+        return false;
     }
 
     private void setError(Exception e) {
@@ -56,6 +57,7 @@ public class SetupService {
 
     private void doit() {
         try {
+            if (!checkDatasetDirectory()) return;
             if (!checkTargetSettings()) return;
             Connection targetConnection = checkTargetConnection();
             if (targetConnection == null) return;
@@ -70,6 +72,20 @@ public class SetupService {
         } catch (RuntimeException e) {
             setError(e.getMessage());
         }
+    }
+
+    private boolean checkDatasetDirectory() {
+        setActivity("Verifying the configuration");
+        File configurationDir = configurationService.getConfigurationDir();
+        String[] paths = {".", "datasets", "datasets/static", "datasets/base"};
+        for (String path : paths) {
+            File dir = new File(configurationDir, path);
+            if (!dir.mkdirs() && !dir.isDirectory()) {
+                return setError("Invalid directory %s", dir);
+            }
+        }
+
+        return true;
     }
 
     private boolean checkPopulate() {

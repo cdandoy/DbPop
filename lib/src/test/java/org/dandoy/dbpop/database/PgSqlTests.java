@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -58,13 +57,5 @@ public class PgSqlTests {
             assertEquals("customers", foreignKey.getPkTableName().getTable());
             assertEquals("invoices", foreignKey.getFkTableName().getTable());
         }
-    }
-
-    @Test
-    void testSearch() {
-        Set<TableName> tableNames = targetDatabase.searchTable("usto");
-        assertEquals(1, tableNames.size());
-        TableName tableName = tableNames.iterator().next();
-        assertEquals(customers, tableName);
     }
 }

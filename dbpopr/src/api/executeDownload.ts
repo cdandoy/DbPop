@@ -10,11 +10,11 @@ export function executeDownload(dataset: string, dependency: Dependency, queryVa
         }
     }
 
-    return axios.post<Dependency, AxiosResponse<DownloadResponse>>(`/download`, {
+    return axios.post<Dependency, AxiosResponse<DownloadResponse>>(`/download/model`, {
         dataset,
         dependency,
         queryValues,
         dryRun: dryRun,
-        maxRows:maxRows
+        maxRows: maxRows
     })
 }

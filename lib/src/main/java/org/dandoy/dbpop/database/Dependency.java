@@ -18,6 +18,7 @@ public final class Dependency {
     private final List<Dependency> subDependencies;
     private final boolean selected;
     private final boolean mandatory;
+    private final List<Query> queries;
 
     @JsonCreator
     public Dependency(
@@ -25,7 +26,8 @@ public final class Dependency {
             @JsonProperty("constraintName") String constraintName,
             @JsonProperty("subDependencies") List<Dependency> subDependencies,
             @JsonProperty("selected") boolean selected,
-            @JsonProperty("mandatory") boolean mandatory
+            @JsonProperty("mandatory") boolean mandatory,
+            @JsonProperty("queries") List<Query> queries
     ) {
         this.displayName = tableName.toQualifiedName();
         this.tableName = tableName;
@@ -33,21 +35,22 @@ public final class Dependency {
         this.subDependencies = subDependencies == null ? emptyList() : subDependencies;
         this.selected = selected;
         this.mandatory = mandatory;
+        this.queries = queries == null ? emptyList() : queries;
     }
 
     public static Dependency root(TableName tableName) {
-        return new Dependency(tableName, null, emptyList(), true, true);
+        return new Dependency(tableName, null, emptyList(), true, true, emptyList());
     }
 
     public static Dependency mutableCopy(Dependency that) {
-        return new Dependency(that.tableName, that.getConstraintName(), new ArrayList<>(), that.selected, that.mandatory);
+        return new Dependency(that.tableName, that.getConstraintName(), new ArrayList<>(), that.selected, that.mandatory, emptyList());
     }
 
     public static Dependency placeHolder(TableName tableName, String constraintName, boolean mandatory) {
-        return new Dependency(tableName, constraintName, emptyList(), mandatory, mandatory);
+        return new Dependency(tableName, constraintName, emptyList(), mandatory, mandatory, emptyList());
     }
 
-    Optional<Dependency> getSubDependencyByConstraint(String constraintName) {
+    public Optional<Dependency> getSubDependencyByConstraint(String constraintName) {
         for (Dependency subDependency : subDependencies) {
             if (constraintName.equals(subDependency.constraintName)) {
                 return Optional.of(subDependency);

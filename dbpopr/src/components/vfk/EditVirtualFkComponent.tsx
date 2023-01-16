@@ -1,10 +1,12 @@
 import React, {useEffect, useState} from "react";
-import {SelectTable} from "./SelectTable";
+import {SelectTable} from "../SelectTable";
 import axios from "axios";
-import {ForeignKey} from "../models/ForeignKey";
+import {ForeignKey} from "../../models/ForeignKey";
 import {NavLink, useNavigate, useParams} from "react-router-dom";
-import {TableName, tableNameToFqName} from "../models/TableName";
-import {Index, Table} from "../models/Table";
+import {TableName, tableNameToFqName} from "../../models/TableName";
+import {Index, Table} from "../../models/Table";
+import PageHeader from "../pageheader/PageHeader";
+import LoadingOverlay from "../utils/LoadingOverlay";
 
 function SelectedColumns({allTableColumns, selectedColumns, setSelectedColumns, matchColumns}: {
     allTableColumns: string[] | null,
@@ -188,13 +190,12 @@ export default function EditVirtualFkComponent() {
         });
     }
 
-    if (loading) return <div className="text-center"><i className="fa fa-spinner fa-spin"/> Loading</div>;
-
     return (
         <>
+            <LoadingOverlay active={loading}/>
+            <PageHeader title={"Virtual Foreign Keys"}/>
             <form onSubmit={event => whenSave(event)}>
                 <div className={"row"}>
-                    <div className={"col-2"}/>
                     <div className={"col-8"}>
                         <label htmlFor="fkName" className="form-label">Name:</label>
                         {editedPkTable == null && (
@@ -213,7 +214,6 @@ export default function EditVirtualFkComponent() {
                     </div>
                 </div>
                 <div className={"row mt-4"}>
-                    <div className={"col-2"}/>
                     <div className={"col-4"}>
                         <div>Primary Key Table:</div>
                         <div>
@@ -263,7 +263,6 @@ export default function EditVirtualFkComponent() {
                     </div>
                 </div>
                 <div className={"row"}>
-                    <div className={"col-2"}/>
                     <div className={"col-8 mt-4"}>
                         {error && <div className="alert alert-danger start"><i className="fa fa-error"/> {error}</div>}
                         <SaveSection saving={saving}/>

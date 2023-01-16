@@ -19,8 +19,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.*;
 import static org.apache.commons.io.FileUtils.readLines;
 import static org.dandoy.dbpop.utils.FileUtils.deleteRecursively;
 import static org.junit.jupiter.api.Assertions.*;
@@ -138,18 +137,21 @@ class DbpopdTest {
                                                 "invoices_customers_fk",
                                                 List.of(),
                                                 true,
-                                                true
+                                                true,
+                                                emptyList()
                                         ),
                                         new Dependency(
                                                 invoiceDetails,
                                                 "invoice_details_invoices_fk",
                                                 List.of(),
                                                 false,
-                                                false
+                                                false,
+                                                emptyList()
                                         )
                                 ),
                                 true,
-                                true
+                                true,
+                                emptyList()
                         )
                 )
                 .setQueryValues(emptyMap())

@@ -8,10 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class ExecutionPlan implements AutoCloseable {
     private final Database database;
@@ -86,11 +83,17 @@ public class ExecutionPlan implements AutoCloseable {
         processed.add(tableName);
         Table table = database.getTable(tableName);
 
+        List<TableJoin> tableJoins = new ArrayList<>();
+        List<TableQuery> wheres = new ArrayList<>();
+        collectJoins(database, tableName, tableExecutionModel, tableJoins, wheres);
+
         TableDownloader tableDownloader = TableDownloader.builder()
                 .setDatabase(database)
                 .setDatasetsDirectory(datasetsDirectory)
                 .setDataset(dataset)
                 .setTableName(table.tableName())
+                .setTableJoins(tableJoins)
+                .setWheres(wheres)
                 .setFilteredColumns(filteredColumns)
                 .setExecutionMode(executionMode)
                 .setExecutionContext(executionContext)
@@ -106,10 +109,52 @@ public class ExecutionPlan implements AutoCloseable {
         return executionNode;
     }
 
+    private static boolean collectJoins(Database database, TableName tableName, TableExecutionModel tableExecutionModel, List<TableJoin> tableJoins, List<TableQuery> where) {
+        Table table = database.getTable(tableName);
+        for (TableExecutionModel subModel : tableExecutionModel.constraints()) {
+            Optional<ForeignKey> optionalForeignKey = table.foreignKeys().stream()
+                    .filter(it -> subModel.constraintName().equals(it.getName()))
+                    .findFirst();
+            if (optionalForeignKey.isPresent()) {
+                ForeignKey foreignKey = optionalForeignKey.get();
+                boolean hasJoins = collectJoins(database, foreignKey.getPkTableName(), subModel, tableJoins, where);
+                if (hasJoins) {
+                    List<TableCondition> onClauses = new ArrayList<>();
+                    List<String> pkColumns = foreignKey.getPkColumns();
+                    List<String> fkColumns = foreignKey.getFkColumns();
+                    for (int i = 0; i < pkColumns.size(); i++) {
+                        onClauses.add(
+                                new TableCondition(
+                                        pkColumns.get(i),
+                                        fkColumns.get(i)
+                                )
+                        );
+                    }
+                    tableJoins.add(
+                            new TableJoin(
+                                    foreignKey.getPkTableName(),
+                                    foreignKey.getFkTableName(),
+                                    onClauses
+
+                            )
+                    );
+                }
+            }
+        }
+
+        if (tableExecutionModel.queries().isEmpty()) return false;
+
+        tableExecutionModel.queries().forEach(query -> {
+            TableQuery tableQuery = new TableQuery(tableName, query.column(), query.value());
+            where.add(tableQuery);
+        });
+        return true;
+    }
+
     private ExecutionNode buildData(TableExecutionModel tableExecutionModel, TableName tableName, List<String> filteredColumns, List<SelectedColumn> pkSelectedColumns) {
         Table table = database.getTable(tableName);
 
-        ExecutionNode executionNode = createExecutionNode(table, filteredColumns, pkSelectedColumns);
+        ExecutionNode executionNode = createExecutionNode(table, tableExecutionModel, filteredColumns, pkSelectedColumns);
         addLookupNodes(tableExecutionModel, executionNode, table);
         addDataNodes(tableExecutionModel, executionNode, table);
         checkConstraintsEmpty(tableExecutionModel, tableName);
@@ -126,7 +171,7 @@ public class ExecutionPlan implements AutoCloseable {
     private ExecutionNode buildLookup(TableExecutionModel tableExecutionModel, TableName tableName, List<String> pkColumns, List<SelectedColumn> fkSelectedColumns) {
         Table table = database.getTable(tableName);
 
-        ExecutionNode executionNode = createExecutionNode(table, pkColumns, fkSelectedColumns);
+        ExecutionNode executionNode = createExecutionNode(table, tableExecutionModel, pkColumns, fkSelectedColumns);
         addLookupNodes(tableExecutionModel, executionNode, table);
         checkConstraintsEmpty(tableExecutionModel, tableName);
         executionContext.tableAdded(tableName);
@@ -174,12 +219,17 @@ public class ExecutionPlan implements AutoCloseable {
      * @param extractSelectedColumns The columns to extract from the parent. For example, invoices.customer_id
      */
     @NotNull
-    private ExecutionNode createExecutionNode(Table table, List<String> filteredColumns, List<SelectedColumn> extractSelectedColumns) {
+    private ExecutionNode createExecutionNode(Table table, TableExecutionModel tableExecutionModel, List<String> filteredColumns, List<SelectedColumn> extractSelectedColumns) {
+        List<TableJoin> tableJoins = new ArrayList<>();
+        List<TableQuery> wheres = new ArrayList<>();
+        collectJoins(database, table.tableName(), tableExecutionModel, tableJoins, wheres);
         TableDownloader tableDownloader = TableDownloader.builder()
                 .setDatabase(database)
                 .setDatasetsDirectory(datasetsDirectory)
                 .setDataset(dataset)
                 .setTableName(table.tableName())
+                .setTableJoins(tableJoins)
+                .setWheres(wheres)
                 .setFilteredColumns(filteredColumns)
                 .setExecutionMode(executionMode)
                 .setExecutionContext(executionContext)

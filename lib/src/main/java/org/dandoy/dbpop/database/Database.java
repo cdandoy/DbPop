@@ -9,10 +9,14 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public abstract class Database implements AutoCloseable {
+
+    public static final int ROW_COUNT_MAX = 1000;
 
     public static DatabaseProxy createDatabase(ConnectionBuilder connectionBuilder) {
         return createDatabase(connectionBuilder, VirtualFkCache.createVirtualFkCache());
@@ -52,6 +56,8 @@ public abstract class Database implements AutoCloseable {
 
     public abstract Collection<TableName> getTableNames(String catalog, String schema);
 
+    public abstract Collection<Table> getTables();
+
     public abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
 
     public abstract Table getTable(TableName tableName);
@@ -78,42 +84,5 @@ public abstract class Database implements AutoCloseable {
 
     public abstract boolean isBinary(ResultSetMetaData metaData, int i) throws SQLException;
 
-    /**
-     * Searches for tables by partial name
-     */
-    public final Set<TableName> searchTable(String query) {
-        String like = queryToLikeWordMatch(query);
-        if (like == null) return Collections.emptySet();
-
-        try {
-            return searchTableLike("%" + like);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static String queryToLikeWordMatch(String query) {
-        String s = Arrays.stream(query.split(" "))
-                .filter(it -> !it.trim().isEmpty())
-                .collect(Collectors.joining("%"));
-        if (s.isEmpty()) return null;
-        return "%" + s + "%";
-    }
-
-    private static String queryToLikeAnyMatch(String query) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < query.length(); i++) {
-            char c = query.charAt(i);
-            if (c != ' ' && c != '%' && c != '.') {
-                sb.append(c).append('%');
-            }
-        }
-
-        String like = sb.toString();
-        if (like.isEmpty()) return null;
-
-        return like;
-    }
-
-    protected abstract Set<TableName> searchTableLike(String like) throws SQLException;
+    public abstract RowCount getRowCount(TableName tableName);
 }
