@@ -4,8 +4,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.dandoy.dbpop.database.Query;
 
-import java.util.Collections;
 import java.util.List;
+
+import static java.util.Collections.emptyList;
 
 public record TableExecutionModel(String constraintName, List<Query> queries, List<TableExecutionModel> constraints) {
     @JsonCreator
@@ -15,8 +16,8 @@ public record TableExecutionModel(String constraintName, List<Query> queries, Li
             @JsonProperty("constraints") List<TableExecutionModel> constraints
     ) {
         this.constraintName = constraintName;
-        this.queries = queries;
-        this.constraints = constraints == null ? Collections.emptyList() : constraints;
+        this.queries = queries == null ? emptyList() : queries;
+        this.constraints = constraints == null ? emptyList() : constraints;
     }
 
     public TableExecutionModel removeTableExecutionModel(String constraintName) {
