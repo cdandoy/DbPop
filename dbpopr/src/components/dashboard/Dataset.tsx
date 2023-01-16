@@ -1,21 +1,11 @@
-import {toHumanReadableSize} from "../../utils/DbPopUtils";
-import {NavLink} from "react-router-dom";
+import {Plural, toHumanReadableSize} from "../../utils/DbPopUtils";
 import React from "react";
 import axios from "axios";
 import {PopulateResult} from "../../models/PopulateResult";
 import {DatasetContent} from "../../api/datasetContent";
 
-function Plural({count, text}: {
-    count: number;
-    text: string;
-}) {
-    if (count === 1) return <>1 {text}</>
-    return <>{count} {text}s</>
-}
-
 export function Dataset({
                             datasetContent,
-                            hasDownload,
                             hasUpload,
                             loadingDataset,
                             loadedDataset,
@@ -27,7 +17,6 @@ export function Dataset({
                             setLoadingError,
                         }: {
     datasetContent: DatasetContent;
-    hasDownload: boolean;
     hasUpload: boolean;
     loadingDataset: string | null,
     loadedDataset: string | null,
@@ -99,9 +88,9 @@ export function Dataset({
         } else {
             return (
                 <div className="mb-2 text-muted">
-                    <Plural count={datasetContent.fileCount} text="table"/>
+                    {Plural(datasetContent.fileCount, 'table')}
                     <>,&nbsp;</>
-                    <Plural count={datasetContent.rows} text="row"/>
+                    {Plural(datasetContent.rows, 'row')}
                     <>,&nbsp;</>
                     {readableSize.text}
                 </div>
@@ -140,13 +129,6 @@ export function Dataset({
                     <div className="col-9">
                         {buttonContent()}
                         <strong className="ms-1" style={{fontSize: "120%"}}>{datasetName}</strong>
-                    </div>
-                    <div className="col-3 text-end">
-                        {hasDownload &&
-                            <NavLink to={`add/${datasetName}`} className="btn btn-xs btn-primary ms-1" title="Add Data">
-                                <i className="fa fa-fw fa-plus"/>
-                            </NavLink>
-                        }
                     </div>
                 </div>
                 <div style={{marginLeft: "32px"}}>

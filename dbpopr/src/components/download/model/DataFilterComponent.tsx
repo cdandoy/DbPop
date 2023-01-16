@@ -2,11 +2,11 @@ import React, {useEffect, useState} from "react"
 import PageHeader from "../../pageheader/PageHeader";
 import {Dependency, Query} from "../../../models/Dependency";
 import {tableNameEquals, tableNameToFqName} from "../../../models/TableName";
-import {executeDownload} from "../../executeDownload";
 import {TableRowCounts} from "../../../models/TableRowCounts";
 import LoadingOverlay from "../../utils/LoadingOverlay";
 import EditDependency from "./EditDependency";
 import {DownloadResponse} from "../../../models/DownloadResponse";
+import {executeDownload} from "../../../api/executeDownload";
 
 interface DependencyAndRowCounts {
     dependency: Dependency;

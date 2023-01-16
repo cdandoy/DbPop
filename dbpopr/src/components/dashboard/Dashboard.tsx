@@ -60,7 +60,6 @@ export default function Dashboard() {
                                 <div key={datasetContent.name} className={"col-4"}>
                                     <Dataset
                                         datasetContent={datasetContent}
-                                        hasDownload={configuration.hasSource}
                                         hasUpload={configuration.hasTarget}
                                         loadingDataset={loadingDataset}
                                         loadedDataset={loadedDataset}
@@ -77,5 +76,6 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
-        </>)
+        </>
+    )
 }
