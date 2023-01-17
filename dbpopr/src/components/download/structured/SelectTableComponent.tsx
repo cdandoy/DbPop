@@ -1,24 +1,19 @@
 import React from "react"
 import PageHeader from "../../pageheader/PageHeader";
-import ModelFilterComponent from "./ModelFilterComponent";
+import StructuredFilterComponent from "./StructuredFilterComponent";
 import {TableInfo} from "../../../api/content";
 import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
 import {Plural} from "../../../utils/DbPopUtils";
 
 export default function SelectTableComponent({
-                                                 schemas,
                                                  tableInfos,
-                                                 schema, setSchema,
                                                  nameFilter, setNameFilter,
                                                  nameRegExp, setNameRegExp,
                                                  dependenciesFilter, setDependenciesFilter,
                                                  tableName, setTableName,
                                                  setPage,
                                              }: {
-    schemas: string[],
     tableInfos: TableInfo[],
-    schema: string,
-    setSchema: ((p: string) => void),
     nameFilter: string,
     setNameFilter: ((p: string) => void),
     nameRegExp: RegExp,
@@ -31,14 +26,13 @@ export default function SelectTableComponent({
 }) {
     function filterTableInfo(tableInfo: TableInfo) {
         if (dependenciesFilter && tableInfo.dependencies.length === 0) return false;
-        if (schema !== tableInfo.tableName.catalog + "." + tableInfo.tableName.schema) return false;
         if (!nameRegExp.test(tableNameToFqName(tableInfo.tableName))) return false;
         return true;
     }
 
     return <>
-        <div id={"select-model-root"}>
-            <PageHeader title={"Model Download"} subtitle={"Select the root table"}/>
+        <div id={"structured-select-root"}>
+            <PageHeader title={"Structured Download"} subtitle={"Select the root table"}/>
             <div className={"mt-3 mb-3 button-bar"}>
                 <div className={"btn-group"}>
                     <button className={"btn btn-primary"}
@@ -51,16 +45,13 @@ export default function SelectTableComponent({
                 </div>
             </div>
             <div className={"mt-3"}>
-                <ModelFilterComponent schemas={schemas}
-                                      schema={schema}
-                                      setSchema={setSchema}
-                                      nameFilter={nameFilter}
-                                      setNameFilter={s => {
+                <StructuredFilterComponent nameFilter={nameFilter}
+                                           setNameFilter={s => {
                                           setNameFilter(s);
                                           setNameRegExp(new RegExp(s));
                                       }}
-                                      dependenciesFilter={dependenciesFilter}
-                                      setDependenciesFilter={setDependenciesFilter}
+                                           dependenciesFilter={dependenciesFilter}
+                                           setDependenciesFilter={setDependenciesFilter}
                 />
                 <div className={"table-container"}>
                     <table className={"table table-hover"}>

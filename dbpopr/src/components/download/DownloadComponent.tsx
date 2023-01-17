@@ -14,11 +14,11 @@ export default function DownloadComponent() {
         <PageHeader title={"Download"} subtitle={"Download table data to CSV files"}/>
         <div>
             <h3>
-                Download a Model
+                Structured Download
             </h3>
             <p>Select multiple tables and the dependencies established based database constraints, and filter the data you want to download.</p>
             <div className={"ms-5"}>
-                <NavLink to={"/download/model"}>
+                <NavLink to={"/download/structured"}>
                     <button className={"btn btn-primary"}>
                         Next
                         &nbsp;

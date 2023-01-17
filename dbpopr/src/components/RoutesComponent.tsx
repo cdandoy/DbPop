@@ -2,7 +2,7 @@ import {Route, Routes} from "react-router-dom";
 import Datasets from "./datasets/Datasets";
 import DownloadComponent from "./download/DownloadComponent";
 import DownloadBulkComponent from "./download/bulk/DownloadBulkComponent";
-import DownloadModelComponent from "./download/model/DownloadModelComponent";
+import StructuredDownloadComponent from "./download/structured/StructuredDownloadComponent";
 import VirtualFksComponent from "./vfk/VirtualFksComponent";
 import EditVirtualFkComponent from "./vfk/EditVirtualFkComponent";
 import Dashboard from "./dashboard/Dashboard";
@@ -14,7 +14,7 @@ export default function RoutesComponent() {
             <Route path="/datasets" element=<Datasets/>/>
             <Route path="/download" element=<DownloadComponent/>/>
             <Route path="/download/bulk" element=<DownloadBulkComponent/>/>
-            <Route path="/download/model" element=<DownloadModelComponent/>/>
+            <Route path="/download/structured" element=<StructuredDownloadComponent/>/>
             <Route path="/vfk" element=<VirtualFksComponent/>/>
             <Route path="/vfk/add" element=<EditVirtualFkComponent/>/>
             <Route path="/vfk/:pkTable/:fkName" element=<EditVirtualFkComponent/>/>

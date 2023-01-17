@@ -1,7 +1,8 @@
-import {Dependency, Query} from "../../../models/Dependency";
+import {Query} from "../../../models/Dependency";
 import React, {useEffect, useState} from "react";
 import tableApi from "../../../api/tableApi";
-import './DownloadModelComponent.scss'
+import './StructuredDownloadComponent.scss'
+import {DependencyQuery} from "./DataFilterComponent";
 
 interface QueryColumn {
     column: string;
@@ -9,15 +10,15 @@ interface QueryColumn {
     value?: string;
 }
 
-export default function EditDependency({dependency, onApply, onCancel}: {
-    dependency: Dependency,
-    onApply: ((queries: Query[]) => void)
-    onCancel: (() => void)
+export default function EditDependency({dependencyQuery, setDependencyQuery, onCancel}: {
+    dependencyQuery: DependencyQuery,
+    setDependencyQuery: ((p: DependencyQuery) => void),
+    onCancel: (() => void),
 }) {
     const [queryColumns, setQueryColumns] = useState<QueryColumn[]>([])
 
     useEffect(() => {
-        tableApi(dependency.tableName)
+        tableApi(dependencyQuery.tableName)
             .then(result => {
                 const table = result.data;
                 const firstIndexedColumns = table.indexes.map(index => index.columns[0]);
@@ -25,12 +26,12 @@ export default function EditDependency({dependency, onApply, onCancel}: {
                     return {
                         column: column.name,
                         indexed: firstIndexedColumns.indexOf(column.name) >= 0,
-                        value: dependency.queries?.find(it => it.column === column.name)?.value,
+                        value: dependencyQuery.queries.find(it => it.column === column.name)?.value,
                     };
                 });
                 setQueryColumns(qcs);
             })
-    }, [dependency]);
+    }, [dependencyQuery]);
 
     function onOk() {
         const queries: Query[] = queryColumns
@@ -41,7 +42,12 @@ export default function EditDependency({dependency, onApply, onCancel}: {
                     value: it.value!,
                 }
             })
-        onApply(queries);
+        const dq: DependencyQuery = {
+            tableName: dependencyQuery.tableName,
+            constraintName: dependencyQuery.constraintName,
+            queries: queries
+        }
+        setDependencyQuery(dq);
     }
 
     return <>
