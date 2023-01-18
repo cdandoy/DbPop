@@ -7,6 +7,7 @@ import VirtualFksComponent from "./vfk/VirtualFksComponent";
 import EditVirtualFkComponent from "./vfk/EditVirtualFkComponent";
 import Dashboard from "./dashboard/Dashboard";
 import React from "react";
+import DownloadTargetComponent from "./download/target/DownloadTargetComponent";
 
 export default function RoutesComponent() {
     return <>
@@ -15,6 +16,7 @@ export default function RoutesComponent() {
             <Route path="/download" element=<DownloadComponent/>/>
             <Route path="/download/bulk" element=<DownloadBulkComponent/>/>
             <Route path="/download/structured" element=<StructuredDownloadComponent/>/>
+            <Route path="/download/target" element=<DownloadTargetComponent/>/>
             <Route path="/vfk" element=<VirtualFksComponent/>/>
             <Route path="/vfk/add" element=<EditVirtualFkComponent/>/>
             <Route path="/vfk/:pkTable/:fkName" element=<EditVirtualFkComponent/>/>

@@ -12,6 +12,7 @@ public final class DownloadResponse {
     private final List<TableRowCount> tableRowCounts;
     private final boolean maxRowsReached;
     private final int rowCount;
+    private final int rowsSkipped;
 
     public DownloadResponse(Map<TableName, Integer> rowCounts, Map<TableName, Integer> rowsSkipped, boolean maxRowsReached) {
         tableRowCounts = rowCounts.entrySet().stream()
@@ -27,7 +28,8 @@ public final class DownloadResponse {
                     );
                 }).toList();
         this.maxRowsReached = maxRowsReached;
-        rowCount = tableRowCounts.stream().map(TableRowCount::getRowCount).reduce(0, Integer::sum);
+        this.rowCount = tableRowCounts.stream().map(TableRowCount::getRowCount).reduce(0, Integer::sum);
+        this.rowsSkipped = tableRowCounts.stream().map(TableRowCount::getRowsSkipped).reduce(0, Integer::sum);
     }
 
     @Getter

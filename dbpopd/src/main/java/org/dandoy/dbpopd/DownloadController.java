@@ -82,6 +82,7 @@ public class DownloadController {
                         .setExecutionMode(ExecutionMode.SAVE)
                         .setExecutionContext(executionContext)
                         .build()) {
+                    executionContext.tableAdded(tableName);
                     tableDownloader.download();
                 }
             }
@@ -108,6 +109,7 @@ public class DownloadController {
                         .setExecutionMode(ExecutionMode.SAVE)
                         .setExecutionContext(executionContext)
                         .build()) {
+                    executionContext.tableAdded(tableName);
                     tableDownloader.download();
                 }
             }

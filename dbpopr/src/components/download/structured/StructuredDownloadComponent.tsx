@@ -10,15 +10,14 @@ import DataFilterComponent, {DependencyQuery} from "./DataFilterComponent";
 import DownloadResultsComponent from "./DownloadResultsComponent";
 import {DownloadResponse} from "../../../models/DownloadResponse";
 import dependenciesApi from "../../../api/dependenciesApi";
-import datasetsApi from "../../../api/datasetsApi";
 import {executeDownload} from "../../../api/executeDownload";
+import useDatasets from "../../utils/useDatasets";
 
 export default function StructuredDownloadComponent() {
     const [downloadResponse, setDownloadResponse] = useState<DownloadResponse | undefined>();
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     const [page, setPage] = useState("baseTable");
     // Loading
-    const [loadingDatasets, setLoadingDatasets] = useState(false);
     const [loadingContent, setLoadingContent] = useState(false);
     const [loadingDependencies, setLoadingDependencies] = useState(false);
     const [loadingDataFilter, setLoadingDataFilter] = useState(false);
@@ -43,7 +42,7 @@ export default function StructuredDownloadComponent() {
     const [autoRefresh, setAutoRefresh] = useState(false);
     const [dirty, setDirty] = useState(true);
     const [dataFilterChangeNumber, setDataFilterChangeNumber] = useState(0);
-    const [datasets, setDatasets] = useState<string[]>([]);
+    const [datasets, loadingDatasets] = useDatasets();
     const [dataset, setDataset] = useState('base');
     const [rowLimit, setRowLimit] = useState(1000);
     const [dependencyQueries, setDependencyQueries] = useState<DependencyQuery[]>([]);
@@ -91,16 +90,6 @@ export default function StructuredDownloadComponent() {
                 });
         }
     }, [selectedDependency]);
-
-    // Loads the list of datasets for DownloadResultsComponent
-    useEffect(() => {
-        setLoadingDatasets(true);
-        datasetsApi()
-            .then(result => {
-                setDatasets(result.data);
-                setLoadingDatasets(false);
-            })
-    }, [])
 
     function applyQueries(dependency: Dependency, dependencyQueries: DependencyQuery[]) {
         for (const dependencyQuery of dependencyQueries) {

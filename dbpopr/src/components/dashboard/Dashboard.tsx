@@ -44,7 +44,7 @@ export default function Dashboard() {
     if (contentResponse.datasetContents.length === 0) return <div className="text-center">No Datasets</div>;
 
     return (
-        <>
+        <div id={"dashboard"}>
             <LoadingOverlay active={loading}/>
             <div className="text-center m-5">
                 <div style={{display: "flex", justifyContent: "center"}}>
@@ -76,6 +76,6 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     )
 }

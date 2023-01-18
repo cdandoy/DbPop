@@ -8,6 +8,7 @@ import {DownloadResponse} from "../../../models/DownloadResponse";
 import PageHeader from "../../pageheader/PageHeader";
 import {FilterComponent} from "./FilterComponent";
 import LoadingOverlay from "../../utils/LoadingOverlay";
+import useDatasets from "../../utils/useDatasets";
 
 export default function SelectTables({
                                          schema, setSchema,
@@ -40,6 +41,7 @@ export default function SelectTables({
     const [tableInfos, setTableInfos] = useState<TableInfo[]>([])
     const [schemas, setSchemas] = useState<string[]>([])
     const [changeNumber, setChangeNumber] = useState(0);
+    const [datasets, loadingDatasets] = useDatasets();
 
     useEffect(() => {
         setLoading(true);
@@ -116,7 +118,7 @@ export default function SelectTables({
 
     function SelectTables() {
         return <>
-            <LoadingOverlay active={loading}/>
+            <LoadingOverlay active={loading || loadingDatasets}/>
             <div id={"select-bulk-tables-component"}>
                 <PageHeader title={"Bulk Download"} subtitle={"Download Individual Tables"}/>
                 <div className={"mt-3"}>
@@ -211,9 +213,10 @@ export default function SelectTables({
                                     <label className={"col-form-label"} htmlFor={"dataset"}>Dataset:</label>
                                 </div>
                                 <div className="col-auto">
-                                    <select id={"dataset"} className="form-select" aria-label="Default select example" defaultValue={dataset} onChange={e => setDataset(e.target.value)}>
-                                        <option value="static">static</option>
-                                        <option value="base">base</option>
+                                    <select id={"dataset"} className="form-select" defaultValue={dataset} onChange={e => setDataset(e.target.value)}>
+                                        {datasets.map(ds => (
+                                            <option key={ds} value={ds}>{ds}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="col-auto">
