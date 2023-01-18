@@ -7,6 +7,7 @@ import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.*;
+import org.dandoy.dbpopd.populate.PopulateService;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -14,9 +15,11 @@ import java.util.stream.Collectors;
 @Controller("/download")
 public class DownloadController {
     private final ConfigurationService configurationService;
+    private final PopulateService populateService;
 
-    public DownloadController(ConfigurationService configurationService) {
+    public DownloadController(ConfigurationService configurationService, PopulateService populateService) {
         this.configurationService = configurationService;
+        this.populateService = populateService;
     }
 
     @Post("/model")
@@ -54,6 +57,9 @@ public class DownloadController {
                     executionMode,
                     downloadRequest.getMaxRows()
             );
+            if (!downloadRequest.isDryRun()) {
+                populateService.populate(List.of(downloadRequest.getDataset()));
+            }
             return new DownloadResponse(
                     executionContext.getRowCounts(),
                     executionContext.getRowsSkipped(),
@@ -79,6 +85,7 @@ public class DownloadController {
                 }
             }
         }
+        populateService.populate(List.of(downloadBulkBody.dataset));
         return new DownloadResponse(
                 executionContext.getRowCounts(),
                 executionContext.getRowsSkipped(),
