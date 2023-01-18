@@ -5,6 +5,7 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Dependency;
+import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.*;
 import org.dandoy.dbpopd.populate.PopulateService;
@@ -93,6 +94,31 @@ public class DownloadController {
         );
     }
 
+    @Post("/target")
+    public DownloadResponse downloadTarget(@Body DownloadTargetBody downloadTargetBody) {
+        ExecutionContext executionContext = new ExecutionContext();
+        try (Database targetDatabase = configurationService.createTargetDatabase()) {
+            for (Table table : targetDatabase.getTables()) {
+                TableName tableName = table.tableName();
+                try (TableDownloader tableDownloader = TableDownloader.builder()
+                        .setDatabase(targetDatabase)
+                        .setDatasetsDirectory(configurationService.getDatasetsDirectory())
+                        .setDataset(downloadTargetBody.dataset())
+                        .setTableName(tableName)
+                        .setExecutionMode(ExecutionMode.SAVE)
+                        .setExecutionContext(executionContext)
+                        .build()) {
+                    tableDownloader.download();
+                }
+            }
+        }
+        return new DownloadResponse(
+                executionContext.getRowCounts(),
+                executionContext.getRowsSkipped(),
+                !executionContext.keepRunning()
+        );
+    }
+
     private TableExecutionModel toTableExecutionModel(Dependency dependency) {
         return new TableExecutionModel(
                 dependency.getConstraintName(),
@@ -105,4 +131,6 @@ public class DownloadController {
     }
 
     record DownloadBulkBody(String dataset, List<TableName> tableNames) {}
+
+    record DownloadTargetBody(String dataset) {}
 }
