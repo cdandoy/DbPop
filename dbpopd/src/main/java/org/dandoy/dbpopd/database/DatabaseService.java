@@ -2,25 +2,25 @@ package org.dandoy.dbpopd.database;
 
 import io.micronaut.context.annotation.Context;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpopd.ConfigurationService;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("DuplicatedCode")
 @Singleton
 @Context
 public class DatabaseService {
     private final ConfigurationService configurationService;
-    private final Object sourceTablesLock = new Object();
-    private final Object targetTablesLock = new Object();
+    private final DatabaseCache sourceDatabase;
+    private final DatabaseCache targetDatabase;
     private final Object sourceRowCountLock = new Object();
     private final Object targetRowCountLock = new Object();
 
-    private Map<TableName, Table> sourceTables = new HashMap<>();
-    private Map<TableName, Table> targetTables = new HashMap<>();
     @Getter
     private Map<TableName, RowCount> sourceRowCounts = new HashMap<>();
     @Getter
@@ -28,6 +28,23 @@ public class DatabaseService {
 
     public DatabaseService(ConfigurationService configurationService) {
         this.configurationService = configurationService;
+
+        if (configurationService.hasSourceConnection()) {
+            VirtualFkCache virtualFkCache = configurationService.getVirtualFkCache();
+            ConnectionBuilder sourceConnectionBuilder = configurationService.getSourceConnectionBuilder();
+            DefaultDatabase defaultDatabase = Database.createDefaultDatabase(sourceConnectionBuilder);
+            sourceDatabase = new DatabaseCache(defaultDatabase, virtualFkCache);
+        } else {
+            sourceDatabase = null;
+        }
+
+        if (configurationService.hasTargetConnection()) {
+            ConnectionBuilder targetConnectionBuilder = configurationService.getTargetConnectionBuilder();
+            DefaultDatabase defaultDatabase = Database.createDefaultDatabase(targetConnectionBuilder);
+            targetDatabase = new DatabaseCache(defaultDatabase, VirtualFkCache.createVirtualFkCache());
+        } else {
+            targetDatabase = null;
+        }
     }
 
     @PostConstruct
@@ -35,35 +52,15 @@ public class DatabaseService {
         new Thread(this::load).start();
     }
 
+    @PreDestroy
+    void preDestroy() {
+        sourceDatabase.close();
+        targetDatabase.close();
+    }
+
     private void load() {
-        loadSourceTables();
-        loadTargetTables();
         loadSourceTableCount();
         loadTargetTableCount();
-    }
-
-    private void loadSourceTables() {
-        if (configurationService.hasSourceConnection()) {
-            synchronized (sourceTablesLock) {
-                try (Database database = configurationService.createSourceDatabase()) {
-                    Map<TableName, Table> tables = new HashMap<>();
-                    database.getTables().forEach(table -> tables.put(table.tableName(), table));
-                    sourceTables = tables;
-                }
-            }
-        }
-    }
-
-    private void loadTargetTables() {
-        if (configurationService.hasTargetConnection()) {
-            synchronized (targetTablesLock) {
-                try (Database database = configurationService.createTargetDatabase()) {
-                    Map<TableName, Table> tables = new HashMap<>();
-                    database.getTables().forEach(table -> tables.put(table.tableName(), table));
-                    targetTables = tables;
-                }
-            }
-        }
     }
 
     private void loadSourceTableCount() {
@@ -71,8 +68,8 @@ public class DatabaseService {
             synchronized (sourceRowCountLock) {
                 try (Database database = configurationService.createSourceDatabase()) {
                     Map<TableName, RowCount> rowCounts = new HashMap<>();
-                    for (Map.Entry<TableName, Table> entry : sourceTables.entrySet()) {
-                        TableName tableName = entry.getKey();
+                    for (Table table : sourceDatabase.getTables()) {
+                        TableName tableName = table.tableName();
                         RowCount rowCount = database.getRowCount(tableName);
                         rowCounts.put(tableName, rowCount);
                     }
@@ -87,8 +84,8 @@ public class DatabaseService {
             synchronized (targetRowCountLock) {
                 try (Database database = configurationService.createTargetDatabase()) {
                     Map<TableName, RowCount> rowCounts = new HashMap<>();
-                    for (Map.Entry<TableName, Table> entry : targetTables.entrySet()) {
-                        TableName tableName = entry.getKey();
+                    for (Table table : database.getTables()) {
+                        TableName tableName = table.tableName();
                         RowCount rowCount = database.getRowCount(tableName);
                         rowCounts.put(tableName, rowCount);
                     }
@@ -99,21 +96,17 @@ public class DatabaseService {
     }
 
     public Set<TableName> getTargetTableNames() {
-        synchronized (targetTablesLock) {
-            return targetTables.keySet();
-        }
+        return targetDatabase.getTables().stream()
+                .map(Table::tableName)
+                .collect(Collectors.toSet());
     }
 
     public Collection<Table> getSourceTables() {
-        synchronized (sourceTablesLock) {
-            return sourceTables.values();
-        }
+        return sourceDatabase.getTables();
     }
 
     public Table getSourceTable(TableName tableName) {
-        synchronized (sourceTablesLock) {
-            return sourceTables.get(tableName);
-        }
+        return sourceDatabase.getTable(tableName);
     }
 
     public RowCount getSourceRowCount(TableName tableName) {
@@ -125,11 +118,6 @@ public class DatabaseService {
     }
 
     public List<ForeignKey> getRelatedSourceForeignKeys(TableName pkTableName) {
-        synchronized (sourceTablesLock) {
-            return sourceTables.values().stream()
-                    .flatMap(it -> it.foreignKeys().stream())
-                    .filter(it -> it.getPkTableName().equals(pkTableName))
-                    .toList();
-        }
+        return sourceDatabase.getRelatedForeignKeys(pkTableName);
     }
 }

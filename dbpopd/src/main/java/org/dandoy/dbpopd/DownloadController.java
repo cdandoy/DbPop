@@ -5,8 +5,10 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Dependency;
+import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.*;
+import org.dandoy.dbpopd.populate.PopulateService;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -14,9 +16,11 @@ import java.util.stream.Collectors;
 @Controller("/download")
 public class DownloadController {
     private final ConfigurationService configurationService;
+    private final PopulateService populateService;
 
-    public DownloadController(ConfigurationService configurationService) {
+    public DownloadController(ConfigurationService configurationService, PopulateService populateService) {
         this.configurationService = configurationService;
+        this.populateService = populateService;
     }
 
     @Post("/model")
@@ -54,6 +58,9 @@ public class DownloadController {
                     executionMode,
                     downloadRequest.getMaxRows()
             );
+            if (!downloadRequest.isDryRun()) {
+                populateService.populate(List.of(downloadRequest.getDataset()));
+            }
             return new DownloadResponse(
                     executionContext.getRowCounts(),
                     executionContext.getRowsSkipped(),
@@ -75,6 +82,34 @@ public class DownloadController {
                         .setExecutionMode(ExecutionMode.SAVE)
                         .setExecutionContext(executionContext)
                         .build()) {
+                    executionContext.tableAdded(tableName);
+                    tableDownloader.download();
+                }
+            }
+        }
+        populateService.populate(List.of(downloadBulkBody.dataset));
+        return new DownloadResponse(
+                executionContext.getRowCounts(),
+                executionContext.getRowsSkipped(),
+                !executionContext.keepRunning()
+        );
+    }
+
+    @Post("/target")
+    public DownloadResponse downloadTarget(@Body DownloadTargetBody downloadTargetBody) {
+        ExecutionContext executionContext = new ExecutionContext();
+        try (Database targetDatabase = configurationService.createTargetDatabase()) {
+            for (Table table : targetDatabase.getTables()) {
+                TableName tableName = table.tableName();
+                try (TableDownloader tableDownloader = TableDownloader.builder()
+                        .setDatabase(targetDatabase)
+                        .setDatasetsDirectory(configurationService.getDatasetsDirectory())
+                        .setDataset(downloadTargetBody.dataset())
+                        .setTableName(tableName)
+                        .setExecutionMode(ExecutionMode.SAVE)
+                        .setExecutionContext(executionContext)
+                        .build()) {
+                    executionContext.tableAdded(tableName);
                     tableDownloader.download();
                 }
             }
@@ -98,4 +133,6 @@ public class DownloadController {
     }
 
     record DownloadBulkBody(String dataset, List<TableName> tableNames) {}
+
+    record DownloadTargetBody(String dataset) {}
 }

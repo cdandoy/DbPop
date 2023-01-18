@@ -182,8 +182,10 @@ public abstract class ColumnType {
         if ("float".equals(typeName)) return typePrecision > 0 ? BIG_DECIMAL : INTEGER;
         if ("numeric".equals(typeName)) return typePrecision > 0 ? BIG_DECIMAL : INTEGER;
         if ("date".equals(typeName)) return DATE;
+        if ("timestamp".equals(typeName)) return TIMESTAMP;
         if ("datetime".equals(typeName)) return TIMESTAMP;
         if ("datetime2".equals(typeName)) return TIMESTAMP;
+        if ("smalldatetime".equals(typeName)) return TIMESTAMP;
         if ("time".equals(typeName)) return TIME;
         if ("binary".equals(typeName)) return BINARY;
         if ("bit".equals(typeName)) return INTEGER;
@@ -196,6 +198,7 @@ public abstract class ColumnType {
         if ("geography".equals(typeName)) return INVALID;
         if ("hierarchyid".equals(typeName)) return INVALID;
         if ("uniqueidentifier".equals(typeName)) return VARCHAR;
+        if ("ntext".equals(typeName)) return VARCHAR;
         throw new RuntimeException("Unexpected type: " + typeName);
     }
 

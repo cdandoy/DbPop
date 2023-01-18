@@ -1,4 +1,8 @@
-#select-model-root {
+.button-bar button, .button-bar a {
+  width: 8rem;
+}
+
+#structured-select-root {
   .dependency-count {
     font-size: 80%;
     opacity: 80%;
@@ -9,15 +13,9 @@
     overflow-y: auto;
   }
 
-  .button-bar button {
-    width: 8rem;
-  }
 }
 
-#select-model-dependencies {
-  .button-bar button {
-    width: 8rem;
-  }
+#structured-select-dependencies {
 }
 
 #data-filter {
@@ -26,8 +24,8 @@
     font-family: monospace;
   }
 
-  .button-bar button {
-    width: 8rem;
+  table.dirty .count {
+    opacity: 50%;
   }
 }
 
@@ -48,9 +46,5 @@
 
   .button-bar {
     margin-top: 3em;
-
-    button {
-      width: 6rem;
-    }
   }
 }

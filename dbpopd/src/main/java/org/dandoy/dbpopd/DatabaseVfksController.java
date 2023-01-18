@@ -21,7 +21,7 @@ public class DatabaseVfksController {
     @Get("/vfks")
     public List<ForeignKey> getVirtualForeignKeys() {
         return configurationService
-                .createVirtualFkCache()
+                .getVirtualFkCache()
                 .getForeignKeys()
                 .stream()
                 .sorted(
@@ -33,7 +33,7 @@ public class DatabaseVfksController {
     @Get("/vfks/{catalog}/{schema}/{table}/{fkName}")
     public ForeignKey getVirtualForeignKey(String catalog, String schema, String table, String fkName) {
         return configurationService
-                .createVirtualFkCache()
+                .getVirtualFkCache()
                 .getByPkTable(
                         new TableName(catalog, schema, table),
                         fkName
@@ -43,14 +43,14 @@ public class DatabaseVfksController {
     @Post("/vfks")
     public void postVirtualForeignKey(ForeignKey foreignKey) {
         configurationService
-                .createVirtualFkCache()
+                .getVirtualFkCache()
                 .addFK(foreignKey);
     }
 
     @Delete("/vfks")
     public void deleteVirtualForeignKey(ForeignKey foreignKey) {
         configurationService
-                .createVirtualFkCache()
+                .getVirtualFkCache()
                 .removeFK(foreignKey);
     }
 }

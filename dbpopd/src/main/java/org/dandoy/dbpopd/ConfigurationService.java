@@ -27,6 +27,8 @@ public class ConfigurationService {
     private final ConnectionBuilder sourceConnectionBuilder;
     @Getter
     private final ConnectionBuilder targetConnectionBuilder;
+    @Getter
+    private final VirtualFkCache virtualFkCache;
 
     @SuppressWarnings("MnInjectionPoints")
     public ConfigurationService(
@@ -38,6 +40,9 @@ public class ConfigurationService {
 
         sourceConnectionBuilder = createConnectionBuilder(properties, "SOURCE_JDBCURL", "SOURCE_USERNAME", "SOURCE_PASSWORD");
         targetConnectionBuilder = createConnectionBuilder(properties, "TARGET_JDBCURL", "TARGET_USERNAME", "TARGET_PASSWORD");
+
+        File vfkFile = new File(configurationDir, "vfk.json");
+        virtualFkCache = VirtualFkCache.createVirtualFkCache(vfkFile);
     }
 
     private static UrlConnectionBuilder createConnectionBuilder(Properties properties, String jdbcurlProperty, String usernameProperty, String passwordProperty) {
@@ -86,13 +91,7 @@ public class ConfigurationService {
     }
 
     public Database createSourceDatabase() {
-        VirtualFkCache virtualFkCache = createVirtualFkCache();
         return Database.createDatabase(sourceConnectionBuilder, virtualFkCache);
-    }
-
-    public VirtualFkCache createVirtualFkCache() {
-        File vfkFile = new File(configurationDir, "vfk.json");
-        return VirtualFkCache.createVirtualFkCache(vfkFile);
     }
 
     public boolean hasTargetConnection() {

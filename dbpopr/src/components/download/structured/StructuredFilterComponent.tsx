@@ -1,14 +1,9 @@
 import React from "react";
 
-export default function ModelFilterComponent({
-                                                 schemas,
-                                                 schema, setSchema,
+export default function StructuredFilterComponent({
                                                  nameFilter, setNameFilter,
                                                  dependenciesFilter, setDependenciesFilter
                                              }: {
-    schemas: string[];
-    schema: string;
-    setSchema: ((s: string) => void)
     nameFilter: string;
     setNameFilter: ((s: string) => void),
     dependenciesFilter: boolean;
@@ -16,12 +11,6 @@ export default function ModelFilterComponent({
 }) {
     return <>
         <div className={"row"}>
-            <div className="col-3">
-                <label htmlFor="filterSchema" className="form-label">Schema:</label>
-                <select className="form-select" defaultValue={schema} onChange={e => setSchema(e.target.value)}>
-                    {schemas.map(schema => <option key={schema} value={schema}>{schema}</option>)}
-                </select>
-            </div>
             <div className="col-3">
                 <label htmlFor="filterTable" className="form-label">Filter:</label>
                 <input type="text"

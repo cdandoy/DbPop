@@ -9,7 +9,7 @@ export default function DownloadResultsComponent({downloadResponse}: {
     downloadResponse: DownloadResponse
 }) {
     return <>
-        <PageHeader title={"Model Download"} subtitle={"Your data has been dowbloaded"}/>
+        <PageHeader title={"Structured Download"} subtitle={"Your data has been dowbloaded"}/>
 
         <div className={"table-container"}>
             <table className={"table table-hover"}>

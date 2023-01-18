@@ -270,7 +270,7 @@ public class TableDownloader implements AutoCloseable {
             if (dataset == null) throw new RuntimeException("dataset not set");
             if (tableName == null) throw new RuntimeException("tableName not set");
 
-            // An CSV file, even empty, will make dbdpop aware of the table.
+            // A CSV file, even empty, will make dbdpop aware of the table.
             // Having an empty CSV file in /static/ or /base/ will make sure the table is deleted
             // However, we do not want to have empty CSV files in other dataset directories
             boolean forceEmpty = dataset.equals(Datasets.STATIC) || dataset.equals(Datasets.BASE);
