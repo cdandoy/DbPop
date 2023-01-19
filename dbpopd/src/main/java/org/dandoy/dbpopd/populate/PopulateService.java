@@ -27,7 +27,7 @@ public class PopulateService {
         DatabaseCache databaseCache = configurationService.getTargetDatabaseCache();
         Populator populator = Populator.createPopulator(databaseCache, configurationService.getDatasetsDirectory());
         boolean staticChanged = hasStaticChanged();
-        populator.setStaticLoaded(staticChanged);
+        populator.setStaticLoaded(!staticChanged);
         int rows = populator.load(dataset);
         long t1 = System.currentTimeMillis();
         return new PopulateResult(rows, t1 - t0);
