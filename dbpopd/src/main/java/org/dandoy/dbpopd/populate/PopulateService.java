@@ -23,11 +23,19 @@ public class PopulateService {
     }
 
     public PopulateResult populate(List<String> dataset) {
+        return populate(dataset, false);
+    }
+
+    public PopulateResult populate(List<String> dataset, boolean forceStatic) {
         long t0 = System.currentTimeMillis();
         DatabaseCache databaseCache = configurationService.getTargetDatabaseCache();
         Populator populator = Populator.createPopulator(databaseCache, configurationService.getDatasetsDirectory());
-        boolean staticChanged = hasStaticChanged();
-        populator.setStaticLoaded(!staticChanged);
+        if (forceStatic) {
+            populator.setStaticLoaded(false);
+        } else {
+            boolean staticChanged = hasStaticChanged();
+            populator.setStaticLoaded(!staticChanged);
+        }
         int rows = populator.load(dataset);
         long t1 = System.currentTimeMillis();
         return new PopulateResult(rows, t1 - t0);
