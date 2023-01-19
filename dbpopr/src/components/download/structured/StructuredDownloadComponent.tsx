@@ -105,7 +105,7 @@ export default function StructuredDownloadComponent() {
     }
 
     useEffect(() => {
-        if (page === 'dataFilter' && selectedDependency) {
+        if (page === 'dataFilter' && selectedDependency && (autoRefresh || dataFilterChangeNumber > 0)) {
             setLoadingDataFilter(true);
             // Take a copy of selectedDependency and copy the queries over it
             const dependency = structuredClone(selectedDependency);
@@ -154,8 +154,9 @@ export default function StructuredDownloadComponent() {
                 dependency={dependency!} setDependency={setSelectedDependency}
                 onBack={() => setPage('baseTable')}
                 onNext={() => {
+                    setDataFilterChangeNumber(0);
                     setPage('dataFilter');
-                    setSelectedDependency(dependency)
+                    setSelectedDependency(dependency);
                 }}
             />
         )}
