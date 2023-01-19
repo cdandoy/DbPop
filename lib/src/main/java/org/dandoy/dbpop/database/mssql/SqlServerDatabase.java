@@ -633,7 +633,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         StopWatch.record("disableForeignKey", () -> executeSql(
                 "ALTER TABLE %s NOCHECK CONSTRAINT %s",
                 quote(foreignKey.getFkTableName()),
-                foreignKey.getName()
+                quote(foreignKey.getName())
         ));
     }
 
@@ -643,7 +643,7 @@ public class SqlServerDatabase extends DefaultDatabase {
                 "ALTER TABLE %s WITH %s CHECK CONSTRAINT %s",
                 quote(foreignKey.getFkTableName()),
                 Settings.CHECK_CONTRAINTS ? "CHECK" : "NOCHECK",
-                foreignKey.getName()
+                quote(foreignKey.getName())
         ));
     }
 
