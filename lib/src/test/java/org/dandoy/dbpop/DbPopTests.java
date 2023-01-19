@@ -37,35 +37,33 @@ public class DbPopTests {
 
     @Test
     void testPopulate() throws SQLException {
-        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql")) {
-            populator.load("invoices");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 4);
-            assertCount(targetConnection, "invoice_details", 7);
-            assertCount(targetConnection, "products", 3);
-        }
+        Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql");
+        populator.load("invoices");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 4);
+        assertCount(targetConnection, "invoice_details", 7);
+        assertCount(targetConnection, "products", 3);
     }
 
     @Test
     void testDbPopMain() throws SQLException {
-        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql")) {
-            populator.load("base");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 0);
-            assertCount(targetConnection, "invoice_details", 0);
-            assertCount(targetConnection, "products", 3);
+        Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql");
+        populator.load("base");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 0);
+        assertCount(targetConnection, "invoice_details", 0);
+        assertCount(targetConnection, "products", 3);
 
-            populator.load("base", "invoices");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 4);
-            assertCount(targetConnection, "invoice_details", 7);
-            assertCount(targetConnection, "products", 3);
+        populator.load("base", "invoices");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 4);
+        assertCount(targetConnection, "invoice_details", 7);
+        assertCount(targetConnection, "products", 3);
 
-            populator.load("base");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 0);
-            assertCount(targetConnection, "invoice_details", 0);
-            assertCount(targetConnection, "products", 3);
-        }
+        populator.load("base");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 0);
+        assertCount(targetConnection, "invoice_details", 0);
+        assertCount(targetConnection, "products", 3);
     }
 }

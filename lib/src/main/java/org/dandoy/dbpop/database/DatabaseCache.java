@@ -2,7 +2,6 @@ package org.dandoy.dbpop.database;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.upload.DataFileHeader;
-import org.dandoy.dbpop.upload.Dataset;
 
 import java.sql.Connection;
 import java.sql.ResultSetMetaData;
@@ -61,7 +60,7 @@ public class DatabaseCache extends Database {
                 .toList();
     }
 
-    private Map<TableName, Table> getCache(){
+    private Map<TableName, Table> getCache() {
         if (cache == null) {
             cache = new HashMap<>();
             Collection<Table> tables = delegate.getTables();
@@ -148,13 +147,18 @@ public class DatabaseCache extends Database {
     }
 
     @Override
+    public void deleteTable(TableName tableName) {
+        delegate.deleteTable(tableName);
+    }
+
+    @Override
     public void deleteTable(Table table) {
         delegate.deleteTable(table);
     }
 
     @Override
-    public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
-        return delegate.createDatabasePreparationStrategy(datasetsByName, tablesByName, datasets);
+    public DatabasePreparationFactory createDatabasePreparationFactory() {
+        return delegate.createDatabasePreparationFactory();
     }
 
     @Override
@@ -170,6 +174,20 @@ public class DatabaseCache extends Database {
         } finally {
             long t1 = System.currentTimeMillis();
             log.debug("{}: {}ms", tableName.toQualifiedName(), t1 - t0);
+        }
+    }
+
+    @Override
+    public void enableForeignKey(ForeignKey foreignKey) {
+        if (!virtualFkCache.getForeignKeys().contains(foreignKey)) {
+            delegate.enableForeignKey(foreignKey);
+        }
+    }
+
+    @Override
+    public void disableForeignKey(ForeignKey foreignKey) {
+        if (!virtualFkCache.getForeignKeys().contains(foreignKey)) {
+            delegate.disableForeignKey(foreignKey);
         }
     }
 }

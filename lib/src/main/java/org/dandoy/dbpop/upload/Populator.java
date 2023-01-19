@@ -1,6 +1,7 @@
 package org.dandoy.dbpop.upload;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -17,13 +18,15 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class Populator implements AutoCloseable {
+public class Populator {
     private final Database database;
     @Getter
     private final Map<String, Dataset> datasetsByName;
     @Getter
     private final Map<TableName, Table> tablesByName;
-    private int staticLoaded;
+    @Getter
+    @Setter
+    private boolean staticLoaded;
 
     protected Populator(Database database, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName) {
         this.database = database;
@@ -75,11 +78,6 @@ public class Populator implements AutoCloseable {
         }
     }
 
-    @Override
-    public void close() {
-        database.close();
-    }
-
     /**
      * Loads the datasets.
      *
@@ -104,13 +102,36 @@ public class Populator implements AutoCloseable {
             try (AutoComitterOff ignored = new AutoComitterOff(database.getConnection())) {
                 int rowCount = 0;
 
-                DatabasePreparationStrategy databasePreparationStrategy = database.createDatabasePreparationStrategy(datasetsByName, tablesByName, adjustedDatasets);
+                Set<TableName> allTables = datasetsByName.values().stream()
+                        .flatMap(it -> it.getDataFiles().stream())
+                        .map(DataFile::getTableName)
+                        .collect(Collectors.toSet());
+                if (!adjustedDatasets.contains(Datasets.STATIC)) {
+                    // exclude the static tables if we don't reload it
+                    Dataset dataset = datasetsByName.get(Datasets.STATIC);
+                    if (dataset != null) {
+                        dataset
+                                .getDataFiles().stream()
+                                .map(DataFile::getTableName)
+                                .forEach(allTables::remove);
+                    }
+                }
+
+                DatabasePreparationStrategy databasePreparationStrategy = database.createDatabasePreparationFactory()
+                        .createDatabasePreparationStrategy(
+                                database,
+                                allTables
+                        );
+
                 databasePreparationStrategy.beforeInserts();
                 try {
                     for (String datasetName : adjustedDatasets) {
                         Dataset dataset = datasetsByName.get(datasetName);
                         if (dataset == null) throw new RuntimeException("Dataset not found: " + datasetName);
                         rowCount += loadDataset(dataset);
+                        if (datasetName.equals(Datasets.STATIC)) {
+                            staticLoaded = true;
+                        }
                     }
                 } finally {
                     databasePreparationStrategy.afterInserts();
@@ -133,7 +154,7 @@ public class Populator implements AutoCloseable {
 
         if (datasetsByName.containsKey(Datasets.STATIC)) {  // No need to adjust if we don't have a static dataset
             ret.remove(Datasets.STATIC);
-            if (staticLoaded++ == 0) {
+            if (!staticLoaded) {
                 ret.add(0, Datasets.STATIC);
             }
         }

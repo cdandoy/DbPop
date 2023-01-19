@@ -4,6 +4,7 @@ import {Dataset} from "./Dataset";
 import {datasetContent, DatasetContentResponse} from "../../api/datasetContent";
 import {siteApi} from "../../api/siteApi";
 import LoadingOverlay from "../utils/LoadingOverlay";
+import './Dashboard.scss'
 
 export default function Dashboard() {
     const [loading, setLoading] = useState(true);
@@ -52,29 +53,25 @@ export default function Dashboard() {
                 </div>
                 <p className="lead">The easiest way to populate your development database.</p>
             </div>
-            <div className="card datasets">
-                <div className="card-body">
-                    <div className="datasets p-3">
-                        <div className={"row"}>
-                            {contentResponse.datasetContents.map(datasetContent => (
-                                <div key={datasetContent.name} className={"col-4"}>
-                                    <Dataset
-                                        datasetContent={datasetContent}
-                                        hasUpload={configuration.hasTarget}
-                                        loadingDataset={loadingDataset}
-                                        loadedDataset={loadedDataset}
-                                        loadingResult={loadingResult}
-                                        loadingError={loadingError}
-                                        setLoadingDataset={setLoadingDataset}
-                                        setLoadedDataset={setLoadedDataset}
-                                        setLoadingResult={setLoadingResult}
-                                        setLoadingError={setLoadingError}
-                                    />
-                                </div>
-                            ))}
+            <div className="datasets p-3">
+                {contentResponse.datasetContents
+                    .filter(it => "static" !== it.name)
+                    .map(datasetContent => (
+                        <div key={datasetContent.name}>
+                            <Dataset
+                                datasetContent={datasetContent}
+                                hasUpload={configuration.hasTarget}
+                                loadingDataset={loadingDataset}
+                                loadedDataset={loadedDataset}
+                                loadingResult={loadingResult}
+                                loadingError={loadingError}
+                                setLoadingDataset={setLoadingDataset}
+                                setLoadedDataset={setLoadedDataset}
+                                setLoadingResult={setLoadingResult}
+                                setLoadingError={setLoadingError}
+                            />
                         </div>
-                    </div>
-                </div>
+                    ))}
             </div>
         </div>
     )

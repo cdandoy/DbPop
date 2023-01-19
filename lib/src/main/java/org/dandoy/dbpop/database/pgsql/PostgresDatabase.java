@@ -4,7 +4,6 @@ import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
-import org.dandoy.dbpop.upload.Dataset;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -619,12 +618,22 @@ public class PostgresDatabase extends DefaultDatabase {
     }
 
     @Override
-    public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
-        return PostgresDatabasePreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
+    public DatabasePreparationFactory createDatabasePreparationFactory() {
+        return DropForeignKeysPreparationStrategy::new;
     }
 
     @Override
     public RowCount getRowCount(TableName tableName) {
         return getRowCount("SELECT 1 FROM %s LIMIT (%d)".formatted(quote(tableName), ROW_COUNT_MAX + 1));
+    }
+
+    @Override
+    public void enableForeignKey(ForeignKey foreignKey) {
+        throw new RuntimeException("Not supported");
+    }
+
+    @Override
+    public void disableForeignKey(ForeignKey foreignKey) {
+        throw new RuntimeException("Not supported");
     }
 }

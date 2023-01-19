@@ -32,7 +32,6 @@ export function Dataset({
     const datasetName = datasetContent.name;
 
     function buttonContent() {
-        if (datasetName === "static") return <div style={{display: "inline", paddingLeft: "23px"}}>&nbsp;</div>;
         if (loadingDataset === null) {
             if (!hasUpload) {
                 return (
@@ -68,7 +67,7 @@ export function Dataset({
         if (loadedDataset === datasetName) {
             if (loadingError) {
                 return (
-                    <div className="mb-2">
+                    <div className="mb-2 alert alert-danger">
                         <pre className="dataset-error">{loadingError}</pre>
                     </div>
                 )
@@ -123,16 +122,18 @@ export function Dataset({
 
     const cardStyle = loadedDataset === datasetName ? {borderColor: "limegreen", borderWidth: "2px"} : {};
     return (
-        <div className="card m-3" style={cardStyle}>
-            <div className="card-body">
-                <div className="row mb-2">
-                    <div className="col-9">
-                        {buttonContent()}
-                        <strong className="ms-1" style={{fontSize: "120%"}}>{datasetName}</strong>
-                    </div>
+        <div className="card ds-card" style={cardStyle}>
+            <div className="ds-body">
+                <div className={"ds-button"}>
+                    {buttonContent()}
                 </div>
-                <div style={{marginLeft: "32px"}}>
-                    {statusContent()}
+                <div className={"ds-content"}>
+                    <div className={"ds-name"}>
+                        <strong>{datasetName}</strong>
+                    </div>
+                    <div className={"ds-info"}>
+                        {statusContent()}
+                    </div>
                 </div>
             </div>
         </div>

@@ -6,7 +6,6 @@ import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.upload.DataFileHeader;
-import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpop.utils.StopWatch;
 
 import java.sql.*;
@@ -620,8 +619,8 @@ public class SqlServerDatabase extends DefaultDatabase {
     }
 
     @Override
-    public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
-        return SqlServerDisablePreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
+    public DatabasePreparationFactory createDatabasePreparationFactory() {
+        return DisableForeignKeysPreparationStrategy::new;
     }
 
     @Override
@@ -629,20 +628,22 @@ public class SqlServerDatabase extends DefaultDatabase {
         return getRowCount("SELECT TOP (%d) 1 FROM %s".formatted(ROW_COUNT_MAX + 1, quote(tableName)));
     }
 
-    void disableForeignKey(ForeignKey foreignKey) {
+    @Override
+    public void disableForeignKey(ForeignKey foreignKey) {
         StopWatch.record("disableForeignKey", () -> executeSql(
                 "ALTER TABLE %s NOCHECK CONSTRAINT %s",
                 quote(foreignKey.getFkTableName()),
-                foreignKey.getName()
+                quote(foreignKey.getName())
         ));
     }
 
-    void enableForeignKey(ForeignKey foreignKey) {
+    @Override
+    public void enableForeignKey(ForeignKey foreignKey) {
         StopWatch.record("enableForeignKey", () -> executeSql(
                 "ALTER TABLE %s WITH %s CHECK CONSTRAINT %s",
                 quote(foreignKey.getFkTableName()),
                 Settings.CHECK_CONTRAINTS ? "CHECK" : "NOCHECK",
-                foreignKey.getName()
+                quote(foreignKey.getName())
         ));
     }
 

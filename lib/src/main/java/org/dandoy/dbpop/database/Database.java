@@ -3,7 +3,6 @@ package org.dandoy.dbpop.database;
 import org.dandoy.dbpop.database.mssql.SqlServerDatabase;
 import org.dandoy.dbpop.database.pgsql.PostgresDatabase;
 import org.dandoy.dbpop.upload.DataFileHeader;
-import org.dandoy.dbpop.upload.Dataset;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -11,7 +10,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public abstract class Database implements AutoCloseable {
@@ -78,11 +76,17 @@ public abstract class Database implements AutoCloseable {
 
     public abstract String quote(String s);
 
+    public abstract void deleteTable(TableName tableName);
+
     public abstract void deleteTable(Table table);
 
-    public abstract DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets);
+    public abstract DatabasePreparationFactory createDatabasePreparationFactory();
 
     public abstract boolean isBinary(ResultSetMetaData metaData, int i) throws SQLException;
 
     public abstract RowCount getRowCount(TableName tableName);
+
+    public abstract void enableForeignKey(ForeignKey foreignKey);
+
+    public abstract void disableForeignKey(ForeignKey foreignKey);
 }
