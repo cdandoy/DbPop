@@ -5,10 +5,7 @@ import io.micronaut.http.HttpStatus;
 import io.micronaut.http.exceptions.HttpStatusException;
 import jakarta.inject.Singleton;
 import lombok.Getter;
-import org.dandoy.dbpop.database.ConnectionBuilder;
-import org.dandoy.dbpop.database.Database;
-import org.dandoy.dbpop.database.UrlConnectionBuilder;
-import org.dandoy.dbpop.database.VirtualFkCache;
+import org.dandoy.dbpop.database.*;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -18,6 +15,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
 
+@SuppressWarnings("unused")
 @Singleton
 public class ConfigurationService {
     private static final String PROP_FILE_NAME = "dbpop.properties";
@@ -27,6 +25,8 @@ public class ConfigurationService {
     private final ConnectionBuilder sourceConnectionBuilder;
     @Getter
     private final ConnectionBuilder targetConnectionBuilder;
+    private DatabaseCache sourceDatabaseCache;
+    private DatabaseCache targetDatabaseCache;
     @Getter
     private final VirtualFkCache virtualFkCache;
 
@@ -104,5 +104,30 @@ public class ConfigurationService {
 
     public Database createTargetDatabase() {
         return Database.createDatabase(targetConnectionBuilder);
+    }
+
+    public synchronized DatabaseCache getSourceDatabaseCache() {
+        if (sourceDatabaseCache == null) {
+            sourceDatabaseCache = new DatabaseCache(
+                    DefaultDatabase.createDatabase(sourceConnectionBuilder),
+                    virtualFkCache
+            );
+        }
+        return sourceDatabaseCache;
+    }
+
+    public synchronized DatabaseCache getTargetDatabaseCache() {
+        if (targetDatabaseCache == null) {
+            targetDatabaseCache = new DatabaseCache(
+                    DefaultDatabase.createDatabase(targetConnectionBuilder),
+                    virtualFkCache
+            ) {
+                @Override
+                public void close() {
+                    throw new RuntimeException("Do not close me!");
+                }
+            };
+        }
+        return targetDatabaseCache;
     }
 }

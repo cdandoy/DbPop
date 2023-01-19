@@ -78,11 +78,19 @@ public abstract class Database implements AutoCloseable {
 
     public abstract String quote(String s);
 
+    public abstract void deleteTable(TableName tableName);
+
     public abstract void deleteTable(Table table);
 
     public abstract DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets);
 
+    public abstract DatabasePreparationFactory createDatabasePreparationFactory();
+
     public abstract boolean isBinary(ResultSetMetaData metaData, int i) throws SQLException;
 
     public abstract RowCount getRowCount(TableName tableName);
+
+    public abstract void enableForeignKey(ForeignKey foreignKey);
+
+    public abstract void disableForeignKey(ForeignKey foreignKey);
 }

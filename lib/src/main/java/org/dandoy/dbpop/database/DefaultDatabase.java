@@ -7,7 +7,10 @@ import org.dandoy.dbpop.utils.StopWatch;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.dandoy.dbpop.database.ColumnType.INVALID;
@@ -177,7 +180,12 @@ public abstract class DefaultDatabase extends Database {
 
     @Override
     public void deleteTable(Table table) {
-        StopWatch.record("DELETE", () -> executeSql("DELETE FROM %s", quote(table.tableName())));
+        deleteTable(table.tableName());
+    }
+
+    @Override
+    public void deleteTable(TableName tableName) {
+        StopWatch.record("DELETE", () -> executeSql("DELETE FROM %s", quote(tableName)));
     }
 
     @Override

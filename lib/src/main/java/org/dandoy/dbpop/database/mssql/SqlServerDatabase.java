@@ -621,7 +621,12 @@ public class SqlServerDatabase extends DefaultDatabase {
 
     @Override
     public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
-        return SqlServerDisablePreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
+        return DisableForeignKeysPreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
+    }
+
+    @Override
+    public DatabasePreparationFactory createDatabasePreparationFactory() {
+        return DisableForeignKeysPreparationStrategy::new;
     }
 
     @Override
@@ -629,7 +634,8 @@ public class SqlServerDatabase extends DefaultDatabase {
         return getRowCount("SELECT TOP (%d) 1 FROM %s".formatted(ROW_COUNT_MAX + 1, quote(tableName)));
     }
 
-    void disableForeignKey(ForeignKey foreignKey) {
+    @Override
+    public void disableForeignKey(ForeignKey foreignKey) {
         StopWatch.record("disableForeignKey", () -> executeSql(
                 "ALTER TABLE %s NOCHECK CONSTRAINT %s",
                 quote(foreignKey.getFkTableName()),
@@ -637,7 +643,8 @@ public class SqlServerDatabase extends DefaultDatabase {
         ));
     }
 
-    void enableForeignKey(ForeignKey foreignKey) {
+    @Override
+    public void enableForeignKey(ForeignKey foreignKey) {
         StopWatch.record("enableForeignKey", () -> executeSql(
                 "ALTER TABLE %s WITH %s CHECK CONSTRAINT %s",
                 quote(foreignKey.getFkTableName()),

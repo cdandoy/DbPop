@@ -57,8 +57,6 @@ class DbpopdTest {
                     "/mssql/create_tables.sql"
             );
         }
-
-        populateService.resetPopulatorHolder();
     }
 
     @Test

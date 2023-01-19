@@ -112,6 +112,11 @@ public class DatabaseProxy extends Database {
     }
 
     @Override
+    public void deleteTable(TableName tableName) {
+        delegate.deleteTable(tableName);
+    }
+
+    @Override
     public void deleteTable(Table table) {
         delegate.deleteTable(table);
     }
@@ -119,6 +124,11 @@ public class DatabaseProxy extends Database {
     @Override
     public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
         return delegate.createDatabasePreparationStrategy(datasetsByName, tablesByName, datasets);
+    }
+
+    @Override
+    public DatabasePreparationFactory createDatabasePreparationFactory() {
+        return delegate.createDatabasePreparationFactory();
     }
 
     @Override
@@ -133,7 +143,17 @@ public class DatabaseProxy extends Database {
             return delegate.getRowCount(tableName);
         } finally {
             long t1 = System.currentTimeMillis();
-            log.debug("{}: {}ms", tableName.toQualifiedName(), t1 - t0);
+            log.debug("RowCount {}: {}ms", tableName.toQualifiedName(), t1 - t0);
         }
+    }
+
+    @Override
+    public void enableForeignKey(ForeignKey foreignKey) {
+        delegate.enableForeignKey(foreignKey);
+    }
+
+    @Override
+    public void disableForeignKey(ForeignKey foreignKey) {
+        delegate.disableForeignKey(foreignKey);
     }
 }

@@ -620,11 +620,26 @@ public class PostgresDatabase extends DefaultDatabase {
 
     @Override
     public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
-        return PostgresDatabasePreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
+        return DropForeignKeysPreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
+    }
+
+    @Override
+    public DatabasePreparationFactory createDatabasePreparationFactory() {
+        return DropForeignKeysPreparationStrategy::new;
     }
 
     @Override
     public RowCount getRowCount(TableName tableName) {
         return getRowCount("SELECT 1 FROM %s LIMIT (%d)".formatted(quote(tableName), ROW_COUNT_MAX + 1));
+    }
+
+    @Override
+    public void enableForeignKey(ForeignKey foreignKey) {
+        throw new RuntimeException("Not supported");
+    }
+
+    @Override
+    public void disableForeignKey(ForeignKey foreignKey) {
+        throw new RuntimeException("Not supported");
     }
 }

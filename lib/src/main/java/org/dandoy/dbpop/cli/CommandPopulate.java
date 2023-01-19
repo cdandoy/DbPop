@@ -43,9 +43,8 @@ public class CommandPopulate implements Callable<Integer> {
             int rowCount;
             UrlConnectionBuilder connectionBuilder = new UrlConnectionBuilder(databaseOptions.dbUrl, databaseOptions.dbUser, databaseOptions.dbPassword);
             try (Database database = Database.createDatabase(connectionBuilder)) {
-                try (Populator populator = Populator.createPopulator(database, new File(directory))) {
-                    rowCount = populator.load(this.datasets);
-                }
+                Populator populator = Populator.createPopulator(database, new File(directory));
+                rowCount = populator.load(this.datasets);
                 long t1 = System.currentTimeMillis();
                 log.info("Loaded {} rows in {}ms", rowCount, t1 - t0);
                 return 0;
