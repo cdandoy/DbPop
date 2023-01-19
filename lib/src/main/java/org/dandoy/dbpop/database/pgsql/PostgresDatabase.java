@@ -4,7 +4,6 @@ import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
-import org.dandoy.dbpop.upload.Dataset;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -616,11 +615,6 @@ public class PostgresDatabase extends DefaultDatabase {
             else return ColumnType.BIG_DECIMAL;
 
         throw new RuntimeException("Unexpected type: " + dataType);
-    }
-
-    @Override
-    public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
-        return DropForeignKeysPreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
     }
 
     @Override

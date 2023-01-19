@@ -2,14 +2,12 @@ package org.dandoy.dbpop.database;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.upload.DataFileHeader;
-import org.dandoy.dbpop.upload.Dataset;
 
 import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Slf4j
@@ -119,11 +117,6 @@ public class DatabaseProxy extends Database {
     @Override
     public void deleteTable(Table table) {
         delegate.deleteTable(table);
-    }
-
-    @Override
-    public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
-        return delegate.createDatabasePreparationStrategy(datasetsByName, tablesByName, datasets);
     }
 
     @Override

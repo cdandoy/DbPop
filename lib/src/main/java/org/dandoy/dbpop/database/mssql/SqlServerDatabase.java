@@ -6,7 +6,6 @@ import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.upload.DataFileHeader;
-import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpop.utils.StopWatch;
 
 import java.sql.*;
@@ -617,11 +616,6 @@ public class SqlServerDatabase extends DefaultDatabase {
     @Override
     protected SqlServerDatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
         return new SqlServerDatabaseInserter(table, dataFileHeaders, sql);
-    }
-
-    @Override
-    public DatabasePreparationStrategy createDatabasePreparationStrategy(Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
-        return DisableForeignKeysPreparationStrategy.createPreparationStrategy(this, datasetsByName, tablesByName, datasets);
     }
 
     @Override

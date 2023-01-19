@@ -1,57 +1,40 @@
 package org.dandoy.dbpop.database;
 
-import org.dandoy.dbpop.upload.Dataset;
+import lombok.extern.slf4j.Slf4j;
+import org.dandoy.dbpop.utils.ElapsedStopWatch;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
- * This strategy disabled the foreign keys
+ * This strategy disabled the foreign keys.
  */
+@Slf4j
 public class DisableForeignKeysPreparationStrategy extends DatabasePreparationStrategy {
     private final Database database;
     private final Collection<TableName> tablesToDelete;
     private final Set<ForeignKey> foreignKeys;
 
-    public DisableForeignKeysPreparationStrategy(Database database, Collection<Table> tablesToDelete, Set<ForeignKey> foreignKeys) {
+    public DisableForeignKeysPreparationStrategy(Database database, List<TableName> tableNames) {
         this.database = database;
-        this.tablesToDelete = tablesToDelete.stream().map(Table::tableName).toList();
-        this.foreignKeys = foreignKeys;
-    }
-
-    public DisableForeignKeysPreparationStrategy(Database database, List<TableName> tablesToDelete) {
-        this.database = database;
-        this.tablesToDelete = tablesToDelete;
-        this.foreignKeys = tablesToDelete.stream()
-                .map(database::getRelatedForeignKeys)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toSet());
-    }
-
-    public static DisableForeignKeysPreparationStrategy createPreparationStrategy(Database sqlServerDatabase, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName, List<String> datasets) {
-        Set<TableName> tableNamesToDelete = getTableNamesToDelete(datasetsByName, tablesByName, datasets);
-
-        Set<ForeignKey> foreignKeys = tableNamesToDelete.stream()
-                .map(sqlServerDatabase::getRelatedForeignKeys)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toSet());
-
-        Collection<Table> tablesToDelete = toTables(tablesByName, tableNamesToDelete);
-
-        return new DisableForeignKeysPreparationStrategy(sqlServerDatabase, tablesToDelete, foreignKeys);
+        this.tablesToDelete = tableNames;
+        this.foreignKeys = getForeignKeysToSuppress(database, tableNames);
     }
 
     @Override
     public void beforeInserts() {
+        ElapsedStopWatch stopWatch = new ElapsedStopWatch();
         foreignKeys.forEach(database::disableForeignKey);
+        log.debug("Disabled {} foreign keys in {}", foreignKeys.size(), stopWatch);
         tablesToDelete.forEach(database::deleteTable);
+        log.debug("Deleted {} tables in {}", tablesToDelete.size(), stopWatch);
     }
 
     @Override
     public void afterInserts() {
+        ElapsedStopWatch stopWatch = new ElapsedStopWatch();
         foreignKeys.forEach(database::enableForeignKey);
+        log.debug("Enabled {} foreign keys in {}", foreignKeys.size(), stopWatch);
     }
 }
