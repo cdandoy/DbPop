@@ -21,6 +21,7 @@ export default function StructuredDownloadComponent() {
     const [loadingContent, setLoadingContent] = useState(false);
     const [loadingDependencies, setLoadingDependencies] = useState(false);
     const [loadingDataFilter, setLoadingDataFilter] = useState(false);
+    const [loadingCsv, setLoadingCsv] = useState(false);
 
     // SelectTableComponent
     const [tableInfos, setTableInfos] = useState<TableInfo[]>([]);
@@ -125,8 +126,25 @@ export default function StructuredDownloadComponent() {
         setDataFilterChangeNumber(dataFilterChangeNumber + 1);
     }
 
+    function onDownload() {
+        // Take a copy of selectedDependency and copy the queries over it
+        if (selectedDependency) {
+            setLoadingCsv(true);
+            const dependency = structuredClone(selectedDependency);
+            applyQueries(dependency, dependencyQueries);
+            executeDownload(dataset, dependency, {}, false, rowLimit)
+                .then(result => {
+                    setDownloadResponse(result.data);
+                    setPage("download-result");
+                })
+                .finally(() => {
+                    setLoadingCsv(false);
+                })
+        }
+    }
+
     return <>
-        <LoadingOverlay active={loadingDatasets || loadingContent || loadingDependencies || loadingDataFilter}/>
+        <LoadingOverlay active={loadingDatasets || loadingContent || loadingDependencies || loadingDataFilter || loadingCsv}/>
         {page === "baseTable" && (
             <SelectTableComponent
                 tableInfos={tableInfos}
@@ -189,7 +207,7 @@ export default function StructuredDownloadComponent() {
                                      }
                                  }}
                                  previewResponse={previewResponse}
-                                 setDownloadResponse={setDownloadResponse}
+                                 onDownload={onDownload}
             />
         )}
 

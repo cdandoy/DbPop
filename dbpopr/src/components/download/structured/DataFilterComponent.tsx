@@ -2,10 +2,8 @@ import React, {useEffect, useState} from "react"
 import PageHeader from "../../pageheader/PageHeader";
 import {Dependency, Query} from "../../../models/Dependency";
 import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
-import LoadingOverlay from "../../utils/LoadingOverlay";
 import EditDependency from "./EditDependency";
 import {DownloadResponse} from "../../../models/DownloadResponse";
-import {executeDownload} from "../../../api/executeDownload";
 
 export interface DependencyQuery {
     tableName: TableName,
@@ -31,7 +29,7 @@ export default function DataFilterComponent({
                                                 dependency,
                                                 dependencyQueries, setDependencyQueries,
                                                 previewResponse,
-                                                setDownloadResponse
+                                                onDownload
                                             }: {
     setPage: ((p: string) => void),
     datasets: string[],
@@ -48,9 +46,8 @@ export default function DataFilterComponent({
     dependencyQueries: DependencyQuery[],
     setDependencyQueries: ((p: DependencyQuery[]) => void),
     previewResponse: DownloadResponse | undefined,
-    setDownloadResponse: ((p: DownloadResponse) => void),
+    onDownload: (() => void),
 }) {
-    const [loading, setLoading] = useState(false);
     const [editDependencyQuery, setEditDependencyQuery] = useState<DependencyQuery | null>(null);
     const [dataFilterRows, setDataFilterRows] = useState<DataFilterRow[]>([]);
 
@@ -110,17 +107,7 @@ export default function DataFilterComponent({
         setDataFilterRows(dataFilterRows);
     }, [dependency, dependencyQueries, previewResponse])
 
-    function onDownload() {
-        setLoading(true);
-        executeDownload(dataset, dependency, {}, false, rowLimit)
-            .then(result => {
-                setDownloadResponse(result.data);
-                setPage("download-result");
-            });
-    }
-
     return <div id={"data-filter"}>
-        <LoadingOverlay active={loading}/>
         <PageHeader title={"Structured Download"} subtitle={"Filter the data"}/>
         {editDependencyQuery == null && <>
             <div className={"mt-3 mb-3 button-bar"}>
