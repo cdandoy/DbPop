@@ -62,7 +62,7 @@ class DbpopdTest {
     @Test
     void testUpload() {
         List<String> dataset = List.of("base", "invoices", "invoice_details");
-        PopulateService.PopulateResult result = populateService.populate(dataset);
+        PopulateService.PopulateResult result = populateService.populate(dataset, true);
         /*
             customers.csv         3
             invoice_details.csv   7
