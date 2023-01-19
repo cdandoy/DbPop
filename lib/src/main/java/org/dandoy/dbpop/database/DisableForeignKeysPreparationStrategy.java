@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.utils.ElapsedStopWatch;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -16,7 +15,7 @@ public class DisableForeignKeysPreparationStrategy extends DatabasePreparationSt
     private final Collection<TableName> tablesToDelete;
     private final Set<ForeignKey> foreignKeys;
 
-    public DisableForeignKeysPreparationStrategy(Database database, List<TableName> tableNames) {
+    public DisableForeignKeysPreparationStrategy(Database database, Set<TableName> tableNames) {
         this.database = database;
         this.tablesToDelete = tableNames;
         this.foreignKeys = getForeignKeysToSuppress(database, tableNames);

@@ -102,15 +102,25 @@ public class Populator {
             try (AutoComitterOff ignored = new AutoComitterOff(database.getConnection())) {
                 int rowCount = 0;
 
+                Set<TableName> allTables = datasetsByName.values().stream()
+                        .flatMap(it -> it.getDataFiles().stream())
+                        .map(DataFile::getTableName)
+                        .collect(Collectors.toSet());
+                if (!adjustedDatasets.contains(Datasets.STATIC)) {
+                    // exclude the static tables if we don't reload it
+                    Dataset dataset = datasetsByName.get(Datasets.STATIC);
+                    if (dataset != null) {
+                        dataset
+                                .getDataFiles().stream()
+                                .map(DataFile::getTableName)
+                                .forEach(allTables::remove);
+                    }
+                }
+
                 DatabasePreparationStrategy databasePreparationStrategy = database.createDatabasePreparationFactory()
                         .createDatabasePreparationStrategy(
                                 database,
-                                adjustedDatasets.stream()
-                                        .map(datasetsByName::get)
-                                        .flatMap(dataset -> dataset.getDataFiles().stream())
-                                        .map(DataFile::getTableName)
-                                        .distinct()
-                                        .toList()
+                                allTables
                         );
 
                 databasePreparationStrategy.beforeInserts();
