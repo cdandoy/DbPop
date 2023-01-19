@@ -1,5 +1,32 @@
-#dashboard{
-  .dataset-error {
-    white-space: pre-wrap;
+#dashboard {
+  .ds-card {
+    margin: 1rem;
+
+    .ds-body {
+      display: flex;
+      padding: 16px;
+
+      .ds-button {
+        flex: auto
+      }
+
+      .ds-content {
+        margin-left: 24px;
+        flex: auto;
+        width: 100%;
+
+        .ds-name {
+          font-size: 120%
+        }
+
+        .ds-info {
+          margin-top: 6px;
+
+          .dataset-error {
+            white-space: pre-wrap;
+          }
+        }
+      }
+    }
   }
 }
