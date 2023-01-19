@@ -1,7 +1,7 @@
 package org.dandoy.dbpop.database;
 
-import java.util.List;
+import java.util.Set;
 
 public interface DatabasePreparationFactory {
-    DatabasePreparationStrategy createDatabasePreparationStrategy(Database database, List<TableName> tableNames);
+    DatabasePreparationStrategy createDatabasePreparationStrategy(Database database, Set<TableName> tableNames);
 }

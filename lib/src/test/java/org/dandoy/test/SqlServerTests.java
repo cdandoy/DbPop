@@ -46,18 +46,16 @@ public class SqlServerTests {
     @Test
     void datasetNotFound() {
         assertThrows(RuntimeException.class, () -> {
-            try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/tests/")) {
-                populator.load("test_1_1");
-            }
+            Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/tests/");
+            populator.load("test_1_1");
         });
     }
 
     @Test
     void tableDoesNotExist() {
         RuntimeException runtimeException = assertThrows(RuntimeException.class, () -> {
-            try (Populator ignored = LocalCredentials.mssqlPopulator("src/test/resources/test_bad_table")) {
-                System.out.println("I should not be here");
-            }
+            Populator ignored = LocalCredentials.mssqlPopulator("src/test/resources/test_bad_table");
+            System.out.println("I should not be here");
         });
         assertTrue(runtimeException.getMessage().contains("master.dbo.bad_table"));
         assertTrue(runtimeException.getMessage().contains("bad_table.csv"));
@@ -65,65 +63,61 @@ public class SqlServerTests {
 
     @Test
     void testExpressions() {
-        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/test_expressions")) {
-            populator.load("base");
-        }
+        Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/test_expressions");
+        populator.load("base");
     }
 
     @Test
     void mainTest() throws SQLException {
-        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql")) {
+        Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql");
 
-            populator.load("base");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 0);
-            assertCount(targetConnection, "invoice_details", 0);
-            assertCount(targetConnection, "products", 3);
+        populator.load("base");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 0);
+        assertCount(targetConnection, "invoice_details", 0);
+        assertCount(targetConnection, "products", 3);
 
-            populator.load("base", "invoices");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 4);
-            assertCount(targetConnection, "invoice_details", 7);
-            assertCount(targetConnection, "products", 3);
+        populator.load("base", "invoices");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 4);
+        assertCount(targetConnection, "invoice_details", 7);
+        assertCount(targetConnection, "products", 3);
 
-            populator.load("base");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 0);
-            assertCount(targetConnection, "invoice_details", 0);
-            assertCount(targetConnection, "products", 3);
-        }
+        populator.load("base");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 0);
+        assertCount(targetConnection, "invoice_details", 0);
+        assertCount(targetConnection, "products", 3);
     }
 
     @Test
     void testStatic() throws SQLException {
         // product is in the static dataset and should only be loaded once per populator.
-        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql")) {
+        Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql");
 
-            populator.load("base");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 0);
-            assertCount(targetConnection, "invoice_details", 0);
-            assertCount(targetConnection, "products", 3);
+        populator.load("base");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 0);
+        assertCount(targetConnection, "invoice_details", 0);
+        assertCount(targetConnection, "products", 3);
 
-            // Insert a product (static dataset) before to load. the populator is not supposed to notice
-            try (PreparedStatement preparedStatement = targetConnection.prepareStatement("INSERT INTO master.dbo.products (part_no, part_desc) VALUES ('XXX', 'XXX')")) {
-                preparedStatement.execute();
-            }
-            populator.load("base");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 0);
-            assertCount(targetConnection, "invoice_details", 0);
-            assertCount(targetConnection, "products", 4);
+        // Insert a product (static dataset) before to load. the populator is not supposed to notice
+        try (PreparedStatement preparedStatement = targetConnection.prepareStatement("INSERT INTO master.dbo.products (part_no, part_desc) VALUES ('XXX', 'XXX')")) {
+            preparedStatement.execute();
         }
+        populator.load("base");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 0);
+        assertCount(targetConnection, "invoice_details", 0);
+        assertCount(targetConnection, "products", 4);
 
         // A new populator will reset products
-        try (Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql")) {
-            populator.load("base");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 0);
-            assertCount(targetConnection, "invoice_details", 0);
-            assertCount(targetConnection, "products", 3);
-        }
+        populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql");
+        populator.load("base");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 0);
+        assertCount(targetConnection, "invoice_details", 0);
+        assertCount(targetConnection, "products", 3);
     }
 
     public static void assertCount(Connection connection, String table, int expected) throws SQLException {
@@ -167,20 +161,19 @@ public class SqlServerTests {
             }
         }
 
-        try (Populator populator = LocalCredentials.mssqlPopulator(dir)) {
+        Populator populator = LocalCredentials.mssqlPopulator(dir);
 
-            // Upload the data
-            populator.load("base");
+        // Upload the data
+        populator.load("base");
 
-            // Verify
-            try (PreparedStatement preparedStatement = targetConnection.prepareStatement("SELECT * FROM master.dbo.test_binary")) {
-                try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                    assertTrue(resultSet.next());
-                    assertEquals(1, resultSet.getInt(1));
-                    assertEquals("HELLO\0WORLD", new String(resultSet.getBytes(2)));
-                    Blob blob = resultSet.getBlob(3);
-                    assertEquals("HELLO\0WORLD", new String(blob.getBytes(1, (int) blob.length())));
-                }
+        // Verify
+        try (PreparedStatement preparedStatement = targetConnection.prepareStatement("SELECT * FROM master.dbo.test_binary")) {
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                assertTrue(resultSet.next());
+                assertEquals(1, resultSet.getInt(1));
+                assertEquals("HELLO\0WORLD", new String(resultSet.getBytes(2)));
+                Blob blob = resultSet.getBlob(3);
+                assertEquals("HELLO\0WORLD", new String(blob.getBytes(1, (int) blob.length())));
             }
         }
     }

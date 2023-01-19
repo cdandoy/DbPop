@@ -3,7 +3,6 @@ package org.dandoy.dbpop.database;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -14,7 +13,7 @@ import java.util.stream.Stream;
 public abstract class DatabasePreparationStrategy {
 
     @NotNull
-    protected static Set<ForeignKey> getForeignKeysToSuppress(Database database, List<TableName> tableNames) {
+    protected static Set<ForeignKey> getForeignKeysToSuppress(Database database, Set<TableName> tableNames) {
         return Stream.concat(
                 tableNames.stream()
                         .map(tableName -> database.getTable(tableName).foreignKeys())

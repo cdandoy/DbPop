@@ -32,26 +32,25 @@ public class PostgresTests {
 
     @Test
     void mainTest() throws SQLException {
-        try (Populator populator = LocalCredentials.pgsqlPopulator("src/test/resources/pgsql")) {
+        Populator populator = LocalCredentials.pgsqlPopulator("src/test/resources/pgsql");
 
-            populator.load("base");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 0);
-            assertCount(targetConnection, "invoice_details", 0);
-            assertCount(targetConnection, "products", 3);
+        populator.load("base");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 0);
+        assertCount(targetConnection, "invoice_details", 0);
+        assertCount(targetConnection, "products", 3);
 
-            populator.load("base", "invoices");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 4);
-            assertCount(targetConnection, "invoice_details", 7);
-            assertCount(targetConnection, "products", 3);
+        populator.load("base", "invoices");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 4);
+        assertCount(targetConnection, "invoice_details", 7);
+        assertCount(targetConnection, "products", 3);
 
-            populator.load("base");
-            assertCount(targetConnection, "customers", 3);
-            assertCount(targetConnection, "invoices", 0);
-            assertCount(targetConnection, "invoice_details", 0);
-            assertCount(targetConnection, "products", 3);
-        }
+        populator.load("base");
+        assertCount(targetConnection, "customers", 3);
+        assertCount(targetConnection, "invoices", 0);
+        assertCount(targetConnection, "invoice_details", 0);
+        assertCount(targetConnection, "products", 3);
     }
 
     public static void assertCount(Connection connection, String table, int expected) throws SQLException {
