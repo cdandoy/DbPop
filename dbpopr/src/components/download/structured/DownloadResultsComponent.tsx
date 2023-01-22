@@ -17,6 +17,7 @@ export default function DownloadResultsComponent({downloadResponse}: {
                 <tr>
                     <th>Table</th>
                     <th className={"text-end"}>Rows</th>
+                    <th className={"text-end"}>Skipped</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -26,6 +27,9 @@ export default function DownloadResultsComponent({downloadResponse}: {
                         <td className={"text-end"}>
                             {tableRowCount.rowCount ? Plural(tableRowCount.rowCount, "row") : '-'}
                         </td>
+                        <td className={"text-end"}>
+                            {tableRowCount.rowsSkipped ? Plural(tableRowCount.rowsSkipped, "row") : '-'}
+                        </td>
                     </tr>
                 ))}
                 </tbody>
@@ -34,6 +38,9 @@ export default function DownloadResultsComponent({downloadResponse}: {
                     <th>Total</th>
                     <th className={"text-end"}>
                         {downloadResponse.rowCount ? Plural(downloadResponse.rowCount, "row") : '-'}
+                    </th>
+                    <th className={"text-end"}>
+                        {downloadResponse.rowsSkipped ? Plural(downloadResponse.rowsSkipped, "row") : '-'}
                     </th>
                 </tr>
                 </tfoot>
