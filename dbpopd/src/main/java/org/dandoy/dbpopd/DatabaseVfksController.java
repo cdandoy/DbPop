@@ -30,6 +30,13 @@ public class DatabaseVfksController {
                 .toList();
     }
 
+    @Get("/vfks/{catalog}/{schema}/{table}/")
+    public ForeignKey getVirtualForeignKeys(String catalog, String schema, String table) {
+        return configurationService
+                .getVirtualFkCache()
+                .getByPkTable(new TableName(catalog, schema, table));
+    }
+
     @Get("/vfks/{catalog}/{schema}/{table}/{fkName}")
     public ForeignKey getVirtualForeignKey(String catalog, String schema, String table, String fkName) {
         return configurationService

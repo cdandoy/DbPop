@@ -65,6 +65,13 @@ public class VirtualFkCache {
                 .toList();
     }
 
+    public ForeignKey getByPkTable(TableName tableName) {
+        return foreignKeys.stream()
+                .filter(it -> tableName.equals(it.getPkTableName()))
+                .findFirst()
+                .orElse(null);
+    }
+
     public ForeignKey getByPkTable(TableName tableName, String fkName) {
         return foreignKeys.stream()
                 .filter(it -> tableName.equals(it.getPkTableName()) && fkName.equals(it.getName()))
