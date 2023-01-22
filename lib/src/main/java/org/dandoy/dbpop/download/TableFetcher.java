@@ -3,6 +3,7 @@ package org.dandoy.dbpop.download;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ColumnType;
 import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.PrimaryKey;
 import org.dandoy.dbpop.database.Table;
 
 import java.sql.*;
@@ -84,6 +85,15 @@ public class TableFetcher implements AutoCloseable {
                     .filter(it -> !it.isEmpty())
                     .map(it -> "(" + it + ")")
                     .collect(Collectors.joining(" AND "));
+        }
+
+        // We want to sort our CSV files as much as possible to make it easier to see the changes
+        PrimaryKey primaryKey = table.primaryKey();
+        if (primaryKey != null) {
+            sql = "%s\nORDER BY %s".formatted(
+                    sql,
+                    String.join(",", primaryKey.columns())
+            );
         }
 
         log.debug(sql);

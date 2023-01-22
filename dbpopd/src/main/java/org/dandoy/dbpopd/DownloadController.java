@@ -5,11 +5,14 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Dependency;
-import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.download.*;
+import org.dandoy.dbpop.upload.DataFile;
+import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpopd.populate.PopulateService;
 
+import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -97,23 +100,36 @@ public class DownloadController {
 
     @Post("/target")
     public DownloadResponse downloadTarget(@Body DownloadTargetBody downloadTargetBody) {
+        File datasetsDirectory = configurationService.getDatasetsDirectory();
+
+        List<String> datasetNames;
+        if (Datasets.STATIC.equals(downloadTargetBody.dataset())) datasetNames = List.of(Datasets.STATIC);
+        else if (Datasets.BASE.equals(downloadTargetBody.dataset())) datasetNames = List.of(Datasets.STATIC, Datasets.BASE);
+        else datasetNames = List.of(Datasets.STATIC, Datasets.BASE, downloadTargetBody.dataset());
+
         ExecutionContext executionContext = new ExecutionContext();
         try (Database targetDatabase = configurationService.createTargetDatabase()) {
-            for (Table table : targetDatabase.getTables()) {
-                TableName tableName = table.tableName();
-                try (TableDownloader tableDownloader = TableDownloader.builder()
-                        .setDatabase(targetDatabase)
-                        .setDatasetsDirectory(configurationService.getDatasetsDirectory())
-                        .setDataset(downloadTargetBody.dataset())
-                        .setTableName(tableName)
-                        .setExecutionMode(ExecutionMode.SAVE)
-                        .setExecutionContext(executionContext)
-                        .build()) {
-                    executionContext.tableAdded(tableName);
-                    tableDownloader.download();
+            for (String datasetName : datasetNames) {
+                Dataset dataset = Datasets.getDataset(configurationService.getDatasetsDirectory(), datasetName);
+                for (DataFile dataFile : dataset.getDataFiles()) {
+                    TableName tableName = dataFile.getTableName();
+                    File file = dataFile.getFile();
+                    if (!file.delete() && file.exists()) throw new RuntimeException("Failed to replace " + file);
+                    try (TableDownloader tableDownloader = TableDownloader.builder()
+                            .setDatabase(targetDatabase)
+                            .setDatasetsDirectory(datasetsDirectory)
+                            .setDataset(datasetName)
+                            .setTableName(tableName)
+                            .setExecutionMode(ExecutionMode.SAVE)
+                            .setExecutionContext(executionContext)
+                            .build()) {
+                        executionContext.tableAdded(tableName);
+                        tableDownloader.download();
+                    }
                 }
             }
         }
+
         return new DownloadResponse(
                 executionContext.getRowCounts(),
                 executionContext.getRowsSkipped(),
