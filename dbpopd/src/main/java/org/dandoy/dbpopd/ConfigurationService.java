@@ -1,6 +1,7 @@
 package org.dandoy.dbpopd;
 
 import io.micronaut.context.annotation.Property;
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.exceptions.HttpStatusException;
 import jakarta.inject.Singleton;
@@ -34,7 +35,7 @@ public class ConfigurationService {
     @SuppressWarnings("MnInjectionPoints")
     public ConfigurationService(
             @Property(name = "dbpopd.configuration.path") String configurationPath,
-            @Property(name = "dbpopd.configuration.datasets") String datasetsDirectory
+            @Property(name = "dbpopd.configuration.datasets") @Nullable String datasetsDirectory
     ) {
         configurationDir = new File(configurationPath);
         File configurationFile = new File(configurationDir, PROP_FILE_NAME);
