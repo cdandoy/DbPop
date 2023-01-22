@@ -9,7 +9,6 @@ import PageHeader from "../../pageheader/PageHeader";
 import {FilterComponent} from "./FilterComponent";
 import LoadingOverlay from "../../utils/LoadingOverlay";
 import useDatasets from "../../utils/useDatasets";
-import {useLocalStorage} from "usehooks-ts";
 
 export default function SelectTables({
                                          schema, setSchema,
@@ -19,7 +18,8 @@ export default function SelectTables({
                                          downloadedFilter, setDownloadedFilter,
                                          dependenciesFilter, setDependenciesFilter,
                                          dataset, setDataset,
-                                         setDownloadResponse
+                                         setDownloadResponse,
+                                         setShowTableNameDependency
                                      }: {
     schema: string,
     setSchema: ((p: string) => void),
@@ -36,12 +36,12 @@ export default function SelectTables({
     dataset: string,
     setDataset: ((p: string) => void),
     setDownloadResponse: ((p: DownloadResponse | null) => void),
+    setShowTableNameDependency: ((p: TableName | undefined) => void),
 }) {
     const [bulkTables, setBulkTables] = useState<TableName[]>([])
     const [loading, setLoading] = useState(false);
     const [tableInfos, setTableInfos] = useState<TableInfo[]>([])
     const [schemas, setSchemas] = useState<string[]>([]);
-    const [lastSchema, setLastSchema] = useLocalStorage("last-schema", "")
     const [changeNumber, setChangeNumber] = useState(0);
     const [datasets, loadingDatasets] = useDatasets();
 
@@ -55,9 +55,7 @@ export default function SelectTables({
                 tableInfos.map(it => it.tableName.catalog + "." + it.tableName.schema).forEach(it => uniqueSchemas.add(it));
                 setSchemas(Array.from(uniqueSchemas));
                 if (tableInfos.length) {
-                    if (uniqueSchemas.has(lastSchema)) {
-                        setSchema(lastSchema);
-                    } else {
+                    if (!uniqueSchemas.has(schema)) {
                         setSchema(uniqueSchemas.values().next().value);
                     }
                 }
@@ -134,10 +132,7 @@ export default function SelectTables({
                 <div className={"mt-3"}>
                     <FilterComponent schemas={schemas}
                                      schema={schema}
-                                     setSchema={s => {
-                                         setSchema(s);
-                                         setLastSchema(s);
-                                     }}
+                                     setSchema={s => setSchema(s)}
                                      nameFilter={nameFilter}
                                      setNameFilter={s => {
                                          setNameFilter(s);
@@ -194,8 +189,9 @@ export default function SelectTables({
                                                     <label className="form-check-label" htmlFor={id}>
                                                         {displayName}
                                                         {tableInfo.dependencies.length > 0 && (
-                                                            <span className={"dependency-count"} title={tableInfo.dependencies.map(it => it.table).join(', ')}>
-                                                            &nbsp;(+{Plural(tableInfo.dependencies.length, "dependency")})
+                                                            <span className={"dependency-count"}
+                                                                  onClick={() => setShowTableNameDependency(tableInfo.tableName)}>
+                                                            &nbsp;(+<span className={"dependency-word"}>{Plural(tableInfo.dependencies.length, "dependency")}</span>)
                                                         </span>
                                                         )}
                                                     </label>
