@@ -9,6 +9,7 @@ import PageHeader from "../../pageheader/PageHeader";
 import {FilterComponent} from "./FilterComponent";
 import LoadingOverlay from "../../utils/LoadingOverlay";
 import useDatasets from "../../utils/useDatasets";
+import {useLocalStorage} from "usehooks-ts";
 
 export default function SelectTables({
                                          schema, setSchema,
@@ -39,7 +40,8 @@ export default function SelectTables({
     const [bulkTables, setBulkTables] = useState<TableName[]>([])
     const [loading, setLoading] = useState(false);
     const [tableInfos, setTableInfos] = useState<TableInfo[]>([])
-    const [schemas, setSchemas] = useState<string[]>([])
+    const [schemas, setSchemas] = useState<string[]>([]);
+    const [lastSchema, setLastSchema] = useLocalStorage("last-schema", "")
     const [changeNumber, setChangeNumber] = useState(0);
     const [datasets, loadingDatasets] = useDatasets();
 
@@ -47,10 +49,18 @@ export default function SelectTables({
         setLoading(true);
         content()
             .then(result => {
-                setTableInfos(result.data);
+                const tableInfos: TableInfo[] = result.data;
+                setTableInfos(tableInfos);
                 const uniqueSchemas = new Set<string>();
-                result.data.map(it => it.tableName.catalog + "." + it.tableName.schema).forEach(it => uniqueSchemas.add(it));
+                tableInfos.map(it => it.tableName.catalog + "." + it.tableName.schema).forEach(it => uniqueSchemas.add(it));
                 setSchemas(Array.from(uniqueSchemas));
+                if (tableInfos.length) {
+                    if (uniqueSchemas.has(lastSchema)) {
+                        setSchema(lastSchema);
+                    } else {
+                        setSchema(uniqueSchemas.values().next().value);
+                    }
+                }
                 setLoading(false);
             })
     }, [changeNumber])
@@ -124,7 +134,10 @@ export default function SelectTables({
                 <div className={"mt-3"}>
                     <FilterComponent schemas={schemas}
                                      schema={schema}
-                                     setSchema={setSchema}
+                                     setSchema={s => {
+                                         setSchema(s);
+                                         setLastSchema(s);
+                                     }}
                                      nameFilter={nameFilter}
                                      setNameFilter={s => {
                                          setNameFilter(s);

@@ -1,9 +1,10 @@
-import React from "react"
+import React, {useState} from "react"
 import PageHeader from "../../pageheader/PageHeader";
 import StructuredFilterComponent from "./StructuredFilterComponent";
 import {TableInfo} from "../../../api/content";
 import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
 import {Plural} from "../../../utils/DbPopUtils";
+import SelectTableDependenciesComponent from "./SelectTableDependenciesComponent";
 
 export default function SelectTableComponent({
                                                  tableInfos,
@@ -24,6 +25,8 @@ export default function SelectTableComponent({
     setTableName: ((p: TableName) => void),
     setPage: ((p: string) => void),
 }) {
+    const [showTableNameDependency, setShowTableNameDependency] = useState<TableName | undefined>();
+
     function filterTableInfo(tableInfo: TableInfo) {
         if (dependenciesFilter && tableInfo.dependencies.length === 0) return false;
         if (!nameRegExp.test(tableNameToFqName(tableInfo.tableName))) return false;
@@ -47,9 +50,9 @@ export default function SelectTableComponent({
             <div className={"mt-3"}>
                 <StructuredFilterComponent nameFilter={nameFilter}
                                            setNameFilter={s => {
-                                          setNameFilter(s);
-                                          setNameRegExp(new RegExp(s));
-                                      }}
+                                               setNameFilter(s);
+                                               setNameRegExp(new RegExp(s));
+                                           }}
                                            dependenciesFilter={dependenciesFilter}
                                            setDependenciesFilter={setDependenciesFilter}
                 />
@@ -80,8 +83,9 @@ export default function SelectTableComponent({
                                                 <label className="form-check-label" htmlFor={id}>
                                                     {displayName}
                                                     {tableInfo.dependencies.length > 0 && (
-                                                        <span className={"dependency-count"} title={tableInfo.dependencies.map(it => it.table).join(', ')}>
-                                                            &nbsp;(+{Plural(tableInfo.dependencies.length, "dependency")})
+                                                        <span className={"dependency-count"}
+                                                              onClick={() => setShowTableNameDependency(tableInfo.tableName)}>
+                                                            &nbsp;(+<span className={"dependency-word"}>{Plural(tableInfo.dependencies.length, "dependency")}</span>)
                                                         </span>
                                                     )}
                                                 </label>
@@ -95,5 +99,7 @@ export default function SelectTableComponent({
                 </div>
             </div>
         </div>
+
+        <SelectTableDependenciesComponent tableName={showTableNameDependency} close={() => setShowTableNameDependency(undefined)}/>
     </>
 }
