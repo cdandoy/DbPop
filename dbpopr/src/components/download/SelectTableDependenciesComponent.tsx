@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Button, Modal} from "react-bootstrap";
 import {TableName, tableNameToFqName} from "../../models/TableName";
 import {ForeignKey} from "../../models/ForeignKey";
-import tableApi from "../../api/tableApi";
+import {getTable} from "../../api/Table";
 
 export default function SelectTableDependenciesComponent({tableName, close}: {
     tableName: TableName | undefined,
@@ -11,7 +11,7 @@ export default function SelectTableDependenciesComponent({tableName, close}: {
     const [foreignKeys, setForeignKeys] = useState<ForeignKey[]>([])
     useEffect(() => {
         if (tableName) {
-            tableApi(tableName)
+            getTable(tableName)
                 .then(result => {
                     setForeignKeys(result.data.foreignKeys);
                 })

@@ -1,8 +1,8 @@
 import {Query} from "../../../models/Dependency";
 import React, {useEffect, useState} from "react";
-import tableApi from "../../../api/tableApi";
 import './StructuredDownloadComponent.scss'
 import {DependencyQuery} from "./DataFilterComponent";
+import {getTable} from "../../../api/Table";
 
 interface QueryColumn {
     column: string;
@@ -18,7 +18,7 @@ export default function EditDependency({dependencyQuery, setDependencyQuery, onC
     const [queryColumns, setQueryColumns] = useState<QueryColumn[]>([])
 
     useEffect(() => {
-        tableApi(dependencyQuery.tableName)
+        getTable(dependencyQuery.tableName)
             .then(result => {
                 const table = result.data;
                 const firstIndexedColumns = table.indexes.map(index => index.columns[0]);
