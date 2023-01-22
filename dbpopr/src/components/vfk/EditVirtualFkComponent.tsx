@@ -10,11 +10,10 @@ import SaveSection from "./SaveSection";
 
 export default function EditVirtualFkComponent() {
     const params = useParams();
-    const editedFkName = params.fkName;
+    const editedFkName = params.fkName!;
     const [loading, setLoading] = useState<boolean>(true)
     const [saving, setSaving] = useState<boolean>(false)
     const [error, setError] = useState<string | null>('')
-    const [name, setName] = useState<string>('');
     // Selected PK table
     const pkTableName = getTableName(params.pkTable!);
     // Selected PK columns
@@ -34,10 +33,6 @@ export default function EditVirtualFkComponent() {
     }
 
     useEffect(() => {
-        if (!(pkTableName && editedFkName)) {
-            setLoading(false);
-            return;
-        }
         // Get the FK info
         getVirtualForeignKey(pkTableName, editedFkName)
             .then((result) => {
@@ -48,7 +43,6 @@ export default function EditVirtualFkComponent() {
                         .then((result) => {
                             const fkTable = result.data;
                             if (fkTable) {
-                                setName(fk.name);
                                 setFkTableName(fkTableName);
                                 setPkTableColumns(fk.pkColumns);
                                 setFkTableColumns(fk.fkColumns);
@@ -64,10 +58,10 @@ export default function EditVirtualFkComponent() {
         event.preventDefault();
         setSaving(true);
         setError(null);
-        saveVirtualForeignKey(name, pkTableName!, pkTableColumns, fkTableName!, fkTableColumns)
+        saveVirtualForeignKey(editedFkName, pkTableName!, pkTableColumns, fkTableName!, fkTableColumns)
             .then(() => navigate("/vfk"))
             .catch(error => {
-                setError(error.message);
+                setError(error.response.data?.detail || error.message);
                 setSaving(false);
             });
     }
@@ -80,7 +74,7 @@ export default function EditVirtualFkComponent() {
                 <div className={"row"}>
                     <div className={"col-8"}>
                         <label htmlFor="fkName" className="form-label">Name:</label>
-                        <span className="form-control">{name}</span>
+                        <span className="form-control">{editedFkName}</span>
                     </div>
                 </div>
                 <div className={"row mt-4"}>

@@ -16,12 +16,13 @@ dependencies {
     annotationProcessor("io.micronaut.openapi:micronaut-openapi")
     implementation("io.micronaut:micronaut-http-client")
     implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("io.micronaut:micronaut-validation")
+    implementation("io.micronaut.problem:micronaut-problem-json")
     implementation("io.swagger.core.v3:swagger-annotations")
     implementation("jakarta.annotation:jakarta.annotation-api")
     compileOnly("org.projectlombok:lombok")
     implementation 'ch.qos.logback:logback-classic:1.4.4'
     implementation('org.slf4j:jcl-over-slf4j:2.0.3')
-    implementation("io.micronaut:micronaut-validation")
     implementation project(":lib")
     implementation 'org.apache.commons:commons-csv:1.9.0'
     testImplementation 'commons-io:commons-io:2.11.0'

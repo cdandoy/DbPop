@@ -79,6 +79,13 @@ public class VirtualFkCache {
                 .orElse(null);
     }
 
+    public ForeignKey getByFkTable(TableName tableName, String fkName) {
+        return foreignKeys.stream()
+                .filter(it -> tableName.equals(it.getFkTableName()) && fkName.equals(it.getName()))
+                .findFirst()
+                .orElse(null);
+    }
+
     public void removeFK(ForeignKey foreignKey) {
         removeFK(foreignKey.getPkTableName(), foreignKey.getName());
         save();

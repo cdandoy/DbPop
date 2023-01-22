@@ -100,7 +100,7 @@ export default function AddVirtualFkComponent() {
         saveVirtualForeignKey(name.length ? name : placeholderName, pkTableName!, pkTableColumns, fkTableName!, fkTableColumns)
             .then(() => navigate("/vfk"))
             .catch(error => {
-                setError(error.message);
+                setError(error.response.data?.detail || error.message);
                 setSaving(false);
             });
     }
