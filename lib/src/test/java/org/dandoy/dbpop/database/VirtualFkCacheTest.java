@@ -6,8 +6,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import static org.dandoy.TestUtils.invoiceDetails;
-import static org.dandoy.TestUtils.invoices;
+import static org.dandoy.DbPopUtils.invoiceDetails;
+import static org.dandoy.DbPopUtils.invoices;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 

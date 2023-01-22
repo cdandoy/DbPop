@@ -1,15 +1,15 @@
 package org.dandoy.dbpop.database;
 
 import org.dandoy.LocalCredentials;
-import org.dandoy.TestUtils;
+import org.dandoy.DbPopUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.util.List;
 
-import static org.dandoy.TestUtils.customers;
-import static org.dandoy.TestUtils.invoices;
+import static org.dandoy.DbPopUtils.customers;
+import static org.dandoy.DbPopUtils.invoices;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 public class MsSqlTests {
     @BeforeEach
     void setUp() {
-        TestUtils.prepareMssqlTarget();
+        DbPopUtils.prepareMssqlTarget();
     }
 
     @Test

@@ -43,3 +43,4 @@ bin/
 /docker/.env
 /files/config/dbpop.properties
 /files/config/vfk.json
+/files/temp/

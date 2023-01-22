@@ -1,0 +1,11 @@
+# Alternate config to run the tests using a copy of the configuration
+micronaut:
+  server:
+    port: 8080
+dbpopd:
+  configuration:
+    path: '../files/config/'
+    datasets: '../files/temp/datasets/'
+  startup:
+    loadDatasets: false
+    parallel: false

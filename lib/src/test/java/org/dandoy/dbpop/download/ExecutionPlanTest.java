@@ -3,9 +3,10 @@ package org.dandoy.dbpop.download;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.dandoy.LocalCredentials;
-import org.dandoy.TestUtils;
+import org.dandoy.DbPopUtils;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.tests.TestUtils;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -16,7 +17,7 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
 
-import static org.dandoy.TestUtils.*;
+import static org.dandoy.DbPopUtils.*;
 
 @EnabledIf("org.dandoy.TestUtils#hasSourceMssql")
 class ExecutionPlanTest {
@@ -28,7 +29,7 @@ class ExecutionPlanTest {
 
     @BeforeAll
     static void beforeAll() {
-        TestUtils.prepareMssqlSource();
+        DbPopUtils.prepareMssqlSource();
         sourceDatabase = Database.createDatabase(LOCAL_CREDENTIALS.sourceConnectionBuilder());
     }
 

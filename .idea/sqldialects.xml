@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/dbpopd/src/test/java/org/dandoy/dbpopd/FullDownloadTest.java" dialect="TSQL" />
     <file url="file://$PROJECT_DIR$/docker/mssql/setup.sql" dialect="TSQL" />
     <file url="file://$PROJECT_DIR$/files/config/setup.sql" dialect="TSQL" />
     <file url="file://$PROJECT_DIR$/lib/src/main/java/org/dandoy/dbpop/database/mssql" dialect="TSQL" />

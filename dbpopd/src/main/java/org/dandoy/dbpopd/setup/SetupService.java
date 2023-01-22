@@ -1,6 +1,7 @@
 package org.dandoy.dbpopd.setup;
 
 import io.micronaut.context.annotation.Context;
+import io.micronaut.context.annotation.Property;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.Getter;
@@ -28,17 +29,33 @@ import java.util.regex.Pattern;
 public class SetupService {
     private final ConfigurationService configurationService;
     private final PopulateService populateService;
+    // When running the tests, we don't want the data to be preloaded
+    private final boolean loadDatasets;
+    // When running the tests, we do not want the setup to run in a background thread
+    private final boolean parallel;
     @Getter
     private SetupState setupState = new SetupState("Loading", null);
 
-    public SetupService(ConfigurationService configurationService, PopulateService populateService) {
+    @SuppressWarnings("MnInjectionPoints")
+    public SetupService(
+            ConfigurationService configurationService,
+            PopulateService populateService,
+            @Property(name = "dbpopd.startup.loadDatasets", defaultValue = "true") boolean loadDatasets,
+            @Property(name = "dbpopd.startup.parallel", defaultValue = "true") boolean parallel
+    ) {
         this.configurationService = configurationService;
         this.populateService = populateService;
+        this.loadDatasets = loadDatasets;
+        this.parallel = parallel;
     }
 
     @PostConstruct
     public void loadSetup() {
-        new Thread(this::doit).start();
+        if (parallel) {
+            new Thread(this::doit).start();
+        } else {
+            doit();
+        }
     }
 
     private void setActivity(String activity) {
@@ -66,7 +83,9 @@ public class SetupService {
             } finally {
                 safeClose(targetConnection);
             }
-            if (!checkPopulate()) return;
+            if (loadDatasets) {
+                if (!checkPopulate()) return;
+            }
             if (!checkSourceConnection()) return;
             setActivity(null);
         } catch (RuntimeException e) {

@@ -1,7 +1,7 @@
 package org.dandoy.dbpop;
 
 import org.dandoy.LocalCredentials;
-import org.dandoy.TestUtils;
+import org.dandoy.DbPopUtils;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,7 +22,7 @@ public class DbPopTests {
     @BeforeAll
     static void beforeAll() throws SQLException {
         targetConnection = LocalCredentials.from("mssql").createTargetConnection();
-        TestUtils.prepareMssqlSource();
+        DbPopUtils.prepareMssqlSource();
     }
 
     @AfterAll
@@ -32,7 +32,7 @@ public class DbPopTests {
 
     @BeforeEach
     void setUp() {
-        TestUtils.prepareMssqlTarget();
+        DbPopUtils.prepareMssqlTarget();
     }
 
     @Test

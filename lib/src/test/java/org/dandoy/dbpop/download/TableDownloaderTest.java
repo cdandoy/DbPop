@@ -1,9 +1,10 @@
 package org.dandoy.dbpop.download;
 
 import org.dandoy.LocalCredentials;
-import org.dandoy.TestUtils;
+import org.dandoy.DbPopUtils;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Table;
+import org.dandoy.dbpop.tests.TestUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,8 +14,8 @@ import java.io.File;
 import java.util.List;
 import java.util.Set;
 
-import static org.dandoy.TestUtils.invoiceDetails;
-import static org.dandoy.TestUtils.invoices;
+import static org.dandoy.DbPopUtils.invoiceDetails;
+import static org.dandoy.DbPopUtils.invoices;
 
 @EnabledIf("org.dandoy.TestUtils#hasMssql")
 class TableDownloaderTest {
@@ -22,12 +23,12 @@ class TableDownloaderTest {
 
     @BeforeAll
     static void beforeAll() {
-        TestUtils.prepareMssqlSource();
+        DbPopUtils.prepareMssqlSource();
     }
 
     @BeforeEach
     void setUp() {
-        TestUtils.prepareMssqlTarget();
+        DbPopUtils.prepareMssqlTarget();
     }
 
     @Test

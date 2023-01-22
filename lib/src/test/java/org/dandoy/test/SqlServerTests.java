@@ -2,11 +2,12 @@ package org.dandoy.test;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.LocalCredentials;
-import org.dandoy.TestUtils;
+import org.dandoy.DbPopUtils;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.TableDownloader;
+import org.dandoy.dbpop.tests.TestUtils;
 import org.dandoy.dbpop.upload.Populator;
 import org.dandoy.dbpop.utils.FileUtils;
 import org.junit.jupiter.api.AfterAll;
@@ -24,7 +25,7 @@ import java.nio.file.Paths;
 import java.sql.*;
 import java.util.List;
 
-import static org.dandoy.TestUtils.customers;
+import static org.dandoy.DbPopUtils.customers;
 import static org.junit.jupiter.api.Assertions.*;
 
 @EnabledIf("org.dandoy.TestUtils#hasMssql")
@@ -35,7 +36,7 @@ public class SqlServerTests {
     @BeforeEach
     void setUp() throws SQLException {
         targetConnection = LocalCredentials.from("mssql").createTargetConnection();
-        TestUtils.prepareMssqlTarget();
+        DbPopUtils.prepareMssqlTarget();
     }
 
     @AfterAll
@@ -145,7 +146,7 @@ public class SqlServerTests {
 
     @Test
     void testBinary() throws SQLException {
-        TestUtils.prepareMssqlSource();
+        DbPopUtils.prepareMssqlSource();
         File dir = createGeneratedTestDirectory();
         TestUtils.delete(dir);
         try (Database sourceDatabase = Database.createDatabase(LocalCredentials.from("mssql").sourceConnectionBuilder())) {
@@ -180,7 +181,7 @@ public class SqlServerTests {
 
     @Test
     void testAppend() throws SQLException, IOException {
-        TestUtils.prepareMssqlSource();
+        DbPopUtils.prepareMssqlSource();
         File dir = createGeneratedTestDirectory();
         File customerCsv = new File(dir, "base/master/dbo/customers.csv");
         TestUtils.delete(dir);

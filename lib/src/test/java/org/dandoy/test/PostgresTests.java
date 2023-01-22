@@ -1,7 +1,7 @@
 package org.dandoy.test;
 
 import org.dandoy.LocalCredentials;
-import org.dandoy.TestUtils;
+import org.dandoy.DbPopUtils;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,7 +22,7 @@ public class PostgresTests {
     @BeforeAll
     public static void prepare() throws SQLException {
         targetConnection = LocalCredentials.from("mssql").createTargetConnection();
-        TestUtils.preparePgsqlTarget();
+        DbPopUtils.preparePgsqlTarget();
     }
 
     @AfterAll
