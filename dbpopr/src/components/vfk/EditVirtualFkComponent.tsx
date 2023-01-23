@@ -9,6 +9,7 @@ import {getTable} from "../../api/Table";
 import SaveSection from "./SaveSection";
 import {Table} from "../../models/Table";
 import {ForeignKey} from "../../models/ForeignKey";
+import ListColumns from "./ListColumns";
 
 export default function EditVirtualFkComponent() {
     const params = useParams();
@@ -77,21 +78,17 @@ export default function EditVirtualFkComponent() {
                         <div>
                             <span className="form-control">{foreignKey ? tableNameToFqName(foreignKey.pkTableName) : ''}</span>
                         </div>
-                        {foreignKey && foreignKey.pkColumns.map(column => (
-                            <div key={column} className={"ms-4 mt-2"}>
-                                <span className={"form-control"}>{column}</span>
-                            </div>
-                        ))}
+                        {foreignKey && <ListColumns columns={foreignKey.pkColumns}/>}
                     </div>
                     <div className={"col-4"}>
                         <div>Foreign Key Table:</div>
                         <div>
                             <span className="form-control">{foreignKey ? tableNameToFqName(foreignKey.fkTableName) : ''}</span>
                         </div>
-                        {foreignKey && fkTable && <SelectedColumns allTableColumns={fkTable.columns}
-                                                                   selectedColumns={fkTableColumns}
-                                                                   setSelectedColumns={setFkTableColumns}
-                                                                   matchColumns={foreignKey.pkColumns}/>
+                        {fkTable && <SelectedColumns allTableColumns={fkTable.columns}
+                                                     selectedColumns={fkTableColumns}
+                                                     setSelectedColumns={setFkTableColumns}
+                                                     matchColumns={foreignKey?.pkColumns}/>
                         }
 
                     </div>
