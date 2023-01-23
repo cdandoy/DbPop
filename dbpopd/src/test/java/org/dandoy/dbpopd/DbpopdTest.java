@@ -174,7 +174,7 @@ class DbpopdTest {
                             invoices,
                             List.of("invoice_id"),
                             invoiceDetails,
-                            List.of("invoice_id")
+                            List.of("product_id")
                     )
             );
             List<ForeignKey> vfks = databaseVfksController.getVirtualForeignKeys();
