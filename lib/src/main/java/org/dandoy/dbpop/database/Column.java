@@ -18,6 +18,12 @@ public class Column {
         this.autoIncrement = autoIncrement;
     }
 
+    @SuppressWarnings("unused")
+    public Integer getSqlType() {
+        if (columnType == ColumnType.INVALID) return null;
+        return columnType.toSqlType();
+    }
+
     @Override
     public String toString() {
         return autoIncrement ? name + " (identity)" : name;

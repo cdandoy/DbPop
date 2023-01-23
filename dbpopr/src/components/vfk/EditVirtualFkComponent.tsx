@@ -1,69 +1,63 @@
 import React, {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
-import {TableName, tableNameToFqName} from "../../models/TableName";
+import {tableNameToFqName} from "../../models/TableName";
 import PageHeader from "../pageheader/PageHeader";
 import LoadingOverlay from "../utils/LoadingOverlay";
 import SelectedColumns from "./SelectedColumns";
 import {getVirtualForeignKey, saveVirtualForeignKey} from "../../api/VirtualForeignKey";
 import {getTable} from "../../api/Table";
 import SaveSection from "./SaveSection";
+import {Table} from "../../models/Table";
+import {ForeignKey} from "../../models/ForeignKey";
 
 export default function EditVirtualFkComponent() {
     const params = useParams();
-    const editedFkName = params.fkName!;
+    const paramPkTable = params.pkTable!;
+    const paramFkName = params.fkName!;
     const [loading, setLoading] = useState<boolean>(true)
     const [saving, setSaving] = useState<boolean>(false)
     const [error, setError] = useState<string | null>('')
-    // Selected PK table
-    const pkTableName = getTableName(params.pkTable!);
-    // Selected PK columns
-    const [pkTableColumns, setPkTableColumns] = useState<string[]>([]);
-
-    // Selected FK table
-    const [fkTableName, setFkTableName] = useState<TableName | undefined>();
-    // All columns of the selected FK table
-    const [allFkTableColumns, setAllFkTableColumns] = useState<string[] | null>(null);
+    const [foreignKey, setForeignKey] = useState<ForeignKey | undefined>();
+    const [fkTable, setFkTable] = useState<Table | undefined>();
     // Selected FK columns
     const [fkTableColumns, setFkTableColumns] = useState<string[]>([]);
     const navigate = useNavigate();
 
-    function getTableName(tableString: string): TableName {
-        let pkParts = tableString.split('.');
-        return {catalog: pkParts[0], schema: pkParts[1], table: pkParts[2],}
-    }
+    useEffect(() => {
+        setLoading(true);
+        const pkParts = paramPkTable.split('.');
+        const pkTableName = {catalog: pkParts[0], schema: pkParts[1], table: pkParts[2],}
+        // Get the FK info
+        getVirtualForeignKey(pkTableName, paramFkName)
+            .then((result) => {
+                const foreignKey = result.data;
+                setForeignKey(foreignKey);
+                setFkTableColumns(foreignKey.fkColumns);
+            })
+            .finally(() => setLoading(false));
+    }, [paramPkTable, paramFkName]);
 
     useEffect(() => {
-        // Get the FK info
-        getVirtualForeignKey(pkTableName, editedFkName)
-            .then((result) => {
-                let fk = result.data;
-                if (fk) {
-                    const fkTableName = fk.fkTableName;
-                    getTable(fkTableName)
-                        .then((result) => {
-                            const fkTable = result.data;
-                            if (fkTable) {
-                                setFkTableName(fkTableName);
-                                setPkTableColumns(fk.pkColumns);
-                                setFkTableColumns(fk.fkColumns);
-                                setAllFkTableColumns(fkTable.columns.map(it => it.name));
-                                setLoading(false);
-                            }
-                        })
-                }
-            })
-    }, []);
+        if (foreignKey) {
+            setLoading(true);
+            getTable(foreignKey.fkTableName)
+                .then((result) => setFkTable(result.data))
+                .finally(() => setLoading(false));
+        }
+    }, [foreignKey])
 
     function whenSave(event: React.SyntheticEvent) {
         event.preventDefault();
-        setSaving(true);
-        setError(null);
-        saveVirtualForeignKey(editedFkName, pkTableName!, pkTableColumns, fkTableName!, fkTableColumns)
-            .then(() => navigate("/vfk"))
-            .catch(error => {
-                setError(error.response.data?.detail || error.message);
-                setSaving(false);
-            });
+        if (foreignKey) {
+            setSaving(true);
+            setError(null);
+            saveVirtualForeignKey(paramFkName, foreignKey.pkTableName, foreignKey.pkColumns, foreignKey.fkTableName, fkTableColumns)
+                .then(() => navigate("/vfk"))
+                .catch(error => {
+                    setError(error.response.data?.detail || error.message);
+                    setSaving(false);
+                });
+        }
     }
 
     return (
@@ -74,16 +68,16 @@ export default function EditVirtualFkComponent() {
                 <div className={"row"}>
                     <div className={"col-8"}>
                         <label htmlFor="fkName" className="form-label">Name:</label>
-                        <span className="form-control">{editedFkName}</span>
+                        <span className="form-control">{paramFkName}</span>
                     </div>
                 </div>
                 <div className={"row mt-4"}>
                     <div className={"col-4"}>
                         <div>Primary Key Table:</div>
                         <div>
-                            <span className="form-control">{tableNameToFqName(pkTableName)}</span>
+                            <span className="form-control">{foreignKey ? tableNameToFqName(foreignKey.pkTableName) : ''}</span>
                         </div>
-                        {pkTableColumns.map(column => (
+                        {foreignKey && foreignKey.pkColumns.map(column => (
                             <div key={column} className={"ms-4 mt-2"}>
                                 <span className={"form-control"}>{column}</span>
                             </div>
@@ -92,12 +86,12 @@ export default function EditVirtualFkComponent() {
                     <div className={"col-4"}>
                         <div>Foreign Key Table:</div>
                         <div>
-                            <span className="form-control">{fkTableName ? tableNameToFqName(fkTableName) : ''}</span>
+                            <span className="form-control">{foreignKey ? tableNameToFqName(foreignKey.fkTableName) : ''}</span>
                         </div>
-                        {pkTableColumns && <SelectedColumns allTableColumns={allFkTableColumns}
-                                                            selectedColumns={fkTableColumns}
-                                                            setSelectedColumns={setFkTableColumns}
-                                                            matchColumns={pkTableColumns}/>
+                        {foreignKey && fkTable && <SelectedColumns allTableColumns={fkTable.columns}
+                                                                   selectedColumns={fkTableColumns}
+                                                                   setSelectedColumns={setFkTableColumns}
+                                                                   matchColumns={foreignKey.pkColumns}/>
                         }
 
                     </div>
@@ -105,9 +99,9 @@ export default function EditVirtualFkComponent() {
                 <div className={"row"}>
                     <div className={"col-8 mt-4"}>
                         {error && <div className="alert alert-danger start"><i className="fa fa-error"/> {error}</div>}
-                        <SaveSection pkTableName={pkTableName}
-                                     pkTableColumns={pkTableColumns}
-                                     fkTableName={fkTableName}
+                        <SaveSection pkTableName={foreignKey?.pkTableName}
+                                     pkTableColumns={foreignKey?.pkColumns || []}
+                                     fkTableName={foreignKey?.fkTableName}
                                      fkTableColumns={fkTableColumns}
                                      saving={saving}/>
                     </div>

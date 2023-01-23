@@ -2,11 +2,10 @@ import React, {useEffect, useState} from "react";
 import {SelectTable} from "../SelectTable";
 import {useNavigate, useParams} from "react-router-dom";
 import {TableName} from "../../models/TableName";
-import {Index, Table} from "../../models/Table";
+import {Column, Index, Table} from "../../models/Table";
 import PageHeader from "../pageheader/PageHeader";
 import LoadingOverlay from "../utils/LoadingOverlay";
 import SelectedColumns from "./SelectedColumns";
-import IndexColumns from "./IndexColumns";
 import {getVirtualForeignKey, saveVirtualForeignKey} from "../../api/VirtualForeignKey";
 import {getTable} from "../../api/Table";
 import SaveSection from "./SaveSection";
@@ -23,7 +22,7 @@ export default function AddVirtualFkComponent() {
     // Selected PK table
     const [pkTableName, setPkTableName] = useState<TableName | undefined>(getTableName(params.pkTable));
     // All columns of the selected PK table
-    const [allPkTableColumns, setAllPkTableColumns] = useState<string[] | null>(null);
+    const [allPkTableColumns, setAllPkTableColumns] = useState<Column[]>([]);
     // Selected PK columns
     const [pkTableColumns, setPkTableColumns] = useState<string[]>([]);
     const [uniqueIndex, setUniqueIndex] = useState<Index | null>(null);
@@ -31,7 +30,7 @@ export default function AddVirtualFkComponent() {
     // Selected FK table
     const [fkTableName, setFkTableName] = useState<TableName | undefined>();
     // All columns of the selected FK table
-    const [allFkTableColumns, setAllFkTableColumns] = useState<string[] | null>(null);
+    const [allFkTableColumns, setAllFkTableColumns] = useState<Column[]>([]);
     // Selected FK columns
     const [fkTableColumns, setFkTableColumns] = useState<string[]>([]);
     const navigate = useNavigate();
@@ -49,7 +48,7 @@ export default function AddVirtualFkComponent() {
         }
         getTable(pkTableName)
             .then(result => {
-                let pkTable = result.data;
+                const pkTable: Table = result.data;
                 if (pkTable) {
                     const pkTableName = pkTable.tableName;
                     // Get the FK info
@@ -62,14 +61,15 @@ export default function AddVirtualFkComponent() {
                                     .then((result) => {
                                         const fkTable = result.data;
                                         if (fkTable) {
-                                            setAllPkTableColumns(pkTable!.columns.map(it => it.name));
+                                            setAllPkTableColumns(pkTable.columns);
                                             setPkTableName(pkTableName);
                                             setName(fk.name);
                                             setFkTableName(fkTableName);
-                                            setPkTableColumns(fk.pkColumns);
-                                            setUniqueIndexIfOnlyOne(pkTable!);
+                                            const columnNames: string[] = fk.pkColumns;
+                                            setPkTableColumns(columnNames);
+                                            setUniqueIndexIfOnlyOne(pkTable);
                                             setFkTableColumns(fk.fkColumns);
-                                            setAllFkTableColumns(fkTable.columns.map(it => it.name));
+                                            setAllFkTableColumns(fkTable.columns);
                                             setLoading(false);
                                         }
                                     })
@@ -88,8 +88,9 @@ export default function AddVirtualFkComponent() {
     function setUniqueIndexIfOnlyOne(pkTable: Table) {
         const uniqueIndexes = pkTable.indexes?.filter(it => it.unique);
         if (uniqueIndexes && uniqueIndexes.length) {
-            setUniqueIndex(uniqueIndexes[0]);
-            setPkTableColumns(uniqueIndexes[0].columns);
+            const uniqueIndex = uniqueIndexes[0];
+            setUniqueIndex(uniqueIndex);
+            setPkTableColumns(uniqueIndex.columns);
         }
     }
 
@@ -97,7 +98,13 @@ export default function AddVirtualFkComponent() {
         event.preventDefault();
         setSaving(true);
         setError(null);
-        saveVirtualForeignKey(name.length ? name : placeholderName, pkTableName!, pkTableColumns, fkTableName!, fkTableColumns)
+        saveVirtualForeignKey(
+            name.length ? name : placeholderName,
+            pkTableName!,
+            pkTableColumns,
+            fkTableName!,
+            fkTableColumns
+        )
             .then(() => navigate("/vfk"))
             .catch(error => {
                 setError(error.response.data?.detail || error.message);
@@ -119,9 +126,7 @@ export default function AddVirtualFkComponent() {
                                type={"text"}
                                value={name}
                                autoComplete={"off"}
-                               onChange={(event) => {
-                                   setName(event.target.value)
-                               }}/>
+                               onChange={(event) => setName(event.target.value)}/>
                     </div>
                 </div>
                 <div className={"row mt-4"}>
@@ -131,8 +136,7 @@ export default function AddVirtualFkComponent() {
                             <SelectTable
                                 setTable={(table) => {
                                     setPkTableName(table.tableName);
-                                    let columns = table.columns.map(it => it.name)
-                                    setAllPkTableColumns(columns);
+                                    setAllPkTableColumns(table.columns);
                                     setUniqueIndexIfOnlyOne(table);
                                 }}
                             />
@@ -142,19 +146,22 @@ export default function AddVirtualFkComponent() {
                             <SelectedColumns allTableColumns={allPkTableColumns}
                                              selectedColumns={pkTableColumns}
                                              setSelectedColumns={setPkTableColumns}
-                                             matchColumns={null}
                             />
                         )}
 
-                        <IndexColumns uniqueIndex={uniqueIndex}/>
+                        {uniqueIndex != null && (
+                            uniqueIndex.columns.map(column => (
+                                <div key={column} className={"ms-4 mt-2"}>
+                                    <span className={"form-control"}>{column}</span>
+                                </div>
+                            )))}
                     </div>
                     <div className={"col-4"}>
                         <div>Foreign Key Table:</div>
                         <div>
                             <SelectTable setTable={(table) => {
                                 setFkTableName(table.tableName);
-                                const columns = table.columns.map(it => it.name)
-                                setAllFkTableColumns(columns);
+                                setAllFkTableColumns(table.columns);
                             }}
                             />
                         </div>

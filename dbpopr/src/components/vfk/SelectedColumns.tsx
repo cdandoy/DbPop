@@ -1,10 +1,11 @@
 import React from "react";
+import {Column} from "../../models/Table";
 
 export default function SelectedColumns({allTableColumns, selectedColumns, setSelectedColumns, matchColumns}: {
-    allTableColumns: string[] | null,
+    allTableColumns: Column[],
     selectedColumns: string[],
-    setSelectedColumns: (s: string[]) => void,
-    matchColumns: string[] | undefined | null;
+    setSelectedColumns: (p: string[]) => void,
+    matchColumns?: string[];
 }) {
     if (!allTableColumns) return <></>;
 
@@ -21,7 +22,7 @@ export default function SelectedColumns({allTableColumns, selectedColumns, setSe
             rows.push('');
         }
     }
-    const availableColumns = [''].concat(allTableColumns);
+    const availableColumns = [''].concat(allTableColumns.map(it => it.name));
 
     return (
         <>

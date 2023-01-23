@@ -6,6 +6,7 @@ export interface Column {
     name: string;
     nullable: boolean;
     autoIncrement: boolean;
+    sqlType?: number;
 }
 
 export interface Index {
