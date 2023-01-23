@@ -14,7 +14,7 @@ import java.sql.SQLException;
 
 import static org.dandoy.test.SqlServerTests.assertCount;
 
-@EnabledIf("org.dandoy.TestUtils#hasMssql")
+@EnabledIf("org.dandoy.DbPopUtils#hasMssql")
 public class DbPopTests {
 
     private static Connection targetConnection;

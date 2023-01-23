@@ -28,7 +28,7 @@ import java.util.List;
 import static org.dandoy.DbPopUtils.customers;
 import static org.junit.jupiter.api.Assertions.*;
 
-@EnabledIf("org.dandoy.TestUtils#hasMssql")
+@EnabledIf("org.dandoy.DbPopUtils#hasMssql")
 @Slf4j
 public class SqlServerTests {
     private static Connection targetConnection;

@@ -15,7 +15,7 @@ import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@EnabledIf("org.dandoy.TestUtils#hasPgsql")
+@EnabledIf("org.dandoy.DbPopUtils#hasPgsql")
 public class PostgresTests {
     private static Connection targetConnection;
 

@@ -19,7 +19,7 @@ import java.util.Map;
 
 import static org.dandoy.DbPopUtils.*;
 
-@EnabledIf("org.dandoy.TestUtils#hasSourceMssql")
+@EnabledIf("org.dandoy.DbPopUtils#hasSourceMssql")
 class ExecutionPlanTest {
 
     public static final File DATASETS_DIRECTORY = new File("src/test/resources/mssql");

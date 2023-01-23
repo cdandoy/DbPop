@@ -11,7 +11,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@EnabledIf("org.dandoy.TestUtils#hasTargetPgsql")
+@EnabledIf("org.dandoy.DbPopUtils#hasTargetPgsql")
 public class PgSqlTests {
     private static final TableName invoices = new TableName("dbpop", "public", "invoices");
     private static final TableName customers = new TableName("dbpop", "public", "customers");

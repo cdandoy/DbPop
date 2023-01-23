@@ -13,7 +13,7 @@ import static org.dandoy.DbPopUtils.invoices;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@EnabledIf("org.dandoy.TestUtils#hasTargetMssql")
+@EnabledIf("org.dandoy.DbPopUtils#hasTargetMssql")
 public class MsSqlTests {
     @BeforeEach
     void setUp() {

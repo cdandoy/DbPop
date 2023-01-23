@@ -8,6 +8,30 @@ public class DbPopUtils {
     public static final TableName customers = new TableName("master", "dbo", "customers");
     public static final TableName products = new TableName("master", "dbo", "products");
 
+    public static boolean hasMssql() {
+        return hasSourceMssql() && hasTargetMssql();
+    }
+
+    public static boolean hasSourceMssql() {
+        return LocalCredentials.from("mssql").sourceConnectionBuilder() != null;
+    }
+
+    public static boolean hasTargetMssql() {
+        return LocalCredentials.from("mssql").targetConnectionBuilder() != null;
+    }
+
+    public static boolean hasPgsql() {
+        return hasSourcePgsql() && hasTargetPgsql();
+    }
+
+    public static boolean hasSourcePgsql() {
+        return LocalCredentials.from("pgsql").sourceConnectionBuilder() != null;
+    }
+
+    public static boolean hasTargetPgsql() {
+        return LocalCredentials.from("pgsql").targetConnectionBuilder() != null;
+    }
+
     public static void prepareMssqlSource() {
         LocalCredentials
                 .from("mssql")

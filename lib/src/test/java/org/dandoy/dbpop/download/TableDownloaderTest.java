@@ -17,7 +17,7 @@ import java.util.Set;
 import static org.dandoy.DbPopUtils.invoiceDetails;
 import static org.dandoy.DbPopUtils.invoices;
 
-@EnabledIf("org.dandoy.TestUtils#hasMssql")
+@EnabledIf("org.dandoy.DbPopUtils#hasMssql")
 class TableDownloaderTest {
     private static final File TEST_DIR = new File("src/test/resources/mssql/download");
 
