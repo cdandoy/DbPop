@@ -54,8 +54,8 @@ public class DatabaseService {
 
     @PreDestroy
     void preDestroy() {
-        sourceDatabase.close();
-        targetDatabase.close();
+        if (sourceDatabase != null) sourceDatabase.close();
+        if (targetDatabase != null) targetDatabase.close();
     }
 
     private void load() {
