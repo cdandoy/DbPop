@@ -9,6 +9,7 @@ import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.utils.AutoComitterOff;
 import org.dandoy.dbpop.utils.DbPopUtils;
+import org.dandoy.dbpop.utils.MultiCauseException;
 import org.dandoy.dbpop.utils.StopWatch;
 
 import java.io.File;
@@ -169,7 +170,7 @@ public class Populator {
                 rowCount += loadDataFile(dataFile);
             }
         } catch (Exception e) {
-            throw new RuntimeException(String.format("Failed to load the dataset %s", dataset.getName()), e);
+            throw new PopulateDatasetException(dataset.getName(), String.format("Failed to load the dataset %s", dataset.getName()), e);
         }
         return rowCount;
     }
@@ -190,7 +191,7 @@ public class Populator {
                         tableName.toQualifiedName(),
                         dataFile.getFile()
                 );
-                throw new RuntimeException(message, e);
+                throw new MultiCauseException(message, e);
             }
         });
     }

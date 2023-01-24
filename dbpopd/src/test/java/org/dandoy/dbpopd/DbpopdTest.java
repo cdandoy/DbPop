@@ -7,6 +7,10 @@ import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.ForeignKey;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.tests.SqlExecutor;
+import org.dandoy.dbpopd.download.DownloadController;
+import org.dandoy.dbpopd.download.DownloadRequest;
+import org.dandoy.dbpopd.download.DownloadResponse;
+import org.dandoy.dbpopd.populate.PopulateResult;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -62,7 +66,7 @@ class DbpopdTest {
     @Test
     void testUpload() {
         List<String> dataset = List.of("base", "invoices", "invoice_details");
-        PopulateService.PopulateResult result = populateService.populate(dataset, true);
+        PopulateResult result = populateService.populate(dataset, true);
         /*
             customers.csv         3
             invoice_details.csv   7

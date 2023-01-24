@@ -2,6 +2,7 @@ package org.dandoy.dbpop.utils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class ExceptionUtils {
     /**
@@ -29,5 +30,14 @@ public class ExceptionUtils {
             }
         }
         return ret;
+    }
+
+    public static <T> Optional<T> getCause(Throwable throwable, Class<T> exceptionClass) {
+        for (; throwable != null; throwable = throwable.getCause()) {
+            if (exceptionClass.isAssignableFrom(throwable.getClass())) {
+                return Optional.of(exceptionClass.cast(throwable));
+            }
+        }
+        return Optional.empty();
     }
 }

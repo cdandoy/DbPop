@@ -1,13 +1,12 @@
-package org.dandoy.dbpopd;
+package org.dandoy.dbpopd.datasets;
 
-import io.micronaut.http.annotation.Controller;
-import io.micronaut.http.annotation.Get;
+import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.upload.DataFile;
 import org.dandoy.dbpop.upload.Dataset;
-import org.dandoy.dbpopd.datasets.FileCacheService;
+import org.dandoy.dbpopd.ConfigurationService;
 
 import java.io.File;
 import java.util.Comparator;
@@ -17,18 +16,36 @@ import java.util.Map;
 
 import static org.dandoy.dbpop.datasets.Datasets.DATASET_NAME_COMPARATOR;
 
-@Controller
+@Singleton
 @Slf4j
-public class DatasetsContentController {
+public class DatasetsService {
     private final ConfigurationService configurationService;
     private final FileCacheService fileCacheService;
+    private Status lastStatus = Status.NOT;
 
-    public DatasetsContentController(ConfigurationService configurationService, FileCacheService fileCacheService) {
+    private record Status(String datasetName, List<String> failedDatasetCauses, Integer lastRows, Long lastTime) {
+        static Status NOT = new Status("", null, null, null);
+
+        public Status(String datasetName, Integer lastRows, Long lastTime) {
+            this(datasetName, null, lastRows, lastTime);
+        }
+
+        public Status(String datasetName, List<String> failedDatasetCauses) {
+            this(datasetName, failedDatasetCauses, null, null);
+        }
+    }
+
+    public DatasetsService(ConfigurationService configurationService, FileCacheService fileCacheService) {
         this.configurationService = configurationService;
         this.fileCacheService = fileCacheService;
     }
 
-    @Get("/datasets/content")
+    public List<String> getDatasets() {
+        return Datasets.getDatasets(configurationService.getDatasetsDirectory())
+                .stream().map(Dataset::getName)
+                .toList();
+    }
+
     public DatasetContentResponse getContent() {
         File datasetsDirectory = configurationService.getDatasetsDirectory();
         Map<TableName, Map<String, FileContent>> datasetContentTables = new HashMap<>();
@@ -51,14 +68,14 @@ public class DatasetsContentController {
         return new DatasetContentResponse(
                 datasets.stream()
                         .map(this::toDatasetContent)
-                        .sorted((o1, o2) -> DATASET_NAME_COMPARATOR.compare(o1.name, o2.name))
+                        .sorted((o1, o2) -> DATASET_NAME_COMPARATOR.compare(o1.name(), o2.name()))
                         .toList(),
                 datasetContentTables.entrySet()
                         .stream().map(it -> new TableContent(
                                 it.getKey(),
                                 it.getValue()
                         ))
-                        .sorted(Comparator.comparing(it -> it.tableName.toQualifiedName()))
+                        .sorted(Comparator.comparing(it -> it.tableName().toQualifiedName()))
                         .toList()
         );
     }
@@ -75,19 +92,18 @@ public class DatasetsContentController {
                 rows += csvRowCount;
             }
         }
-        return new DatasetContent(
-                dataset.getName(),
-                dataset.getDataFiles().size(),
-                size,
-                rows
-        );
+        String datasetName = dataset.getName();
+        boolean active = datasetName.equals(lastStatus.datasetName);
+        Status status = active ? lastStatus : Status.NOT;
+        return new DatasetContent(datasetName, dataset.getDataFiles().size(), size, rows, active, status.lastRows(), status.lastTime(), status.failedDatasetCauses());
     }
 
-    public record DatasetContentResponse(List<DatasetContent> datasetContents, List<TableContent> tableContents) {}
+    public void setFailedDataset(String dataset, List<String> causes) {
+        lastStatus = new Status(dataset, causes);
+    }
 
-    public record DatasetContent(String name, int fileCount, long size, int rows) {}
+    public void setActive(String datasetName, int rows, long time) {
+        lastStatus = new Status(datasetName, rows, time);
+    }
 
-    public record TableContent(TableName tableName, Map<String, FileContent> content) {}
-
-    public record FileContent(long size, Integer rows) {}
 }

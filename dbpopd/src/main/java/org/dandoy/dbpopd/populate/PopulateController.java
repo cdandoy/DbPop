@@ -3,9 +3,10 @@ package org.dandoy.dbpopd.populate;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
-import io.micronaut.http.exceptions.HttpStatusException;
+import io.micronaut.problem.HttpStatusType;
 import lombok.extern.slf4j.Slf4j;
-import org.dandoy.dbpop.utils.ExceptionUtils;
+import org.dandoy.dbpop.utils.MultiCauseException;
+import org.zalando.problem.Problem;
 
 import java.util.List;
 
@@ -19,13 +20,15 @@ public class PopulateController {
     }
 
     @Get("/populate")
-    public PopulateService.PopulateResult populate(List<String> dataset) {
+    public PopulateResult populate(List<String> dataset) {
         try {
             return populateService.populate(dataset);
         } catch (Exception e) {
             log.error("Failed", e);
-            String message = String.join("\n", ExceptionUtils.getErrorMessages(e, ">"));
-            throw new HttpStatusException(HttpStatus.BAD_REQUEST, message);
+            throw Problem.builder()
+                    .withStatus(new HttpStatusType(HttpStatus.BAD_REQUEST))
+                    .withDetail(String.join("\n", MultiCauseException.getCauses(e)))
+                    .build();
         }
     }
 }

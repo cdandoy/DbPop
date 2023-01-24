@@ -5,6 +5,7 @@ import {datasetContent, DatasetContentResponse} from "../../api/datasetContent";
 import {siteApi} from "../../api/siteApi";
 import LoadingOverlay from "../utils/LoadingOverlay";
 import './Dashboard.scss'
+import {populate} from "../../api/Populate";
 
 export default function Dashboard() {
     const [loading, setLoading] = useState(true);
@@ -12,9 +13,7 @@ export default function Dashboard() {
     const [configuration, setConfiguration] = useState<Configuration>({hasSource: false, hasTarget: false});
     const [contentResponse, setContentResponse] = useState<DatasetContentResponse | null>(null);
     const [loadingDataset, setLoadingDataset] = useState<string | null>(null);
-    const [loadedDataset, setLoadedDataset] = useState<string | null>(null);
-    const [loadingResult, setLoadingResult] = useState<string | null>(null);
-    const [loadingError, setLoadingError] = useState<string | null>(null);
+    const [datasetContentCN, setDatasetContentCN] = useState(0);
 
     useEffect(() => {
         setLoading(true);
@@ -23,16 +22,8 @@ export default function Dashboard() {
                 setConfiguration({
                     hasSource: result.data.hasSource,
                     hasTarget: result.data.hasTarget,
-                })
-                datasetContent()
-                    .then((result) => {
-                        setLoading(false);
-                        setContentResponse(result.data);
-                    })
-                    .catch(error => {
-                        setLoading(false);
-                        setError(error);
-                    });
+                });
+                setDatasetContentCN(datasetContentCN + 1);
             })
             .catch(error => {
                 setLoading(false);
@@ -40,9 +31,25 @@ export default function Dashboard() {
             });
     }, []);
 
+    useEffect(() => {
+        datasetContent()
+            .then((result) => setContentResponse(result.data))
+            .catch(error => setError(error))
+            .finally(() => setLoading(false));
+    }, [datasetContentCN])
+
     if (error) return <div className="text-center"><i className="fa fa-error"/> {error}</div>;
     if (!contentResponse) return <></>;
     if (contentResponse.datasetContents.length === 0) return <div className="text-center">No Datasets</div>;
+
+    function loadDataset(datasetName: string): void {
+        setLoadingDataset(datasetName);
+        populate(datasetName)
+            .then(() => setLoadingDataset(null))
+            .catch(() => setLoadingDataset(null))
+            .finally(() => setDatasetContentCN(datasetContentCN + 1))
+    }
+
 
     return (
         <div id={"dashboard"}>
@@ -55,20 +62,14 @@ export default function Dashboard() {
             </div>
             <div className="datasets p-3">
                 {contentResponse.datasetContents
-                    .filter(it => "static" !== it.name)
+                    .filter(datasetContent => datasetContent.failureCauses || "static" !== datasetContent.name)
                     .map(datasetContent => (
                         <div key={datasetContent.name}>
                             <Dataset
                                 datasetContent={datasetContent}
                                 hasUpload={configuration.hasTarget}
                                 loadingDataset={loadingDataset}
-                                loadedDataset={loadedDataset}
-                                loadingResult={loadingResult}
-                                loadingError={loadingError}
-                                setLoadingDataset={setLoadingDataset}
-                                setLoadedDataset={setLoadedDataset}
-                                setLoadingResult={setLoadingResult}
-                                setLoadingError={setLoadingError}
+                                loadDataset={loadDataset}
                             />
                         </div>
                     ))}

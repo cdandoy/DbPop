@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd;
+package org.dandoy.dbpopd.download;
 
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
@@ -10,6 +10,7 @@ import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.download.*;
 import org.dandoy.dbpop.upload.DataFile;
 import org.dandoy.dbpop.upload.Dataset;
+import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.populate.PopulateService;
 
 import java.io.File;
@@ -150,5 +151,5 @@ public class DownloadController {
 
     record DownloadBulkBody(String dataset, List<TableName> tableNames) {}
 
-    record DownloadTargetBody(String dataset) {}
+    public record DownloadTargetBody(String dataset) {}
 }

@@ -111,11 +111,11 @@ public class SetupService {
         setActivity("Populating static and base datasets");
         try {
             populateService.populate(List.of(Datasets.STATIC, Datasets.BASE));
-            return true;
         } catch (Exception e) {
-            setError(e);
-            return false;
+            // The dataset has already been marked as failed
+            log.error("Failed to load static+base", e);
         }
+        return true;
     }
 
     private boolean checkSetupSql(Connection targetConnection) {

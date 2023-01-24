@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd;
+package org.dandoy.dbpopd.download;
 
 import lombok.Getter;
 import org.dandoy.dbpop.database.TableName;

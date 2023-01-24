@@ -1,89 +1,80 @@
 import {Plural, toHumanReadableSize} from "../../utils/DbPopUtils";
 import React from "react";
-import axios from "axios";
-import {PopulateResult} from "../../models/PopulateResult";
 import {DatasetContent} from "../../api/datasetContent";
 
 export function Dataset({
                             datasetContent,
                             hasUpload,
                             loadingDataset,
-                            loadedDataset,
-                            loadingResult,
-                            loadingError,
-                            setLoadingDataset,
-                            setLoadedDataset,
-                            setLoadingResult,
-                            setLoadingError,
+                            loadDataset,
                         }: {
     datasetContent: DatasetContent;
     hasUpload: boolean;
     loadingDataset: string | null,
-    loadedDataset: string | null,
-    loadingResult: string | null,
-    loadingError: string | null,
-    setLoadingDataset: (dataset: string | null) => void,
-    setLoadedDataset: (dataset: string | null) => void,
-    setLoadingResult: (result: string | null) => void,
-    setLoadingError: (error: string | null) => void
+    loadDataset: (p: string) => void,
 }) {
-    let readableSize = toHumanReadableSize(datasetContent.size);
-
     const datasetName = datasetContent.name;
 
-    function buttonContent() {
-        if (loadingDataset === null) {
-            if (!hasUpload) {
-                return (
-                    <button className="btn btn-xs btn-primary" title="Target database not available" disabled={true}>
-                        <i className="fa fa-fw fa-refresh"/>
-                    </button>
-                )
-            }
+    function RefreshButton({disabled, title, hidden, loading, onClick}: {
+        title: string;
+        disabled?: boolean;
+        hidden?: boolean;
+        loading?: boolean;
+        onClick?: () => void;
+    }) {
+        let iconClass = loading ? "fa fa-fw fa-spinner fa-spin" : "fa fa-fw fa-refresh";
+        return (
+            <button className="btn btn-xs btn-primary"
+                    title={title}
+                    disabled={disabled}
+                    style={{display: hidden ? 'none' : "initial"}}
+                    onClick={() => {
+                        if (!disabled && !hidden && onClick) {
+                            onClick();
+                        }
+                    }}>
+                <i className={iconClass}/>
+            </button>
+        );
+    }
 
-            return (
-                <button className="btn btn-xs btn-primary" title="Reload" onClick={loadDataset}>
-                    <i className="fa fa-fw fa-refresh"/>
-                </button>
-            )
-        } else {
-            if (loadingDataset === datasetName) {
-                return (
-                    <button className="btn btn-xs btn-primary" disabled={true}>
-                        <i className="fa fa-fw fa-spinner fa-spin"/>
-                    </button>
-                );
-            } else {
-                return (
-                    <button className="btn btn-xs btn-primary" disabled={true}>
-                        <i className="fa fa-fw fa-refresh"/>
-                    </button>
-                );
-            }
-        }
+    function buttonContent() {
+        const title = !hasUpload ? "Target database not available" :
+            !!loadingDataset ? "Loading" :
+                "Reload";
+
+        return <RefreshButton title={title}
+                              hidden={datasetName === 'static'}
+                              disabled={!!loadingDataset}
+                              loading={loadingDataset === datasetName}
+                              onClick={() => loadDataset(datasetName)}/>
     }
 
     function statusContent() {
-        if (loadedDataset === datasetName) {
-            if (loadingError) {
-                return (
-                    <div className="mb-2 alert alert-danger">
-                        <pre className="dataset-error">{loadingError}</pre>
+        if (datasetContent.failureCauses) {
+            return (
+                <div className="mb-2 alert alert-danger">
+                        <pre className="dataset-error">
+                            {datasetContent.failureCauses.join('\n')}
+                        </pre>
+                </div>
+            )
+        } else if (loadingDataset === datasetName) {
+            return (
+                <div className="mb-2">
+                    <div className='dataset-result'>
+                        Loading
                     </div>
-                )
-            } else if (loadingResult) {
-                return (
-                    <div className="mb-2">
-                        <div className='dataset-result'>{loadingResult}</div>
+                </div>
+            )
+        } else if (datasetContent.active) {
+            return (
+                <div className="mb-2">
+                    <div className='dataset-result'>
+                        Loaded {Plural(datasetContent.rows, 'row')} in {datasetContent.executionTime}ms
                     </div>
-                )
-            } else {
-                return (
-                    <div className="mb-2">
-                        <div className='dataset-result'>&nbsp;</div>
-                    </div>
-                )
-            }
+                </div>
+            )
         } else {
             return (
                 <div className="mb-2 text-muted">
@@ -91,36 +82,13 @@ export function Dataset({
                     <>,&nbsp;</>
                     {Plural(datasetContent.rows, 'row')}
                     <>,&nbsp;</>
-                    {readableSize.text}
+                    {toHumanReadableSize(datasetContent.size).text}
                 </div>
-            )
+            );
         }
     }
 
-    function loadDataset(): void {
-        setLoadingDataset(datasetName);
-        setLoadingResult(null);
-        setLoadingError(null);
-        axios.get<PopulateResult>("/populate", {params: {dataset: datasetName}})
-            .then(result => {
-                setLoadingDataset(null);
-                const rows = result.data.rows + (result.data.rows === 1 ? ' row' : ' rows')
-                setLoadingResult(`Loaded ${rows} in ${result.data.millis}ms`);
-                setLoadedDataset(datasetName);
-            })
-            .catch(error => {
-                setLoadingDataset(null);
-                let errorMessages = error.response?.data?._embedded?.errors
-                    ?.map((it: any) => {
-                        return it?.message;
-                    })
-                    ?.join('<br/>');
-                setLoadingError(errorMessages);
-                setLoadedDataset(datasetName);
-            })
-    }
-
-    const cardStyle = loadedDataset === datasetName ? {borderColor: "limegreen", borderWidth: "2px"} : {};
+    const cardStyle = datasetContent.active ? {borderColor: "limegreen", borderWidth: "2px"} : {};
     return (
         <div className="card ds-card" style={cardStyle}>
             <div className="ds-body">

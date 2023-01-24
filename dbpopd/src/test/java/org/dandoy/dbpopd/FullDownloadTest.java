@@ -3,6 +3,8 @@ package org.dandoy.dbpopd;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.tests.TestUtils;
+import org.dandoy.dbpopd.download.DownloadController;
+import org.dandoy.dbpopd.download.DownloadResponse;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;

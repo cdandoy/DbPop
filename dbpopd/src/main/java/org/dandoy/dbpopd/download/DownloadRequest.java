@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd;
+package org.dandoy.dbpopd.download;
 
 import io.micronaut.core.annotation.Introspected;
 import lombok.Getter;

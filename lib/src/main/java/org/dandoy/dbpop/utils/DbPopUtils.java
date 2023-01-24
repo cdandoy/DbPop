@@ -41,7 +41,7 @@ public class DbPopUtils {
                 rows++;
             }
             return rows;
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to read " + file);
             return null;
         }

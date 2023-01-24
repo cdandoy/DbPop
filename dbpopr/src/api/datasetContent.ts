@@ -11,6 +11,10 @@ export interface DatasetContent {
     fileCount: number;
     size: number;
     rows: number;
+    active: boolean;
+    loadedRows: number | undefined;
+    executionTime: number | undefined;
+    failureCauses: string[] | undefined;
 }
 
 export interface TableContent {
