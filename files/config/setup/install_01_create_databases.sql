@@ -1,0 +1,1 @@
+SELECT 'executed install_01_create_databases.sql'

@@ -26,7 +26,10 @@ public class ConfigurationService {
     private final ConnectionBuilder sourceConnectionBuilder;
     @Getter
     private final ConnectionBuilder targetConnectionBuilder;
+    @Getter
     private final File datasetsDirectory;
+    @Getter
+    private final File setupDirectory;
     private DatabaseCache sourceDatabaseCache;
     private DatabaseCache targetDatabaseCache;
     @Getter
@@ -35,7 +38,8 @@ public class ConfigurationService {
     @SuppressWarnings("MnInjectionPoints")
     public ConfigurationService(
             @Property(name = "dbpopd.configuration.path") String configurationPath,
-            @Property(name = "dbpopd.configuration.datasets") @Nullable String datasetsDirectory
+            @Property(name = "dbpopd.configuration.datasets") @Nullable String datasetsDirectory,
+            @Property(name = "dbpopd.configuration.setup") @Nullable String setupDirectory
     ) {
         configurationDir = new File(configurationPath);
         File configurationFile = new File(configurationDir, PROP_FILE_NAME);
@@ -47,6 +51,7 @@ public class ConfigurationService {
         File vfkFile = new File(configurationDir, "vfk.json");
         virtualFkCache = VirtualFkCache.createVirtualFkCache(vfkFile);
         this.datasetsDirectory = datasetsDirectory != null ? new File(datasetsDirectory) : new File(configurationDir, "datasets");
+        this.setupDirectory = setupDirectory != null ? new File(setupDirectory) : new File(configurationDir, "setup");
     }
 
     private static UrlConnectionBuilder createConnectionBuilder(Properties properties, String jdbcurlProperty, String usernameProperty, String passwordProperty) {
@@ -57,10 +62,6 @@ public class ConfigurationService {
         if (url == null || username == null) return null;
 
         return new UrlConnectionBuilder(url, username, password);
-    }
-
-    public File getDatasetsDirectory() {
-        return datasetsDirectory;
     }
 
     private static String getProperty(Properties properties, String propertyName) {

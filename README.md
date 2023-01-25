@@ -14,23 +14,32 @@ For example:
 
 ```
 +-- testdata
-   +-- static                               - The static dataset is only loaded once per session
-   |    +-- AdventureWorks
-   |         +-- HumanResources
-   |              |-- CreditCardTypes.csv
-   |              +-- Offices.csv
-   +-- base                                 - The base dataset is always reloaded
-   |    +-- AdventureWorks
-   |         +-- HumanResources
-   |              |-- Department.csv                           
-   |              |-- Employee.csv                     
-   |              +-- Shift.csv              
-   +-- ADV-7412                             - test data specific to ticket ADV-7412
-   |    +-- AdventureWorks
-   |         +-- HumanResources
-   |              +-- Employee.csv
-   |-- dbpop.properties
-   +-- setup.sql
+   +-- setup
+   |   |-- pre-install.sh                       -- Optional shell script executed before install.sql the first time the container runs.
+   |   |-- *.sql                                -- SQL Script(s) executed the first time the container runs.
+   |   |-- post-install.sh                      -- Optional shell script executed after install.sql the first time the container runs.
+   |   +-- startup.sh                           -- Optional shell script to execute after the setup, every time the container runs.
+   |
+   |-- datasets
+   |   |-- static                               - The static dataset is only loaded once per session
+   |   |    +-- AdventureWorks
+   |   |         +-- HumanResources
+   |   |              |-- CreditCardTypes.csv
+   |   |              +-- Offices.csv
+   |   |
+   |   |-- base                                 - The base dataset is always reloaded
+   |   |    +-- AdventureWorks
+   |   |         +-- HumanResources
+   |   |              |-- Department.csv                           
+   |   |              |-- Employee.csv                     
+   |   |              +-- Shift.csv              
+   |   |              
+   |   +-- ADV-7412                             - test data specific to ticket ADV-7412
+   |        +-- AdventureWorks
+   |             +-- HumanResources
+   |                  +-- Employee.csv
+   |    
+   +-- dbpop.properties
 ```
 
 There are two special datasets:
@@ -46,8 +55,20 @@ There are two special datasets:
 In addition to the two special datasets, this example shows a dataset named ADV-7412, which would be the test data necessary to 
 reproduce a corresponding JIRA ticket.
 
-### setup.sql
-The optional setup.sql file can be used to set up your database, for example for creating the tables, indexes, ...</br>
+### pre-install.sh
+All three install files (`pre-install.sh`, `*.sql` and `post-install.sh`) are only executed the very first the container starts.
+### *.sql
+The optional *.sql file(s) can be used to set up your database, creating the tables, indexes, ...</br>
+All files matching the pattern are executed in alphabetical order.
+This would for example allow having the following files:
+* `install_01_create_databases.sql`
+* `install_02_create_tables.sql`
+* `install_03_create_indexes.sql`
+### post-install.sh
+This would typically install and run migration scripts like [FlywayDB](https://flywaydb.org/) or [Liquibase](https://www.liquibase.org/).
+
+### startup.sh
+This shell script is executed every time the container is started.
 
 ## Docker Compose
 The easiest way to set up DbPop is by using Docker Compose.

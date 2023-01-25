@@ -1,0 +1,1 @@
+echo startup.sh executed successfully
