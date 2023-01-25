@@ -1,0 +1,1 @@
+echo post-install.sh executed successfully

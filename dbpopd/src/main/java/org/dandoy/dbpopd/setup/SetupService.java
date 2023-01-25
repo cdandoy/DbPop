@@ -6,20 +6,26 @@ import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.dandoy.dbpop.database.ConnectionBuilder;
+import org.dandoy.dbpop.database.UrlConnectionBuilder;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.utils.ExceptionUtils;
 import org.dandoy.dbpop.utils.StringUtils;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.populate.PopulateService;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -76,10 +82,12 @@ public class SetupService {
         try {
             if (!checkDatasetDirectory()) return;
             if (!checkTargetSettings()) return;
+
             Connection targetConnection = checkTargetConnection();
             if (targetConnection == null) return;
             try {
-                if (!checkSetupSql(targetConnection)) return;
+                if (!executeInstall(targetConnection)) return;
+                if (!executeStartup()) return;
             } finally {
                 safeClose(targetConnection);
             }
@@ -89,8 +97,101 @@ public class SetupService {
             if (!checkSourceConnection()) return;
             setActivity(null);
         } catch (RuntimeException e) {
+            log.error("Failed to setup", e);
             setError(e.getMessage());
         }
+    }
+
+    private boolean executeInstall(Connection targetConnection) {
+        File setupDirectory = configurationService.getSetupDirectory();
+        File installComplete = new File(setupDirectory, "install-complete.txt");
+        if (!installComplete.exists()) {
+            if (!executeScript(new File(setupDirectory, "pre-install.sh"))) {
+                return false;
+            }
+
+            File[] sqlFiles = setupDirectory.listFiles((dir, name) -> name.endsWith(".sql"));
+            if (sqlFiles != null) {
+                ArrayList<File> sqlFileList = new ArrayList<>(List.of(sqlFiles));
+                sqlFileList.sort(Comparator.comparing(File::getAbsolutePath));
+                for (File sqlFile : sqlFileList) {
+                    if (!executeSql(targetConnection, sqlFile)) {
+                        return false;
+                    }
+                }
+            }
+            if (!executeScript(new File(setupDirectory, "post-install.sh"))) {
+                return false;
+            }
+            try (BufferedWriter writer = Files.newBufferedWriter(installComplete.toPath())) {
+                writer.write("install executed " + ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
+            } catch (IOException e) {
+                setError("Failed to write " + installComplete);
+            }
+        }
+        return true;
+    }
+
+    private boolean executeSql(Connection connection, File file) {
+        try {
+            if (!file.exists()) return false;
+            String absolutePath = file.getCanonicalPath();
+            setActivity("Executing " + absolutePath);
+            List<String> lines = Files.readAllLines(file.toPath());
+            List<Sql> sqls = linesToSql(lines);
+            return executeSqls(file, connection, sqls);
+        } catch (IOException | SQLException e) {
+            setError(e);
+            return false;
+        }
+    }
+
+    private boolean executeScript(File file) {
+        if (!file.exists()) return false;
+        try {
+            String absolutePath = file.getCanonicalPath();
+            setActivity("Executing " + absolutePath);
+
+            List<String> args;
+            if (File.separatorChar == '/') {
+                args = List.of("/bin/sh", "-c", absolutePath);
+            } else {
+                // Not great but this is for dev. mode on Windows only
+                args = List.of("bash", file.getName());
+            }
+
+            ProcessBuilder processBuilder = new ProcessBuilder(args);
+            // I am not comfortable passing those environment variables to a shell script especially if they point dbpop at a prod DB.
+            Map<String, String> environment = processBuilder.environment();
+            environment.remove("SOURCE_JDBCURL");
+            environment.remove("SOURCE_USERNAME");
+            environment.remove("SOURCE_PASSWORD");
+            ConnectionBuilder targetConnectionBuilder = configurationService.getTargetConnectionBuilder();
+            if (targetConnectionBuilder instanceof UrlConnectionBuilder urlConnectionBuilder) {
+                environment.put("TARGET_JDBCURL", urlConnectionBuilder.getUrl());
+                environment.put("TARGET_USERNAME", urlConnectionBuilder.getUsername());
+                environment.put("TARGET_PASSWORD", urlConnectionBuilder.getPassword());
+            }
+
+            int exitValue = processBuilder
+                    .directory(file.getParentFile())
+                    .inheritIO()
+                    .start()
+                    .waitFor();
+            if (exitValue != 0) {
+                setError("%s returned %d", absolutePath, exitValue);
+                return false;
+            }
+            return true;
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private boolean executeStartup() {
+        setActivity("Executing startup.sh");
+        File setupDirectory = configurationService.getSetupDirectory();
+        return executeScript(new File(setupDirectory, "startup.sh"));
     }
 
     private boolean checkDatasetDirectory() {
@@ -114,25 +215,6 @@ public class SetupService {
         } catch (Exception e) {
             // The dataset has already been marked as failed
             log.error("Failed to load static+base", e);
-        }
-        return true;
-    }
-
-    private boolean checkSetupSql(Connection targetConnection) {
-        setActivity("Executing the setup script");
-
-        try {
-            File configurationDir = configurationService.getConfigurationDir();
-            File setupFile = new File(configurationDir, "setup.sql");
-            if (setupFile.isFile()) {
-                log.info("Loading " + setupFile);
-                List<String> lines = Files.readAllLines(setupFile.toPath());
-                List<Sql> sqls = linesToSql(lines);
-                return executeSqls(setupFile, targetConnection, sqls);
-            }
-        } catch (Exception e) {
-            setError(e);
-            return false;
         }
         return true;
     }
@@ -211,7 +293,39 @@ public class SetupService {
         try (Statement statement = connection.createStatement()) {
             for (Sql sql : sqls) {
                 try {
-                    statement.execute(sql.sql);
+                    boolean isSelect = statement.execute(sql.sql);
+                    for (SQLWarning warnings = statement.getWarnings();
+                         warnings != null;
+                         warnings = warnings.getNextWarning()) {
+                        String message = warnings.getMessage();
+                        System.err.println(message);
+                    }
+                    if (isSelect) {
+                        try (ResultSet resultSet = statement.getResultSet()) {
+                            ResultSetMetaData metaData = resultSet.getMetaData();
+
+                            // Print the headers
+                            StringBuilder sb = new StringBuilder();
+                            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                                if (i > 0) sb.append('\t');
+                                sb.append(metaData.getColumnLabel(i + 1));
+                            }
+                            if (!sb.isEmpty()) {
+                                System.out.println(sb);
+                                System.out.println("_".repeat(sb.length()));
+                            }
+
+                            // Print the values
+                            while (resultSet.next()) {
+                                sb.setLength(0);
+                                for (int i = 0; i < metaData.getColumnCount(); i++) {
+                                    if (i > 0) sb.append('\t');
+                                    sb.append(resultSet.getString(i + 1));
+                                }
+                                System.out.println(sb);
+                            }
+                        }
+                    }
                 } catch (SQLException e) {
                     String filename = setupFile.getAbsolutePath();
                     try {

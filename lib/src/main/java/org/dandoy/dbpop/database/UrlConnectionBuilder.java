@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.database;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Connection;
@@ -10,8 +11,11 @@ import java.sql.SQLException;
 public class UrlConnectionBuilder implements ConnectionBuilder {
     public static final int WAIT_COUNT = 30;    // Wait N times for a connection
     public static final int WAIT_TIME = 1000;   // Wait N millis between each retry
+    @Getter
     private final String url;
+    @Getter
     private final String username;
+    @Getter
     private final String password;
     private boolean hasWaited;
 
