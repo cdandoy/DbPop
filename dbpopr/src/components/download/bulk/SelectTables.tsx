@@ -9,6 +9,7 @@ import PageHeader from "../../pageheader/PageHeader";
 import {FilterComponent} from "./FilterComponent";
 import LoadingOverlay from "../../utils/LoadingOverlay";
 import useDatasets from "../../utils/useDatasets";
+import {NavLink} from "react-router-dom";
 
 export default function SelectTables({
                                          schema, setSchema,
@@ -129,6 +130,15 @@ export default function SelectTables({
             <LoadingOverlay active={loading || loadingDatasets}/>
             <div id={"select-bulk-tables-component"}>
                 <PageHeader title={"Bulk Download"} subtitle={"Download Individual Tables"}/>
+                <div className={"mt-3 mb-3 button-bar"}>
+                    <div className={"btn-group"}>
+                        <NavLink to={"/download/"} className={"btn btn-primary"}>
+                            <i className={"fa fa-arrow-left"}/>
+                            &nbsp;
+                            Back
+                        </NavLink>
+                    </div>
+                </div>
                 <div className={"mt-3"}>
                     <FilterComponent schemas={schemas}
                                      schema={schema}

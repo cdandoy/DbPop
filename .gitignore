@@ -44,3 +44,4 @@ bin/
 /files/config/dbpop.properties
 /files/config/vfk.json
 /files/temp/
+/files/config/setup/install-complete.txt

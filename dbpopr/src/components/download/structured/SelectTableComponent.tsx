@@ -5,6 +5,7 @@ import {TableInfo} from "../../../api/content";
 import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
 import {Plural} from "../../../utils/DbPopUtils";
 import SelectTableDependenciesComponent from "../SelectTableDependenciesComponent";
+import {NavLink} from "react-router-dom";
 
 export default function SelectTableComponent({
                                                  tableInfos,
@@ -38,6 +39,11 @@ export default function SelectTableComponent({
             <PageHeader title={"Structured Download"} subtitle={"Select the root table"}/>
             <div className={"mt-3 mb-3 button-bar"}>
                 <div className={"btn-group"}>
+                    <NavLink to={"/download/"} className={"btn btn-primary"}>
+                        <i className={"fa fa-arrow-left"}/>
+                        &nbsp;
+                        Back
+                    </NavLink>
                     <button className={"btn btn-primary"}
                             disabled={tableName == null}
                             onClick={() => setPage("dependencies")}>
