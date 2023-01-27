@@ -35,8 +35,8 @@ public class TableFetcher implements AutoCloseable {
 
     public static TableFetcher createTableFetcher(Database database, Table table, List<TableJoin> tableJoins, List<TableQuery> where, List<String> filteredColumns, ExecutionContext executionContext) {
         String sql = ("SELECT %s.*\nFROM %s").formatted(
-                database.quote(table.tableName()),
-                database.quote(table.tableName())
+                database.quote(table.getTableName()),
+                database.quote(table.getTableName())
         );
 
         String joins = tableJoins.stream()
@@ -70,7 +70,7 @@ public class TableFetcher implements AutoCloseable {
         if (!filteredColumns.isEmpty()) {
             String pkWhereClause = filteredColumns.stream()
                     .map(filteredColumn -> "(%s.%s = ?)".formatted(
-                            database.quote(table.tableName()),
+                            database.quote(table.getTableName()),
                             filteredColumn
                     ))
                     .collect(Collectors.joining(" AND "));
@@ -88,7 +88,7 @@ public class TableFetcher implements AutoCloseable {
         }
 
         // We want to sort our CSV files as much as possible to make it easier to see the changes
-        PrimaryKey primaryKey = table.primaryKey();
+        PrimaryKey primaryKey = table.getPrimaryKey();
         if (primaryKey != null) {
             sql = "%s\nORDER BY %s".formatted(
                     sql,

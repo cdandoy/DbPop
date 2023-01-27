@@ -48,7 +48,7 @@ public class Populator {
         Datasets.validateAllTablesExist(allDatasets, datasetTableNames, databaseTables);
 
         Map<String, Dataset> datasetsByName = allDatasets.stream().collect(Collectors.toMap(Dataset::getName, Function.identity()));
-        Map<TableName, Table> tablesByName = databaseTables.stream().collect(Collectors.toMap(Table::tableName, Function.identity()));
+        Map<TableName, Table> tablesByName = databaseTables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
         validateStaticTables(datasetsByName);
 
         return new Populator(database, datasetsByName, tablesByName);

@@ -169,7 +169,7 @@ public abstract class ColumnType {
         }
     };
 
-    public static ColumnType getColumnType(String typeName, int typePrecision) {
+    public static ColumnType getColumnType(String typeName, Integer typePrecision) {
         if ("varchar".equals(typeName)) return VARCHAR;
         if ("nvarchar".equals(typeName)) return VARCHAR;
         if ("int".equals(typeName)) return INTEGER;
@@ -178,9 +178,9 @@ public abstract class ColumnType {
         if ("bigint".equals(typeName)) return BIG_DECIMAL;
         if ("money".equals(typeName)) return BIG_DECIMAL;
         if ("text".equals(typeName)) return VARCHAR;
-        if ("decimal".equals(typeName)) return typePrecision > 0 ? BIG_DECIMAL : INTEGER;
-        if ("float".equals(typeName)) return typePrecision > 0 ? BIG_DECIMAL : INTEGER;
-        if ("numeric".equals(typeName)) return typePrecision > 0 ? BIG_DECIMAL : INTEGER;
+        if ("decimal".equals(typeName)) return (typePrecision != null && typePrecision > 0) ? BIG_DECIMAL : INTEGER;
+        if ("float".equals(typeName)) return (typePrecision != null && typePrecision > 0) ? BIG_DECIMAL : INTEGER;
+        if ("numeric".equals(typeName)) return (typePrecision != null && typePrecision > 0) ? BIG_DECIMAL : INTEGER;
         if ("date".equals(typeName)) return DATE;
         if ("timestamp".equals(typeName)) return TIMESTAMP;
         if ("datetime".equals(typeName)) return TIMESTAMP;

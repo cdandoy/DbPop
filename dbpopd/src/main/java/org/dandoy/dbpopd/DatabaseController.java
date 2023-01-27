@@ -29,12 +29,12 @@ public class DatabaseController {
         configurationService.assertSourceConnection();
 
         return databaseService.getSourceTables()
-                .stream().filter(it -> it.tableName().toQualifiedName().contains(query))
+                .stream().filter(it -> it.getTableName().toQualifiedName().contains(query))
                 .map(table -> new SearchTableResponse(
-                        table.tableName().toQualifiedName(),
-                        table.tableName(),
-                        table.columns().stream().map(Column::getName).toList(),
-                        table.indexes().stream()
+                        table.getTableName().toQualifiedName(),
+                        table.getTableName(),
+                        table.getColumns().stream().map(Column::getName).toList(),
+                        table.getIndexes().stream()
                                 .map(index -> new SearchTableSearchByResponse(
                                         "%s (%s)".formatted(index.getName(), String.join(", ", index.getColumns())),
                                         index.getColumns()

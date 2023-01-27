@@ -91,7 +91,7 @@ public class ExecutionPlan implements AutoCloseable {
                 .setDatabase(database)
                 .setDatasetsDirectory(datasetsDirectory)
                 .setDataset(dataset)
-                .setTableName(table.tableName())
+                .setTableName(table.getTableName())
                 .setTableJoins(tableJoins)
                 .setWheres(wheres)
                 .setFilteredColumns(filteredColumns)
@@ -100,7 +100,7 @@ public class ExecutionPlan implements AutoCloseable {
                 .build();
         List<SelectedColumn> selectedColumns = tableDownloader.getSelectedColumns();
         List<SelectedColumn> filterSelectedColumns = filteredColumns.stream().map(it -> SelectedColumn.findByName(selectedColumns, it)).toList();
-        ExecutionNode executionNode = new ExecutionNode(table.tableName(), tableDownloader, filterSelectedColumns);
+        ExecutionNode executionNode = new ExecutionNode(table.getTableName(), tableDownloader, filterSelectedColumns);
         executionNodes.add(executionNode);
         addLookupNodes(tableExecutionModel, executionNode, table);
         addDataNodes(tableExecutionModel, executionNode, table);
@@ -112,7 +112,7 @@ public class ExecutionPlan implements AutoCloseable {
     private static boolean collectJoins(Database database, TableName tableName, TableExecutionModel tableExecutionModel, List<TableJoin> tableJoins, List<TableQuery> where) {
         Table table = database.getTable(tableName);
         for (TableExecutionModel subModel : tableExecutionModel.constraints()) {
-            Optional<ForeignKey> optionalForeignKey = table.foreignKeys().stream()
+            Optional<ForeignKey> optionalForeignKey = table.getForeignKeys().stream()
                     .filter(it -> subModel.constraintName().equals(it.getName()))
                     .findFirst();
             if (optionalForeignKey.isPresent()) {
@@ -181,7 +181,7 @@ public class ExecutionPlan implements AutoCloseable {
 
     private void addDataNodes(TableExecutionModel parentTableExecutionModel, ExecutionNode parentExecutionNode, Table table) {
         // If we are on "invoices", fetch "invoice_details"
-        for (ForeignKey foreignKey : database.getRelatedForeignKeys(table.tableName())) {
+        for (ForeignKey foreignKey : database.getRelatedForeignKeys(table.getTableName())) {
             TableExecutionModel tableExecutionModel = parentTableExecutionModel.removeTableExecutionModel(foreignKey.getName());
             if (tableExecutionModel != null) {
                 TableName fkTableName = foreignKey.getFkTableName();
@@ -198,7 +198,7 @@ public class ExecutionPlan implements AutoCloseable {
 
     private void addLookupNodes(TableExecutionModel parentTableExecutionModel, ExecutionNode parentExecutionNode, Table table) {
         // If we are on "invoices", fetch "customers"
-        for (ForeignKey foreignKey : table.foreignKeys()) {
+        for (ForeignKey foreignKey : table.getForeignKeys()) {
             TableExecutionModel tableExecutionModel = parentTableExecutionModel.removeTableExecutionModel(foreignKey.getName());
             if (tableExecutionModel != null) {
                 TableName pkTableName = foreignKey.getPkTableName();
@@ -222,19 +222,19 @@ public class ExecutionPlan implements AutoCloseable {
     private ExecutionNode createExecutionNode(Table table, TableExecutionModel tableExecutionModel, List<String> filteredColumns, List<SelectedColumn> extractSelectedColumns) {
         List<TableJoin> tableJoins = new ArrayList<>();
         List<TableQuery> wheres = new ArrayList<>();
-        collectJoins(database, table.tableName(), tableExecutionModel, tableJoins, wheres);
+        collectJoins(database, table.getTableName(), tableExecutionModel, tableJoins, wheres);
         TableDownloader tableDownloader = TableDownloader.builder()
                 .setDatabase(database)
                 .setDatasetsDirectory(datasetsDirectory)
                 .setDataset(dataset)
-                .setTableName(table.tableName())
+                .setTableName(table.getTableName())
                 .setTableJoins(tableJoins)
                 .setWheres(wheres)
                 .setFilteredColumns(filteredColumns)
                 .setExecutionMode(executionMode)
                 .setExecutionContext(executionContext)
                 .build();
-        ExecutionNode executionNode = new ExecutionNode(table.tableName(), tableDownloader, extractSelectedColumns);
+        ExecutionNode executionNode = new ExecutionNode(table.getTableName(), tableDownloader, extractSelectedColumns);
         executionNodes.add(executionNode);
         return executionNode;
     }

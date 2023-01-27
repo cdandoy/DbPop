@@ -16,7 +16,7 @@ public abstract class DatabasePreparationStrategy {
     protected static Set<ForeignKey> getForeignKeysToSuppress(Database database, Set<TableName> tableNames) {
         return Stream.concat(
                 tableNames.stream()
-                        .map(tableName -> database.getTable(tableName).foreignKeys())
+                        .map(tableName -> database.getTable(tableName).getForeignKeys())
                         .flatMap(Collection::stream),
                 tableNames.stream()
                         .map(database::getRelatedForeignKeys)

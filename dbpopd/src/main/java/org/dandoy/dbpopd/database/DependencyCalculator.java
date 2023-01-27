@@ -29,7 +29,7 @@ public class DependencyCalculator {
             Table table = databaseService.getSourceTable(tableName);
 
             // If we are on invoices, look for customers
-            for (ForeignKey foreignKey : table.foreignKeys()) {
+            for (ForeignKey foreignKey : table.getForeignKeys()) {
                 String constraintName = foreignKey.getName();
                 if (processedConstraints.add(constraintName)) {
                     Dependency subDependency = dependency

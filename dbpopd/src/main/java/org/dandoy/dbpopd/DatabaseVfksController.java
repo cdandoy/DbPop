@@ -53,7 +53,7 @@ public class DatabaseVfksController {
     public void postVirtualForeignKey(ForeignKey foreignKey) {
         DatabaseCache sourceDatabaseCache = configurationService.getSourceDatabaseCache();
         Table fkTable = sourceDatabaseCache.getTable(foreignKey.getFkTableName());
-        List<ForeignKey> dbForeignKeys = fkTable.foreignKeys();
+        List<ForeignKey> dbForeignKeys = fkTable.getForeignKeys();
 
         VirtualFkCache virtualFkCache = configurationService.getVirtualFkCache();
         ForeignKey existingVfk = virtualFkCache.getByFkTable(foreignKey.getFkTableName(), foreignKey.getName());

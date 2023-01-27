@@ -1,7 +1,11 @@
-package org.dandoy.dbpop.database;
+package org.dandoy.dbpop.database.mssql;
 
 import org.dandoy.LocalCredentials;
 import org.dandoy.DbPopUtils;
+import org.dandoy.dbpop.database.Column;
+import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.ForeignKey;
+import org.dandoy.dbpop.database.Table;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -27,20 +31,20 @@ public class MsSqlTests {
             Table table = targetDatabase.getTable(invoices);
             {
                 assertNotNull(table);
-                assertEquals(3, table.columns().size());
+                assertEquals(3, table.getColumns().size());
                 assertEquals(
                         List.of("invoice_id", "customer_id", "invoice_date"),
-                        table.columns().stream().map(Column::getName).toList()
+                        table.getColumns().stream().map(Column::getName).toList()
                 );
-                assertEquals(1, table.indexes().size());
-                assertNotNull(table.indexes().get(0).getName());
-                assertEquals("invoice_id", table.indexes().get(0).getColumns().get(0));
-                assertNotNull(table.primaryKey());
-                assertEquals(1, table.foreignKeys().size());
-                assertEquals("customer_id", table.foreignKeys().get(0).getPkColumns().get(0));
-                assertEquals("customers", table.foreignKeys().get(0).getPkTableName().getTable());
-                assertEquals("invoices", table.foreignKeys().get(0).getFkTableName().getTable());
-                assertNotNull(table.foreignKeys().get(0).getName());
+                assertEquals(1, table.getIndexes().size());
+                assertNotNull(table.getIndexes().get(0).getName());
+                assertEquals("invoice_id", table.getIndexes().get(0).getColumns().get(0));
+                assertNotNull(table.getPrimaryKey());
+                assertEquals(1, table.getForeignKeys().size());
+                assertEquals("customer_id", table.getForeignKeys().get(0).getPkColumns().get(0));
+                assertEquals("customers", table.getForeignKeys().get(0).getPkTableName().getTable());
+                assertEquals("invoices", table.getForeignKeys().get(0).getFkTableName().getTable());
+                assertNotNull(table.getForeignKeys().get(0).getName());
             }
 
             List<ForeignKey> relatedForeignKeys = targetDatabase.getRelatedForeignKeys(customers);

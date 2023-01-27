@@ -69,7 +69,7 @@ public class DatabaseService {
                 try (Database database = configurationService.createSourceDatabase()) {
                     Map<TableName, RowCount> rowCounts = new HashMap<>();
                     for (Table table : sourceDatabase.getTables()) {
-                        TableName tableName = table.tableName();
+                        TableName tableName = table.getTableName();
                         RowCount rowCount = database.getRowCount(tableName);
                         rowCounts.put(tableName, rowCount);
                     }
@@ -85,7 +85,7 @@ public class DatabaseService {
                 try (Database database = configurationService.createTargetDatabase()) {
                     Map<TableName, RowCount> rowCounts = new HashMap<>();
                     for (Table table : database.getTables()) {
-                        TableName tableName = table.tableName();
+                        TableName tableName = table.getTableName();
                         RowCount rowCount = database.getRowCount(tableName);
                         rowCounts.put(tableName, rowCount);
                     }
@@ -97,7 +97,7 @@ public class DatabaseService {
 
     public Set<TableName> getTargetTableNames() {
         return targetDatabase.getTables().stream()
-                .map(Table::tableName)
+                .map(Table::getTableName)
                 .collect(Collectors.toSet());
     }
 

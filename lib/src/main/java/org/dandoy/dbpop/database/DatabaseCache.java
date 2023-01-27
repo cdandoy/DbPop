@@ -37,16 +37,16 @@ public class DatabaseCache extends Database {
 
     private Table addVFKs(Table table) {
         if (table == null) return null;
-        List<ForeignKey> virtualForeignKeys = virtualFkCache.findByFkTable(table.tableName());
+        List<ForeignKey> virtualForeignKeys = virtualFkCache.findByFkTable(table.getTableName());
         if (virtualForeignKeys.isEmpty()) return table;
 
         return new Table(
-                table.tableName(),
-                table.columns(),
-                table.indexes(),
-                table.primaryKey(),
+                table.getTableName(),
+                table.getColumns(),
+                table.getIndexes(),
+                table.getPrimaryKey(),
                 concat(
-                        table.foreignKeys(),
+                        table.getForeignKeys(),
                         virtualForeignKeys
                 )
         );
@@ -55,7 +55,7 @@ public class DatabaseCache extends Database {
     @Override
     public Collection<TableName> getTableNames(String catalog, String schema) {
         return getTables().stream()
-                .map(Table::tableName)
+                .map(Table::getTableName)
                 .filter(it -> Objects.equals(schema, it.getSchema()) && Objects.equals(catalog, it.getCatalog()))
                 .toList();
     }
@@ -65,7 +65,7 @@ public class DatabaseCache extends Database {
             cache = new HashMap<>();
             Collection<Table> tables = delegate.getTables();
             for (Table table : tables) {
-                cache.put(table.tableName(), table);
+                cache.put(table.getTableName(), table);
             }
         }
         return cache;
@@ -96,7 +96,7 @@ public class DatabaseCache extends Database {
     @Override
     public List<ForeignKey> getRelatedForeignKeys(TableName tableName) {
         return getTables().stream()
-                .flatMap(it -> it.foreignKeys().stream())
+                .flatMap(it -> it.getForeignKeys().stream())
                 .filter(it -> it.getPkTableName().equals(tableName))
                 .toList();
     }

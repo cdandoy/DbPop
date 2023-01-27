@@ -50,6 +50,38 @@ public class SqlServerDatabase extends DefaultDatabase {
         }
     }
 
+    private static SqlServerColumn toSqlServerColumn(ResultSet resultSet) throws SQLException {
+        String column = resultSet.getString("c");
+        boolean nullable = resultSet.getBoolean("is_nullable");
+        String seedValue = resultSet.getString("seed_value");
+        String incrementValue = resultSet.getString("increment_value");
+        String typeName = resultSet.getString("type_name");
+        Integer typePrecision = resultSet.getObject("type_precision", Integer.class);
+        Integer typeMaxLength = resultSet.getObject("type_max_length", Integer.class);
+        Integer typeScale = resultSet.getObject("type_scale", Integer.class);
+        String defaultConstraintName = resultSet.getString("default_constraint_name");
+        String defaultValue = resultSet.getString("default_value");
+        try {
+            ColumnType columnType = ColumnType.getColumnType(typeName, typePrecision);
+            return new SqlServerColumn(
+                    column,
+                    columnType,
+                    nullable,
+                    typeName,
+                    typePrecision,
+                    typeMaxLength,
+                    typeScale,
+                    seedValue,
+                    incrementValue,
+                    defaultConstraintName,
+                    defaultValue
+            );
+        } catch (RuntimeException e) {
+            // Ignore the unknown column types
+            return null;
+        }
+    }
+
     @SuppressWarnings("DuplicatedCode")
     @Override
     public Collection<Table> getTables() {
@@ -65,17 +97,24 @@ public class SqlServerDatabase extends DefaultDatabase {
                         statement.execute("USE " + catalog);
                         // Collects the tables and columns
                         try (PreparedStatement tablesStatement = connection.prepareStatement("""
-                                SELECT s.name       AS s,
-                                       t.name       AS t,
-                                       c.name       AS c,
-                                       c.is_nullable,
-                                       c.is_identity,
-                                       ty.name      AS type_name,
-                                       ty.precision AS type_precision
+                                SELECT s.name             AS s,
+                                       t.name             AS t,
+                                       c.name             AS c,
+                                       c.is_nullable      AS is_nullable,
+                                       ic.seed_value      AS seed_value,
+                                       ic.increment_value AS increment_value,
+                                       ty.name            AS type_name,
+                                       c.max_length       AS type_max_length,
+                                       c.precision        AS type_precision,
+                                       c.scale            AS type_scale,
+                                       dc.name            AS default_constraint_name,
+                                       dc.definition      AS default_value
                                 FROM sys.schemas s
                                          JOIN sys.tables t ON t.schema_id = s.schema_id
                                          JOIN sys.columns c ON c.object_id = t.object_id
                                          LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                                         LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
+                                         LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                                 WHERE t.is_ms_shipped = 0
                                 ORDER BY s.name, t.name, c.column_id""")) {
                             try (TableCollector tableCollector = new TableCollector((schema, table, columns) -> {
@@ -84,27 +123,11 @@ public class SqlServerDatabase extends DefaultDatabase {
                             })) {
                                 try (ResultSet tablesResultSet = tablesStatement.executeQuery()) {
                                     while (tablesResultSet.next()) {
-                                        String schema = tablesResultSet.getString("s");
-                                        String table = tablesResultSet.getString("t");
-                                        String column = tablesResultSet.getString("c");
-                                        boolean nullable = tablesResultSet.getBoolean("is_nullable");
-                                        boolean identity = tablesResultSet.getBoolean("is_identity");
-                                        String typeName = tablesResultSet.getString("type_name");
-                                        int typePrecision = tablesResultSet.getInt("type_precision");
-                                        try {
-                                            ColumnType columnType = ColumnType.getColumnType(typeName, typePrecision);
-                                            tableCollector.push(
-                                                    schema,
-                                                    table,
-                                                    new Column(
-                                                            column,
-                                                            columnType,
-                                                            nullable,
-                                                            identity
-                                                    )
-                                            );
-                                        } catch (RuntimeException e) {
-                                            // Ignore the unknown column types
+                                        SqlServerColumn sqlServerColumn = toSqlServerColumn(tablesResultSet);
+                                        if (sqlServerColumn != null) {
+                                            String schema = tablesResultSet.getString("s");
+                                            String table = tablesResultSet.getString("t");
+                                            tableCollector.push(schema, table, sqlServerColumn);
                                         }
                                     }
                                 }
@@ -208,7 +231,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         return tableColumns.entrySet().stream()
                 .map(entry -> {
                             TableName tableName = entry.getKey();
-                            return new Table(
+                            return new SqlServerTable(
                                     tableName,
                                     entry.getValue(),
                                     indexes.computeIfAbsent(tableName, it -> Collections.emptyList()),
@@ -236,17 +259,24 @@ public class SqlServerDatabase extends DefaultDatabase {
                             statement.execute("USE " + catalog);
                             // Collects the tables and columns
                             try (PreparedStatement tablesStatement = connection.prepareStatement("""
-                                    SELECT s.name       AS s,
-                                           t.name       AS t,
-                                           c.name       AS c,
-                                           c.is_nullable,
-                                           c.is_identity,
-                                           ty.name      AS type_name,
-                                           ty.precision AS type_precision
+                                    SELECT s.name             AS s,
+                                           t.name             AS t,
+                                           c.name             AS c,
+                                           c.is_nullable      AS is_nullable,
+                                           ic.seed_value      AS seed_value,
+                                           ic.increment_value AS increment_value,
+                                           ty.name            AS type_name,
+                                           c.max_length       AS type_max_length,
+                                           c.precision        AS type_precision,
+                                           c.scale            AS type_scale,
+                                           dc.name            AS default_constraint_name,
+                                           dc.definition      AS default_value
                                     FROM sys.schemas s
                                              JOIN sys.tables t ON t.schema_id = s.schema_id
                                              JOIN sys.columns c ON c.object_id = t.object_id
                                              LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                                             LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
+                                             LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                                     ORDER BY s.name, t.name, c.column_id""")) {
                                 try (TableCollector tableCollector = new TableCollector((schema, table, columns) -> {
                                     TableName tableName = new TableName(catalog, schema, table);
@@ -260,25 +290,9 @@ public class SqlServerDatabase extends DefaultDatabase {
                                             String table = tablesResultSet.getString("t");
                                             TableName tableName = new TableName(catalog, schema, table);
                                             if (datasetTableNames.contains(tableName)) {
-                                                String column = tablesResultSet.getString("c");
-                                                boolean nullable = tablesResultSet.getBoolean("is_nullable");
-                                                boolean identity = tablesResultSet.getBoolean("is_identity");
-                                                String typeName = tablesResultSet.getString("type_name");
-                                                int typePrecision = tablesResultSet.getInt("type_precision");
-                                                try {
-                                                    ColumnType columnType = ColumnType.getColumnType(typeName, typePrecision);
-                                                    tableCollector.push(
-                                                            schema,
-                                                            table,
-                                                            new Column(
-                                                                    column,
-                                                                    columnType,
-                                                                    nullable,
-                                                                    identity
-                                                            )
-                                                    );
-                                                } catch (RuntimeException e) {
-                                                    // Ignore the unknown column types
+                                                SqlServerColumn sqlServerColumn = toSqlServerColumn(tablesResultSet);
+                                                if (sqlServerColumn != null) {
+                                                    tableCollector.push(schema, table, sqlServerColumn);
                                                 }
                                             }
                                         }
@@ -386,7 +400,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         return tableColumns.entrySet().stream()
                 .map(entry -> {
                             TableName tableName = entry.getKey();
-                            return new Table(
+                            return new SqlServerTable(
                                     tableName,
                                     entry.getValue(),
                                     indexes.computeIfAbsent(tableName, it -> Collections.emptyList()),
@@ -410,15 +424,24 @@ public class SqlServerDatabase extends DefaultDatabase {
             }
             // Collects the tables and columns
             try (PreparedStatement tablesStatement = connection.prepareStatement("""
-                    SELECT c.name       AS c,
-                           c.is_nullable,
-                           c.is_identity,
-                           ty.name      AS type_name,
-                           ty.precision AS type_precision
+                    SELECT s.name             AS s,
+                           t.name             AS t,
+                           c.name             AS c,
+                           c.is_nullable      AS is_nullable,
+                           ic.seed_value      AS seed_value,
+                           ic.increment_value AS increment_value,
+                           ty.name            AS type_name,
+                           c.max_length       AS type_max_length,
+                           c.precision        AS type_precision,
+                           c.scale            AS type_scale,
+                           dc.name            AS default_constraint_name,
+                           dc.definition      AS default_value
                     FROM sys.schemas s
                              JOIN sys.tables t ON t.schema_id = s.schema_id
                              JOIN sys.columns c ON c.object_id = t.object_id
                              LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                             LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
+                             LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                     WHERE s.name = ?
                       AND t.name = ?
                     ORDER BY s.name, t.name, c.column_id""")) {
@@ -426,13 +449,10 @@ public class SqlServerDatabase extends DefaultDatabase {
                 tablesStatement.setString(2, tableName.getTable());
                 try (ResultSet tablesResultSet = tablesStatement.executeQuery()) {
                     while (tablesResultSet.next()) {
-                        String column = tablesResultSet.getString("c");
-                        boolean nullable = tablesResultSet.getBoolean("is_nullable");
-                        boolean identity = tablesResultSet.getBoolean("is_identity");
-                        String typeName = tablesResultSet.getString("type_name");
-                        int typePrecision = tablesResultSet.getInt("type_precision");
-                        ColumnType columnType = ColumnType.getColumnType(typeName, typePrecision);
-                        tableColumns.add(new Column(column, columnType, nullable, identity));
+                        SqlServerColumn sqlServerColumn = toSqlServerColumn(tablesResultSet);
+                        if (sqlServerColumn != null) {
+                            tableColumns.add(sqlServerColumn);
+                        }
                     }
                 }
             }
@@ -519,7 +539,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return new Table(
+        return new SqlServerTable(
                 tableName,
                 tableColumns,
                 indexes,
@@ -619,6 +639,11 @@ public class SqlServerDatabase extends DefaultDatabase {
     }
 
     @Override
+    public String getTableDefinition(TableName tableName) {
+        return super.getTableDefinition(tableName);
+    }
+
+    @Override
     public DatabasePreparationFactory createDatabasePreparationFactory() {
         return DisableForeignKeysPreparationStrategy::new;
     }
@@ -654,8 +679,8 @@ public class SqlServerDatabase extends DefaultDatabase {
         SqlServerDatabaseInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
             super(table, dataFileHeaders, sql);
 
-            this.tableName = table.tableName();
-            identity = table.columns().stream().anyMatch(Column::isAutoIncrement);
+            this.tableName = table.getTableName();
+            identity = table.getColumns().stream().anyMatch(Column::isAutoIncrement);
             if (identity) {
                 identityInsert(this.tableName, true);
             }

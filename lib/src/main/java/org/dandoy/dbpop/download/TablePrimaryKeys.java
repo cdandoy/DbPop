@@ -26,7 +26,7 @@ public class TablePrimaryKeys {
     }
 
     public static TablePrimaryKeys createTablePrimaryKeys(File datasetsDirectory, String dataset, Table table, List<SelectedColumn> selectedColumns) {
-        PrimaryKey primaryKey = table.primaryKey();
+        PrimaryKey primaryKey = table.getPrimaryKey();
         if (primaryKey == null) return null;
         Set<List<String>> pkValues = new HashSet<>();
         List<SelectedColumn> selectedPkColumns = primaryKey.columns().stream()
@@ -40,10 +40,10 @@ public class TablePrimaryKeys {
     }
 
     private static void readPrimaryKeys(Set<List<String>> pkValues, File datasetsDirectory, Table table, String dataset) {
-        File outputFile = DbPopUtils.getOutputFile(datasetsDirectory, dataset, table.tableName());
+        File outputFile = DbPopUtils.getOutputFile(datasetsDirectory, dataset, table.getTableName());
         if (outputFile.exists()) {
             try (CSVParser csvParser = DbPopUtils.createCsvParser(outputFile)) {
-                PrimaryKey primaryKey = table.primaryKey();
+                PrimaryKey primaryKey = table.getPrimaryKey();
                 List<String> columns = primaryKey.columns();
                 for (CSVRecord csvRecord : csvParser) {
                     List<String> values = new ArrayList<>();

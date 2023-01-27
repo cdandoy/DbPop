@@ -131,18 +131,18 @@ public abstract class DefaultDatabase extends Database {
                     if (bindVariables.length() > 0) bindVariables.append(",");
                     bindVariables.append("?");
                 } else {
-                    log.error("Cannot load the data type of {}.{}", table.tableName().toQualifiedName(), columnName);
+                    log.error("Cannot load the data type of {}.{}", table.getTableName().toQualifiedName(), columnName);
                     dataFileHeader.setLoadable(false);
                 }
             } else {
-                log.error("Column not found: {}.{}", table.tableName().toQualifiedName(), columnName);
+                log.error("Column not found: {}.{}", table.getTableName().toQualifiedName(), columnName);
                 dataFileHeader.setLoadable(false);
             }
         }
 
         String sql = String.format(
                 "INSERT INTO %s (%s) VALUES (%s)",
-                quote(table.tableName()),
+                quote(table.getTableName()),
                 columnNames,
                 bindVariables
         );
@@ -180,7 +180,7 @@ public abstract class DefaultDatabase extends Database {
 
     @Override
     public void deleteTable(Table table) {
-        deleteTable(table.tableName());
+        deleteTable(table.getTableName());
     }
 
     @Override
@@ -211,6 +211,10 @@ public abstract class DefaultDatabase extends Database {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public String getTableDefinition(TableName tableName) {
+        throw new RuntimeException("Not Implemented");
     }
 
     public class DatabaseInserter implements AutoCloseable {

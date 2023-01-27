@@ -45,7 +45,7 @@ class TableDownloaderTest {
                     .setDatasetsDirectory(datasetsDirectory)
                     .setDataset("download")
                     .setTableName(invoices)
-                    .setFilteredColumns(table.primaryKey().columns())
+                    .setFilteredColumns(table.getPrimaryKey().columns())
                     .setExecutionMode(ExecutionMode.SAVE)
                     .build()) {
 
@@ -65,7 +65,7 @@ class TableDownloaderTest {
 
         try (Database database = Database.createDatabase(localCredentials.sourceConnectionBuilder())) {
             Table table = database.getTable(invoiceDetails);
-            List<String> fkColumns = table.foreignKeys().stream()
+            List<String> fkColumns = table.getForeignKeys().stream()
                     .filter(it -> it.getPkTableName().equals(invoices)).findFirst().orElseThrow()
                     .getFkColumns();
             try (TableDownloader tableDownloader = TableDownloader.builder()

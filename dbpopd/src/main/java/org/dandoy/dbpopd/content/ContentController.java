@@ -37,7 +37,7 @@ public class ContentController {
         Set<TableName> targetTableNames = databaseService.getTargetTableNames();
         return sourceTables.stream()
                 .map(table -> {
-                    TableName tableName = table.tableName();
+                    TableName tableName = table.getTableName();
                     return new TableInfo(
                             tableName,
                             databaseService.getSourceRowCount(tableName),
@@ -52,10 +52,10 @@ public class ContentController {
     }
 
     private static List<TableName> getDependencies(Table table) {
-        return table.foreignKeys()
+        return table.getForeignKeys()
                 .stream()
                 .map(ForeignKey::getPkTableName)
-                .filter(tableName -> !table.tableName().equals(tableName))
+                .filter(tableName -> !table.getTableName().equals(tableName))
                 .toList();
     }
 
