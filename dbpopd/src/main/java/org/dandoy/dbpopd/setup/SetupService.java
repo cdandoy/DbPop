@@ -17,6 +17,8 @@ import org.dandoy.dbpopd.populate.PopulateService;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.MalformedInputException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.*;
 import java.time.ZoneOffset;
@@ -26,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Singleton
@@ -66,16 +67,15 @@ public class SetupService {
 
     private void setActivity(String activity) {
         setupState = new SetupState(activity, null);
+        log.info(activity);
     }
 
     private boolean setError(String format, Object... params) {
         if (format == null) format = "Unknown Error";
-        setupState = new SetupState(setupState.activity(), format.formatted(params));
+        String message = format.formatted(params);
+        setupState = new SetupState(setupState.activity(), message);
+        log.error(message);
         return false;
-    }
-
-    private void setError(Exception e) {
-        setError(String.join("<br/>", ExceptionUtils.getErrorMessages(e)));
     }
 
     private void doit() {
@@ -135,13 +135,18 @@ public class SetupService {
     private boolean executeSql(Connection connection, File file) {
         try {
             if (!file.exists()) return false;
-            String absolutePath = file.getCanonicalPath();
-            setActivity("Executing " + absolutePath);
-            List<String> lines = Files.readAllLines(file.toPath());
+            String canonicalPath = file.getCanonicalPath();
+            setActivity("Executing " + canonicalPath);
+            List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.US_ASCII);
             List<Sql> sqls = linesToSql(lines);
             return executeSqls(file, connection, sqls);
+        } catch (MalformedInputException e) {
+            setError("Invalid encoding: %s", file);
+            return false;
         } catch (IOException | SQLException e) {
-            setError(e);
+            String join = String.join("\n", ExceptionUtils.getErrorMessages(e));
+            setError("Failed to execute " + file + "\n" + join);
+            log.error(file.getAbsolutePath(), e);
             return false;
         }
     }
@@ -263,22 +268,12 @@ public class SetupService {
 
     static List<Sql> linesToSql(List<String> lines) {
         Pattern go = Pattern.compile("^ *go[ ;]*$", Pattern.CASE_INSENSITIVE);
-        Pattern sc = Pattern.compile("^(.*) *; *$");
 
         SqlAccumulator accumulator = new SqlAccumulator();
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
 
-            Matcher scMatcher = sc.matcher(line);
-            if (scMatcher.matches()) {
-                String sqlMatch = scMatcher.group(1);
-                if (!sqlMatch.isEmpty() && !go.matcher(sqlMatch).matches()) {
-                    accumulator.addLine(sqlMatch);
-                }
-                accumulator.finishSql(i);
-            } else if (go.matcher(line).matches()) {
-                accumulator.finishSql(i);
-            } else if (line.trim().isEmpty()) {
+            if (go.matcher(line).matches()) {
                 accumulator.finishSql(i);
             } else {
                 accumulator.addLine(line);
@@ -298,7 +293,7 @@ public class SetupService {
                          warnings != null;
                          warnings = warnings.getNextWarning()) {
                         String message = warnings.getMessage();
-                        System.err.println(message);
+                        System.out.println("\n" + message);
                     }
                     if (isSelect) {
                         try (ResultSet resultSet = statement.getResultSet()) {
@@ -326,27 +321,31 @@ public class SetupService {
                             }
                         }
                     }
+                    System.out.print(".");
+                    System.out.flush();
                 } catch (SQLException e) {
                     String filename = setupFile.getAbsolutePath();
                     try {
                         filename = setupFile.getCanonicalPath();
                     } catch (IOException ignored) {
                     }
-                    String errorMessage = """
-                            Error at %s:%d
-                            %s
-                            ==> %s
-                            """
-                            .formatted(
-                                    filename,
-                                    sql.line,
-                                    sql.sql,
-                                    e.getMessage()
-                            );
-                    setError(errorMessage);
-                    return false;
+                    System.out.println();
+                    setError("""
+                                    Error at %s:%d
+                                    %s
+                                    ==> %s
+                                    """,
+                            filename,
+                            sql.line,
+                            sql.sql,
+                            e.getMessage()
+                    );
+                    log.error("Failed to execute {}", sql.sql);
+                    log.error("", e);
+//                    return false; Do not fail if one statement fails. We may be importing sprocs that are in an invalid state
                 }
             }
+            System.out.println();
         }
         return true;
     }
@@ -358,6 +357,7 @@ public class SetupService {
         private final StringBuilder stringBuilder = new StringBuilder();
 
         void addLine(String line) {
+            if (stringBuilder.length() == 0 && line.isEmpty()) return;
             stringBuilder.append(line).append("\n");
         }
 

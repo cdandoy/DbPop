@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class SetupServiceTest {
     @Test
     void testLinesToSql() {
+        //noinspection TextBlockMigration
         String scripts = "sql1;\n" +    // 0
                          "sql2\n" +     // 1
                          "go\n" +       // 2
@@ -59,9 +60,9 @@ class SetupServiceTest {
         assertEquals(5, sqls.size());
 
         assertEquals(1, sqls.get(0).line());
-        assertEquals(3, sqls.get(1).line());
+        assertEquals(2, sqls.get(1).line());
         assertEquals(4, sqls.get(2).line());
-        assertEquals(6, sqls.get(3).line());
-        assertEquals(12, sqls.get(4).line());
+        assertEquals(5, sqls.get(3).line());
+        assertEquals(11, sqls.get(4).line());
     }
 }
