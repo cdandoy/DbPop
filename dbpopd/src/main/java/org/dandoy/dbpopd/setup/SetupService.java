@@ -67,7 +67,7 @@ public class SetupService {
 
     private void setActivity(String activity) {
         setupState = new SetupState(activity, null);
-        log.info(activity);
+        log.info(activity == null ? "Done" : activity);
     }
 
     private boolean setError(String format, Object... params) {
