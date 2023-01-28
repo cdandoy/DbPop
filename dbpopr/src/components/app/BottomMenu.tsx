@@ -4,7 +4,7 @@ import React from "react";
 export default function BottomMenu() {
     return <>
         <li>
-            <a href="/api-docs/" target="_blank">
+            <a href="/swagger-ui/" target="_blank">
                 <SidebarMenu text="API" icons="fa fa-book"/>
             </a>
         </li>

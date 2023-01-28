@@ -12,7 +12,7 @@ micronaut:
         mapping: /swagger/**
       swagger-ui:
         paths: classpath:META-INF/swagger/views/swagger-ui
-        mapping: /api-docs/**
+        mapping: /swagger-ui/**
 netty:
   default:
     allocator:
