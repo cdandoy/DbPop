@@ -3,6 +3,7 @@ package org.dandoy.dbpop.database.mssql;
 import org.dandoy.LocalCredentials;
 import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -10,6 +11,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+@Disabled
 public class DDLTests {
     @Test
     void datatypeTest() throws SQLException {
@@ -41,8 +43,20 @@ public class DDLTests {
     }
 
     @Test
-    void fullTest() throws SQLException {
+    void fullTest1433() throws SQLException {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlserver://localhost:1433;database=tempdb;trustServerCertificate=true", "sa", "SaltSpade2018")) {
+            try (SqlServerDatabase database = new SqlServerDatabase(connection)) {
+                for (Table table : database.getTables()) {
+                    String ddl = table.toDDL(database);
+                    System.out.println(ddl);
+                }
+            }
+        }
+    }
+
+    @Test
+    void fullTest2433() throws SQLException {
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlserver://localhost:2433;database=tempdb;trustServerCertificate=true", "sa", "GlobalTense1010")) {
             try (SqlServerDatabase database = new SqlServerDatabase(connection)) {
                 for (Table table : database.getTables()) {
                     String ddl = table.toDDL(database);

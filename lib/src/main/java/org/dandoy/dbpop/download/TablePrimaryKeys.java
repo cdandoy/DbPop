@@ -29,7 +29,7 @@ public class TablePrimaryKeys {
         PrimaryKey primaryKey = table.getPrimaryKey();
         if (primaryKey == null) return null;
         Set<List<String>> pkValues = new HashSet<>();
-        List<SelectedColumn> selectedPkColumns = primaryKey.columns().stream()
+        List<SelectedColumn> selectedPkColumns = primaryKey.getColumns().stream()
                 .map(columnName -> SelectedColumn.findByName(selectedColumns, columnName))
                 .toList();
 
@@ -44,7 +44,7 @@ public class TablePrimaryKeys {
         if (outputFile.exists()) {
             try (CSVParser csvParser = DbPopUtils.createCsvParser(outputFile)) {
                 PrimaryKey primaryKey = table.getPrimaryKey();
-                List<String> columns = primaryKey.columns();
+                List<String> columns = primaryKey.getColumns();
                 for (CSVRecord csvRecord : csvParser) {
                     List<String> values = new ArrayList<>();
                     for (String column : columns) {

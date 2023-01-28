@@ -53,30 +53,15 @@ public class SqlServerColumn extends Column {
 
     private String getTypeDDL() {
         return switch (typeName) {
-            case "bit" -> "BIT";
-            case "tinyint" -> "TINYINT";
-            case "smallint" -> "SMALLINT";
-            case "int" -> "INT";
-            case "bigint" -> "BIGINT";
-            case "money" -> "MONEY";
-            case "float" -> "FLOAT";
+            case "bigint", "binary", "bit", "date", "datetime", "datetime2", "float", "geography", "image",
+                    "int", "money", "ntext", "smalldatetime", "smallint", "text", "time", "timestamp", "tinyint",
+                    "uniqueidentifier" -> typeName.toUpperCase();
             case "numeric" -> "NUMERIC(%d, %d)".formatted(typePrecision, typeScale);
             case "decimal" -> "DECIMAL(%d, %d)".formatted(typePrecision, typeScale);
             case "varchar" -> "VARCHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
-            case "nvarchar" -> "VARCHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
+            case "nvarchar" -> "NVARCHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
             case "char" -> "CHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
             case "nchar" -> "NCHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
-            case "text" -> "TEXT";
-            case "ntext" -> "NTEXT";
-            case "time" -> "TIME";
-            case "date" -> "DATE";
-            case "datetime" -> "DATETIME";
-            case "datetime2" -> "DATETIME2";
-            case "smalldatetime" -> "SMALLDATETIME";
-            case "timestamp" -> "TIMESTAMP";
-            case "image" -> "IMAGE";
-            case "geography" -> "GEOGRAPHY";
-            case "uniqueidentifier" -> "UNIQUEIDENTIFIER";
             case "varbinary" -> "VARBINARY(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
             default -> {
                 log.error("Unknown data type: " + typeName);

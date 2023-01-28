@@ -3,7 +3,6 @@ package org.dandoy.dbpop.database.mssql;
 import org.dandoy.dbpop.Settings;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
-import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.upload.DataFileHeader;
 import org.dandoy.dbpop.utils.StopWatch;
@@ -88,7 +87,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         Map<TableName, List<Column>> tableColumns = new HashMap<>();
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
         Map<TableName, List<Index>> indexes = new HashMap<>();
-        Map<TableName, PrimaryKey> primaryKeyMap = new HashMap<>();
+        Map<TableName, SqlServerPrimaryKey> primaryKeyMap = new HashMap<>();
         try (PreparedStatement databasesStatement = connection.prepareStatement("SELECT name FROM sys.databases WHERE name NOT IN ('tempdb')")) {
             try (Statement statement = connection.createStatement()) {
                 try (ResultSet databaseResultSet = databasesStatement.executeQuery()) {
@@ -135,12 +134,12 @@ public class SqlServerDatabase extends DefaultDatabase {
                         }
                         // Collects the indexes
                         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-
                                 SELECT s.name AS s,
                                        t.name AS t,
                                        i.name AS i,
                                        i.is_unique,
                                        i.is_primary_key,
+                                       i.type_desc,
                                        c.name AS c
                                 FROM sys.schemas s
                                          JOIN sys.tables t ON t.schema_id = s.schema_id
@@ -151,12 +150,18 @@ public class SqlServerDatabase extends DefaultDatabase {
                                   AND c.name IS NOT NULL
                                   AND t.is_ms_shipped = 0
                                 ORDER BY s.name, t.name, i.index_id, ic.key_ordinal""")) {
-                            try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
-                                TableName tableName = new TableName(catalog, schema, table);
-                                Index index = new Index(name, tableName, unique, primaryKey, columns);
-                                indexes.computeIfAbsent(tableName, it -> new ArrayList<>()).add(index);
-                                if (primaryKey) {
-                                    primaryKeyMap.put(tableName, new PrimaryKey(name, columns));
+                            try (SqlServerIndexCollector indexCollector = new SqlServerIndexCollector(collector -> {
+                                TableName tableName = new TableName(catalog, collector.getSchema(), collector.getTable());
+                                Index index = new Index(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getColumns());
+                                indexes.computeIfAbsent(tableName, it2 -> new ArrayList<>()).add(index);
+                                if (collector.isPrimaryKey()) {
+                                    primaryKeyMap.put(
+                                            tableName,
+                                            new SqlServerPrimaryKey(
+                                                    collector.getName(),
+                                                    collector.getColumns(),
+                                                    collector.getTypeDesc()
+                                            ));
                                 }
                             })) {
                                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -167,6 +172,7 @@ public class SqlServerDatabase extends DefaultDatabase {
                                                 resultSet.getString("i"),
                                                 resultSet.getBoolean("is_unique"),
                                                 resultSet.getBoolean("is_primary_key"),
+                                                resultSet.getString("type_desc"),
                                                 resultSet.getString("c")
                                         );
                                     }
@@ -249,7 +255,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         Map<TableName, List<Column>> tableColumns = new HashMap<>();
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
         Map<TableName, List<Index>> indexes = new HashMap<>();
-        Map<TableName, PrimaryKey> primaryKeyMap = new HashMap<>();
+        Map<TableName, SqlServerPrimaryKey> primaryKeyMap = new HashMap<>();
         try (PreparedStatement databasesStatement = connection.prepareStatement("SELECT name FROM sys.databases WHERE name NOT IN ('tempdb')")) {
             try (Statement statement = connection.createStatement()) {
                 try (ResultSet databaseResultSet = databasesStatement.executeQuery()) {
@@ -307,6 +313,7 @@ public class SqlServerDatabase extends DefaultDatabase {
                                            i.name AS i,
                                            i.is_unique,
                                            i.is_primary_key,
+                                           i.type_desc,
                                            c.name AS c
                                     FROM sys.schemas s
                                              JOIN sys.tables t ON t.schema_id = s.schema_id
@@ -316,13 +323,20 @@ public class SqlServerDatabase extends DefaultDatabase {
                                     WHERE i.name IS NOT NULL
                                       AND c.name IS NOT NULL
                                     ORDER BY s.name, t.name, i.index_id, ic.key_ordinal""")) {
-                                try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
-                                    TableName tableName = new TableName(catalog, schema, table);
+                                try (SqlServerIndexCollector indexCollector = new SqlServerIndexCollector(collector -> {
+                                    TableName tableName = new TableName(catalog, collector.getSchema(), collector.getTable());
                                     if (datasetTableNames.contains(tableName)) {
-                                        Index index = new Index(name, tableName, unique, primaryKey, columns);
-                                        indexes.computeIfAbsent(tableName, it -> new ArrayList<>()).add(index);
-                                        if (primaryKey) {
-                                            primaryKeyMap.put(tableName, new PrimaryKey(name, columns));
+                                        Index index = new Index(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getColumns());
+                                        indexes.computeIfAbsent(tableName, it2 -> new ArrayList<>()).add(index);
+                                        if (collector.isPrimaryKey()) {
+                                            primaryKeyMap.put(
+                                                    tableName,
+                                                    new SqlServerPrimaryKey(
+                                                            collector.getName(),
+                                                            collector.getColumns(),
+                                                            collector.getTypeDesc()
+                                                    )
+                                            );
                                         }
                                     }
                                 })) {
@@ -334,6 +348,7 @@ public class SqlServerDatabase extends DefaultDatabase {
                                                     resultSet.getString("i"),
                                                     resultSet.getBoolean("is_unique"),
                                                     resultSet.getBoolean("is_primary_key"),
+                                                    resultSet.getString("type_desc"),
                                                     resultSet.getString("c")
                                             );
                                         }
@@ -417,7 +432,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         List<Column> tableColumns = new ArrayList<>();
         List<ForeignKey> foreignKeys = new ArrayList<>();
         List<Index> indexes = new ArrayList<>();
-        List<PrimaryKey> primaryKeys = new ArrayList<>();
+        List<SqlServerPrimaryKey> primaryKeys = new ArrayList<>();
         try {
             try (Statement statement = connection.createStatement()) {
                 statement.execute("USE " + tableName.getCatalog());
@@ -461,6 +476,7 @@ public class SqlServerDatabase extends DefaultDatabase {
                     SELECT i.name AS i,
                            i.is_unique,
                            i.is_primary_key,
+                           i.type_desc,
                            c.name AS c
                     FROM sys.schemas s
                              JOIN sys.tables t ON t.schema_id = s.schema_id
@@ -474,11 +490,17 @@ public class SqlServerDatabase extends DefaultDatabase {
                     ORDER BY s.name, t.name, i.index_id, ic.key_ordinal""")) {
                 preparedStatement.setString(1, tableName.getSchema());
                 preparedStatement.setString(2, tableName.getTable());
-                try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
-                    Index index = new Index(name, tableName, unique, primaryKey, columns);
+                try (SqlServerIndexCollector indexCollector = new SqlServerIndexCollector(collector -> {
+                    Index index = new Index(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getColumns());
                     indexes.add(index);
-                    if (primaryKey) {
-                        primaryKeys.add(new PrimaryKey(name, columns));
+                    if (collector.isPrimaryKey()) {
+                        primaryKeys.add(
+                                new SqlServerPrimaryKey(
+                                        collector.getName(),
+                                        collector.getColumns(),
+                                        collector.getTypeDesc()
+                                )
+                        );
                     }
                 })) {
                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -489,6 +511,7 @@ public class SqlServerDatabase extends DefaultDatabase {
                                     resultSet.getString("i"),
                                     resultSet.getBoolean("is_unique"),
                                     resultSet.getBoolean("is_primary_key"),
+                                    resultSet.getString("type_desc"),
                                     resultSet.getString("c")
                             );
                         }

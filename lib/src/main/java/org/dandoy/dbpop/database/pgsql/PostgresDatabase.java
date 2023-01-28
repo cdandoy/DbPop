@@ -124,12 +124,12 @@ public class PostgresDatabase extends DefaultDatabase {
                     WHERE c.attnum = ANY (ix.indkey)
                       AND t.relkind = 'r'
                     ORDER BY t.relname, i.relname, c.attnum""")) {
-                try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
-                    TableName tableName = new TableName(catalog, schema, table);
-                    Index index = new Index(name, tableName, unique, primaryKey, columns);
-                    indexes.computeIfAbsent(tableName, it -> new ArrayList<>()).add(index);
-                    if (primaryKey) {
-                        primaryKeyMap.put(tableName, new PrimaryKey(name, columns));
+                try (IndexCollector indexCollector = new IndexCollector(it -> {
+                    TableName tableName = new TableName(catalog, it.getSchema(), it.getTable());
+                    Index index = new Index(it.getName(), tableName, it.isUnique(), it.isPrimaryKey(), it.getColumns());
+                    indexes.computeIfAbsent(tableName, it2 -> new ArrayList<>()).add(index);
+                    if (it.isPrimaryKey()) {
+                        primaryKeyMap.put(tableName, new PrimaryKey(it.getName(), it.getColumns()));
                     }
                 })) {
                     try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -288,13 +288,13 @@ public class PostgresDatabase extends DefaultDatabase {
                     WHERE c.attnum = ANY (ix.indkey)
                       AND t.relkind = 'r'
                     ORDER BY t.relname, i.relname, c.attnum""")) {
-                try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
-                    TableName tableName = new TableName(catalog, schema, table);
+                try (IndexCollector indexCollector = new IndexCollector(collector -> {
+                    TableName tableName = new TableName(catalog, collector.getSchema(), collector.getTable());
                     if (datasetTableNames.contains(tableName)) {
-                        Index index = new Index(name, tableName, unique, primaryKey, columns);
+                        Index index = new Index(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getColumns());
                         indexes.computeIfAbsent(tableName, it -> new ArrayList<>()).add(index);
-                        if (primaryKey) {
-                            primaryKeyMap.put(tableName, new PrimaryKey(name, columns));
+                        if (collector.isPrimaryKey()) {
+                            primaryKeyMap.put(tableName, new PrimaryKey(collector.getName(), collector.getColumns()));
                         }
                     }
                 })) {
@@ -447,11 +447,11 @@ public class PostgresDatabase extends DefaultDatabase {
                     ORDER BY t.relname, i.relname, c.attnum""")) {
                 preparedStatement.setString(1, tableName.getSchema());
                 preparedStatement.setString(2, tableName.getTable());
-                try (IndexCollector indexCollector = new IndexCollector((schema, table, name, unique, primaryKey, columns) -> {
-                    Index index = new Index(name, tableName, unique, primaryKey, columns);
+                try (IndexCollector indexCollector = new IndexCollector(collector -> {
+                    Index index = new Index(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getColumns());
                     indexes.add(index);
-                    if (primaryKey) {
-                        primaryKeys.add(new PrimaryKey(name, columns));
+                    if (collector.isPrimaryKey()) {
+                        primaryKeys.add(new PrimaryKey(collector.getName(), collector.getColumns()));
                     }
                 })) {
                     try (ResultSet resultSet = preparedStatement.executeQuery()) {

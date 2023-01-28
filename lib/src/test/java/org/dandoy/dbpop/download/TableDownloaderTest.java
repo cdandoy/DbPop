@@ -45,7 +45,7 @@ class TableDownloaderTest {
                     .setDatasetsDirectory(datasetsDirectory)
                     .setDataset("download")
                     .setTableName(invoices)
-                    .setFilteredColumns(table.getPrimaryKey().columns())
+                    .setFilteredColumns(table.getPrimaryKey().getColumns())
                     .setExecutionMode(ExecutionMode.SAVE)
                     .build()) {
 

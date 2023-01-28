@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 public class SqlServerTable extends Table {
     private final String INDENT = "    ";
 
-    public SqlServerTable(TableName tableName, List<Column> columns, List<Index> indexes, PrimaryKey primaryKey, List<ForeignKey> foreignKeys) {
+    public SqlServerTable(TableName tableName, List<Column> columns, List<Index> indexes, SqlServerPrimaryKey primaryKey, List<ForeignKey> foreignKeys) {
         super(tableName, columns, indexes, primaryKey, foreignKeys);
     }
 
@@ -46,13 +46,10 @@ public class SqlServerTable extends Table {
     }
 
     private String pkDDL(Database database) {
-        PrimaryKey primaryKey = getPrimaryKey();
+        SqlServerPrimaryKey primaryKey = (SqlServerPrimaryKey) getPrimaryKey();
         if (primaryKey == null) return null;
 
-        return "CONSTRAINT %s PRIMARY KEY NONCLUSTERED (%s)".formatted(
-                database.quote(primaryKey.name()),
-                primaryKey.columns().stream().map(database::quote).collect(Collectors.joining(", "))
-        );
+        return primaryKey.toDDL(database);
     }
 
     private String fkDDL(Database database, ForeignKey foreignKey) {

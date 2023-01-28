@@ -92,7 +92,7 @@ public class TableFetcher implements AutoCloseable {
         if (primaryKey != null) {
             sql = "%s\nORDER BY %s".formatted(
                     sql,
-                    String.join(",", primaryKey.columns())
+                    String.join(",", primaryKey.getColumns())
             );
         }
 
