@@ -118,6 +118,9 @@ public class ConfigurationService {
                     virtualFkCache
             );
         }
+        // Make sure we have a working connection
+        sourceDatabaseCache.verifyConnection();
+
         return sourceDatabaseCache;
     }
 
@@ -133,6 +136,10 @@ public class ConfigurationService {
                 }
             };
         }
+
+        // Make sure we have a working connection
+        targetDatabaseCache.verifyConnection();
+
         return targetDatabaseCache;
     }
 }

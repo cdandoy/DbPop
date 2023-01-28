@@ -14,16 +14,16 @@ import java.util.stream.Collectors;
 
 public class PostgresDatabase extends DefaultDatabase {
 
-    public PostgresDatabase(Connection connection) {
+    public PostgresDatabase(ConnectionBuilder connection) {
         super(connection);
     }
 
     private void checkCatalog(String catalog) {
         try {
-            if (catalog != null && !catalog.equals(connection.getCatalog())) {
+            if (catalog != null && !catalog.equals(getConnection().getCatalog())) {
                 throw new RuntimeException(String.format(
                         "Cannot reach database %s when connected to database %s",
-                        catalog, connection.getCatalog()
+                        catalog, getConnection().getCatalog()
                 ));
             }
         } catch (SQLException e) {
@@ -36,7 +36,7 @@ public class PostgresDatabase extends DefaultDatabase {
         try {
             checkCatalog(catalog);
 
-            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+            try (PreparedStatement preparedStatement = getConnection().prepareStatement("""
                     SELECT table_catalog,
                            table_schema,
                            table_name
@@ -60,6 +60,7 @@ public class PostgresDatabase extends DefaultDatabase {
         }
     }
 
+    @SuppressWarnings("DuplicatedCode")
     @Override
     public Collection<Table> getTables() {
         try {
@@ -67,6 +68,7 @@ public class PostgresDatabase extends DefaultDatabase {
             Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
             Map<TableName, List<Index>> indexes = new HashMap<>();
             Map<TableName, PrimaryKey> primaryKeyMap = new HashMap<>();
+            Connection connection = getConnection();
             String catalog = connection.getCatalog();
             try (PreparedStatement preparedStatement = connection.prepareStatement("""
                     SELECT table_schema,
@@ -229,6 +231,7 @@ public class PostgresDatabase extends DefaultDatabase {
             Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
             Map<TableName, List<Index>> indexes = new HashMap<>();
             Map<TableName, PrimaryKey> primaryKeyMap = new HashMap<>();
+            Connection connection = getConnection();
             String catalog = connection.getCatalog();
             try (PreparedStatement preparedStatement = connection.prepareStatement("""
                     SELECT table_schema,
@@ -396,6 +399,7 @@ public class PostgresDatabase extends DefaultDatabase {
             List<ForeignKey> foreignKeys = new ArrayList<>();
             List<Index> indexes = new ArrayList<>();
             List<PrimaryKey> primaryKeys = new ArrayList<>();
+            Connection connection = getConnection();
             String catalog = connection.getCatalog();
             try (PreparedStatement preparedStatement = connection.prepareStatement("""
                     SELECT column_name,
@@ -539,7 +543,7 @@ public class PostgresDatabase extends DefaultDatabase {
     public List<ForeignKey> getRelatedForeignKeys(TableName tableName) {
         List<ForeignKey> foreignKeys = new ArrayList<>();
         checkCatalog(tableName.getCatalog());
-        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement("""
                 WITH unnested_confkey AS (SELECT oid, UNNEST(confkey) AS confkey
                                           FROM pg_constraint),
                      unnested_conkey AS (SELECT oid, UNNEST(conkey) AS conkey

@@ -19,15 +19,13 @@ import static org.dandoy.dbpop.database.ColumnType.INVALID;
 public abstract class DefaultDatabase extends Database {
     private static final ExpressionParser EXPRESSION_PARSER = new ExpressionParser();
     private static final Base64.Decoder decoder = Base64.getDecoder();
-    protected final Connection connection;
-    protected final Statement statement;
+    protected final SafeConnection safeConnection;
     private final String identifierQuoteString;
 
-    protected DefaultDatabase(Connection connection) {
+    protected DefaultDatabase(ConnectionBuilder connectionBuilder) {
         try {
-            this.connection = connection;
-            statement = connection.createStatement();
-            DatabaseMetaData metaData = connection.getMetaData();
+            safeConnection = new SafeConnection(connectionBuilder, ConnectionVerifier.DEFAULT_CONNECTION_VERIFIER);
+            DatabaseMetaData metaData = getConnection().getMetaData();
             identifierQuoteString = metaData.getIdentifierQuoteString();
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -37,22 +35,27 @@ public abstract class DefaultDatabase extends Database {
     @Override
     public void close() {
         try {
-            connection.close();
-            statement.close();
+            safeConnection.close();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public Connection getConnection() {
-        return connection;
+    public void verifyConnection() {
+        safeConnection.verifyConnection();
+    }
+
+    @Override
+    public Connection getConnection() throws SQLException {
+        return safeConnection.getConnection();
     }
 
     protected void executeSql(String sql, Object... args) {
         String s = String.format(sql, args);
         try {
             log.debug("SQL: {}", s);
+            Statement statement = safeConnection.getStatement();
             statement.execute(s);
         } catch (SQLException e) {
             throw new RuntimeException(String.format("Failed to execute \"%s\"", s), e);
@@ -62,7 +65,7 @@ public abstract class DefaultDatabase extends Database {
     @Override
     public List<String> getSchemas(String catalog) {
         try {
-            DatabaseMetaData metaData = connection.getMetaData();
+            DatabaseMetaData metaData = getConnection().getMetaData();
             try (ResultSet resultSet = metaData.getSchemas(catalog, null)) {
                 List<String> ret = new ArrayList<>();
                 while (resultSet.next()) {
@@ -199,7 +202,7 @@ public abstract class DefaultDatabase extends Database {
 
     @NotNull
     protected RowCount getRowCount(String sql) {
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement(sql)) {
             int rows = 0;
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 for (int i = 0; i < ROW_COUNT_MAX && resultSet.next(); i++) {
@@ -222,7 +225,7 @@ public abstract class DefaultDatabase extends Database {
 
         protected DatabaseInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
             this.dataFileHeaders = dataFileHeaders;
-            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement = getConnection().prepareStatement(sql);
 
             int jdbcPos = 0;
             for (int i = 0; i < dataFileHeaders.size(); i++) {
@@ -319,6 +322,86 @@ public abstract class DefaultDatabase extends Database {
                 }
                 columnType.bind(preparedStatement, jdbcPos, bytes);
             }
+        }
+    }
+
+    protected interface ConnectionVerifier {
+        ConnectionVerifier DEFAULT_CONNECTION_VERIFIER = connection -> {
+            try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT 1")) {
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    if (resultSet.next()) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
+        boolean verifyConnection(Connection connection) throws Exception;
+    }
+
+    protected static class SafeConnection implements AutoCloseable {
+        protected final ConnectionBuilder connectionBuilder;
+        private final ConnectionVerifier connectionVerifier;
+        private Connection connection;
+        private Statement statement;
+
+        protected SafeConnection(ConnectionBuilder connectionBuilder, ConnectionVerifier connectionVerifier) {
+            this.connectionBuilder = connectionBuilder;
+            this.connectionVerifier = connectionVerifier;
+        }
+
+        @Override
+        public void close() throws SQLException {
+            safeClose(connection);
+            safeClose(statement);
+        }
+
+        private static void safeClose(AutoCloseable autoCloseable) {
+            if (autoCloseable != null) {
+                try {
+                    autoCloseable.close();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        public synchronized void verifyConnection() {
+            try {
+                if (connection != null && connectionVerifier.verifyConnection(connection))
+                    return;
+            } catch (Exception e) {
+                log.error("verifyConnection failed", e);
+            }
+            resetConnection();
+        }
+
+        private void resetConnection() {
+            log.info("Resetting the connection");
+            safeClose(connection);
+            connection = null;
+            safeClose(statement);
+            statement = null;
+
+            try {
+                getConnection();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public synchronized Connection getConnection() throws SQLException {
+            if (connection == null) {
+                connection = connectionBuilder.createConnection();
+            }
+            return connection;
+        }
+
+        public synchronized Statement getStatement() throws SQLException {
+            if (statement == null) {
+                statement = getConnection().createStatement();
+            }
+            return statement;
         }
     }
 }

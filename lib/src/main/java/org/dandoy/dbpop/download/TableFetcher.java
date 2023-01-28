@@ -98,8 +98,8 @@ public class TableFetcher implements AutoCloseable {
 
         log.debug(sql);
 
-        Connection connection = database.getConnection();
         try {
+            Connection connection = database.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(sql);
             for (int i = 0; i < where.size(); i++) {
                 preparedStatement.setString(i + 1, where.get(i).value());
