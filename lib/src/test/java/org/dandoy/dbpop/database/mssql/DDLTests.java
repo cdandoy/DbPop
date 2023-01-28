@@ -3,13 +3,11 @@ package org.dandoy.dbpop.database.mssql;
 import org.dandoy.LocalCredentials;
 import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.utils.ElapsedStopWatch;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 
 @Disabled
 public class DDLTests {
@@ -73,6 +71,32 @@ public class DDLTests {
                     String ddl = table.tableDDL(database);
                     System.out.println(ddl);
                 }
+            }
+        }
+    }
+
+    @Test
+    void winDev() throws SQLException {
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlserver://10.131.3.228;database=tempdb;trustServerCertificate=true", "DBA", "secured@00")) {
+            try (SqlServerDatabase database = new SqlServerDatabase(connection)) {
+                SqlServerDatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
+                SqlServerDatabaseVisitor databaseVisitor = new SqlServerDatabaseVisitor() {
+                    @Override
+                    public void catalog(String catalog) {
+                        System.out.println("-------------------- " + catalog);
+                        ElapsedStopWatch stopWatch = new ElapsedStopWatch();
+
+                        databaseIntrospector.visitModuleMetas(this, catalog);
+                        System.out.println("visitModuleMetas: " + stopWatch);
+
+                        databaseIntrospector.visitModuleDefinitions(this, catalog);
+                        System.out.println("visitModuleDefinitions: " + stopWatch);
+
+                        databaseIntrospector.visitDependencies(this, catalog);
+                        System.out.println("visitDependencies: " + stopWatch);
+                    }
+                };
+                databaseIntrospector.visit(databaseVisitor);
             }
         }
     }

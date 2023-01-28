@@ -91,6 +91,10 @@ public class SqlServerDatabase extends DefaultDatabase {
         }
     }
 
+    public SqlServerDatabaseIntrospector createDatabaseIntrospector() {
+        return new SqlServerDatabaseIntrospector(connection);
+    }
+
     @SuppressWarnings("DuplicatedCode")
     @Override
     public Collection<Table> getTables() {
