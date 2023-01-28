@@ -60,6 +60,7 @@ public class PostgresDatabase extends DefaultDatabase {
         }
     }
 
+    @SuppressWarnings("DuplicatedCode")
     @Override
     public Collection<Table> getTables() {
         try {

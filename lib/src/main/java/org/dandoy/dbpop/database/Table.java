@@ -28,10 +28,6 @@ public class Table {
                '}';
     }
 
-    public String toDDL(Database database) {
-        throw new RuntimeException("Not implemented");
-    }
-
     public Column getColumn(String name) {
         return columns.stream().filter(column -> name.equals(column.getName())).findFirst().orElse(null);
     }
@@ -51,5 +47,25 @@ public class Table {
     @Override
     public int hashCode() {
         return Objects.hash(tableName, columns, indexes, primaryKey, foreignKeys);
+    }
+
+    public String tableDDL(Database database) {
+        throw new RuntimeException("Not implemented");
+    }
+
+    public List<String> foreignKeyDDLs(Database database) {
+        return getForeignKeys().stream()
+                .map(foreignKey -> "ALTER TABLE %s ADD %s".formatted(
+                        database.quote(getTableName()),
+                        foreignKey.toDDL(database)
+                ))
+                .toList();
+    }
+
+    public List<String> indexesDDLs(Database database) {
+        return getIndexes().stream()
+                .filter(index -> !index.isPrimaryKey()) // Those are generated with the table
+                .map(index -> index.toDDL(database))
+                .toList();
     }
 }

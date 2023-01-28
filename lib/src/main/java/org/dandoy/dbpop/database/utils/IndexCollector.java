@@ -14,7 +14,7 @@ public class IndexCollector implements AutoCloseable {
     private String name;
     private boolean unique;
     private boolean primaryKey;
-    private List<String> columns;
+    protected List<String> columns;
 
     public IndexCollector(Consumer<IndexCollector> indexConsumer) {
         this.indexConsumer = indexConsumer;
@@ -25,10 +25,9 @@ public class IndexCollector implements AutoCloseable {
             flush();
             this.schema = schema;
             this.table = table;
-            name = index;
+            this.name = index;
             this.unique = unique;
             this.primaryKey = primaryKey;
-            columns = new ArrayList<>();
         }
         columns.add(column);
     }
@@ -42,5 +41,6 @@ public class IndexCollector implements AutoCloseable {
         if (columns != null) {
             indexConsumer.accept(this);
         }
+        columns = new ArrayList<>();
     }
 }

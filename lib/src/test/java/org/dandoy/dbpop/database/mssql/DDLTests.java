@@ -36,7 +36,7 @@ public class DDLTests {
 
             try (SqlServerDatabase database = new SqlServerDatabase(connection)) {
                 Table table = database.getTable(new TableName("master", "dbo", "ddl_test"));
-                String ddl = table.toDDL(database);
+                String ddl = table.tableDDL(database);
                 System.out.println(ddl);
             }
         }
@@ -46,9 +46,20 @@ public class DDLTests {
     void fullTest1433() throws SQLException {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlserver://localhost:1433;database=tempdb;trustServerCertificate=true", "sa", "SaltSpade2018")) {
             try (SqlServerDatabase database = new SqlServerDatabase(connection)) {
+                System.out.println("-----------------------------------------------------------");
+                System.out.println("-- Tables");
                 for (Table table : database.getTables()) {
-                    String ddl = table.toDDL(database);
-                    System.out.println(ddl);
+                    System.out.println(table.tableDDL(database));
+                }
+                System.out.println("-----------------------------------------------------------");
+                System.out.println("-- Indexes");
+                for (Table table : database.getTables()) {
+                    table.indexesDDLs(database).forEach(System.out::println);
+                }
+                System.out.println("-----------------------------------------------------------");
+                System.out.println("-- Foreign Keys");
+                for (Table table : database.getTables()) {
+                    table.foreignKeyDDLs(database).forEach(System.out::println);
                 }
             }
         }
@@ -59,7 +70,7 @@ public class DDLTests {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlserver://localhost:2433;database=tempdb;trustServerCertificate=true", "sa", "GlobalTense1010")) {
             try (SqlServerDatabase database = new SqlServerDatabase(connection)) {
                 for (Table table : database.getTables()) {
-                    String ddl = table.toDDL(database);
+                    String ddl = table.tableDDL(database);
                     System.out.println(ddl);
                 }
             }

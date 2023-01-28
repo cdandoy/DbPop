@@ -13,9 +13,19 @@ import java.util.stream.Collectors;
 
 public class SqlServerDatabase extends DefaultDatabase {
     private static final Set<String> SYS_SCHEMAS = new HashSet<>(Arrays.asList("guest", "INFORMATION_SCHEMA", "sys", "db_owner", "db_accessadmin", "db_securityadmin", "db_ddladmin", "db_backupoperator", "db_datareader", "db_datawriter", "db_denydatareader", "db_denydatawriter"));
+    private static final boolean QUOTE_WITH_BRACKETS = true;
 
     public SqlServerDatabase(Connection connection) {
         super(connection);
+    }
+
+    @Override
+    public String quote(String s) {
+        if (QUOTE_WITH_BRACKETS) {
+            return "[" + s + "]";
+        } else {
+            return super.quote(s);
+        }
     }
 
     private void use(String catalog) throws SQLException {
@@ -140,7 +150,8 @@ public class SqlServerDatabase extends DefaultDatabase {
                                        i.is_unique,
                                        i.is_primary_key,
                                        i.type_desc,
-                                       c.name AS c
+                                       c.name AS c,
+                                       ic.is_included_column
                                 FROM sys.schemas s
                                          JOIN sys.tables t ON t.schema_id = s.schema_id
                                          LEFT JOIN sys.indexes i ON i.object_id = t.object_id
@@ -152,15 +163,15 @@ public class SqlServerDatabase extends DefaultDatabase {
                                 ORDER BY s.name, t.name, i.index_id, ic.key_ordinal""")) {
                             try (SqlServerIndexCollector indexCollector = new SqlServerIndexCollector(collector -> {
                                 TableName tableName = new TableName(catalog, collector.getSchema(), collector.getTable());
-                                Index index = new Index(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getColumns());
+                                SqlServerIndex index = new SqlServerIndex(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getTypeDesc(), collector.getSqlServerIndexColumns());
                                 indexes.computeIfAbsent(tableName, it2 -> new ArrayList<>()).add(index);
                                 if (collector.isPrimaryKey()) {
                                     primaryKeyMap.put(
                                             tableName,
                                             new SqlServerPrimaryKey(
                                                     collector.getName(),
-                                                    collector.getColumns(),
-                                                    collector.getTypeDesc()
+                                                    collector.getTypeDesc(),
+                                                    collector.getSqlServerIndexColumns()
                                             ));
                                 }
                             })) {
@@ -173,7 +184,8 @@ public class SqlServerDatabase extends DefaultDatabase {
                                                 resultSet.getBoolean("is_unique"),
                                                 resultSet.getBoolean("is_primary_key"),
                                                 resultSet.getString("type_desc"),
-                                                resultSet.getString("c")
+                                                resultSet.getString("c"),
+                                                resultSet.getBoolean("is_included_column")
                                         );
                                     }
                                 }
@@ -314,7 +326,8 @@ public class SqlServerDatabase extends DefaultDatabase {
                                            i.is_unique,
                                            i.is_primary_key,
                                            i.type_desc,
-                                           c.name AS c
+                                           c.name AS c,
+                                           ic.is_included_column
                                     FROM sys.schemas s
                                              JOIN sys.tables t ON t.schema_id = s.schema_id
                                              LEFT JOIN sys.indexes i ON i.object_id = t.object_id
@@ -326,15 +339,15 @@ public class SqlServerDatabase extends DefaultDatabase {
                                 try (SqlServerIndexCollector indexCollector = new SqlServerIndexCollector(collector -> {
                                     TableName tableName = new TableName(catalog, collector.getSchema(), collector.getTable());
                                     if (datasetTableNames.contains(tableName)) {
-                                        Index index = new Index(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getColumns());
+                                        SqlServerIndex index = new SqlServerIndex(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getTypeDesc(), collector.getSqlServerIndexColumns());
                                         indexes.computeIfAbsent(tableName, it2 -> new ArrayList<>()).add(index);
                                         if (collector.isPrimaryKey()) {
                                             primaryKeyMap.put(
                                                     tableName,
                                                     new SqlServerPrimaryKey(
                                                             collector.getName(),
-                                                            collector.getColumns(),
-                                                            collector.getTypeDesc()
+                                                            collector.getTypeDesc(),
+                                                            collector.getSqlServerIndexColumns()
                                                     )
                                             );
                                         }
@@ -349,7 +362,8 @@ public class SqlServerDatabase extends DefaultDatabase {
                                                     resultSet.getBoolean("is_unique"),
                                                     resultSet.getBoolean("is_primary_key"),
                                                     resultSet.getString("type_desc"),
-                                                    resultSet.getString("c")
+                                                    resultSet.getString("c"),
+                                                    resultSet.getBoolean("is_included_column")
                                             );
                                         }
                                     }
@@ -477,7 +491,8 @@ public class SqlServerDatabase extends DefaultDatabase {
                            i.is_unique,
                            i.is_primary_key,
                            i.type_desc,
-                           c.name AS c
+                           c.name AS c,
+                           ic.is_included_column
                     FROM sys.schemas s
                              JOIN sys.tables t ON t.schema_id = s.schema_id
                              LEFT JOIN sys.indexes i ON i.object_id = t.object_id
@@ -491,14 +506,14 @@ public class SqlServerDatabase extends DefaultDatabase {
                 preparedStatement.setString(1, tableName.getSchema());
                 preparedStatement.setString(2, tableName.getTable());
                 try (SqlServerIndexCollector indexCollector = new SqlServerIndexCollector(collector -> {
-                    Index index = new Index(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getColumns());
+                    SqlServerIndex index = new SqlServerIndex(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getTypeDesc(), collector.getSqlServerIndexColumns());
                     indexes.add(index);
                     if (collector.isPrimaryKey()) {
                         primaryKeys.add(
                                 new SqlServerPrimaryKey(
                                         collector.getName(),
-                                        collector.getColumns(),
-                                        collector.getTypeDesc()
+                                        collector.getTypeDesc(),
+                                        collector.getSqlServerIndexColumns()
                                 )
                         );
                     }
@@ -512,7 +527,8 @@ public class SqlServerDatabase extends DefaultDatabase {
                                     resultSet.getBoolean("is_unique"),
                                     resultSet.getBoolean("is_primary_key"),
                                     resultSet.getString("type_desc"),
-                                    resultSet.getString("c")
+                                    resultSet.getString("c"),
+                                    resultSet.getBoolean("is_included_column")
                             );
                         }
                     }

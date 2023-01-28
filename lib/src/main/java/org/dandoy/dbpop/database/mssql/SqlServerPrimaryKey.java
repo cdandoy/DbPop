@@ -7,12 +7,14 @@ import org.dandoy.dbpop.database.PrimaryKey;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.dandoy.dbpop.database.mssql.SqlServerIndex.getIndexedColumns;
+
 @Getter
 public class SqlServerPrimaryKey extends PrimaryKey {
     private final String typeDesc;
 
-    public SqlServerPrimaryKey(String name, List<String> columns, String typeDesc) {
-        super(name, columns);
+    public SqlServerPrimaryKey(String name, String typeDesc, List<SqlServerIndex.SqlServerIndexColumn> columns) {
+        super(name, getIndexedColumns(columns));
         this.typeDesc = typeDesc;
     }
 

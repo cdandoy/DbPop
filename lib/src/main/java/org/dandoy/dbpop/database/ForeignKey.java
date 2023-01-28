@@ -6,6 +6,7 @@ import lombok.Getter;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Getter
 public class ForeignKey {
@@ -50,5 +51,14 @@ public class ForeignKey {
     @Override
     public int hashCode() {
         return Objects.hash(name);
+    }
+
+    public String toDDL(Database database) {
+        return "CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)".formatted(
+                database.quote(getName()),
+                getFkColumns().stream().map(database::quote).collect(Collectors.joining(", ")),
+                database.quote(getPkTableName()),
+                getPkColumns().stream().map(database::quote).collect(Collectors.joining(", "))
+        );
     }
 }
