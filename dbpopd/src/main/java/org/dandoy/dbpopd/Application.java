@@ -15,7 +15,7 @@ import java.util.Properties;
 @OpenAPIDefinition(
         info = @Info(
                 title = "dbpopd",
-                version = "0.2.7"
+                version = "0.2.8"
         )
 )
 public class Application {
