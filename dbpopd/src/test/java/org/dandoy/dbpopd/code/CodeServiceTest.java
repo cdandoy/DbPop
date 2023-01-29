@@ -13,6 +13,11 @@ class CodeServiceTest {
 
     @Test
     void testFileToTarget() {
-        codeService.fileToTarget();
+        codeService.uploadFileToTarget();
+    }
+
+    @Test
+    void testCompareSourceToFile() {
+        codeService.compareSourceToFile();
     }
 }

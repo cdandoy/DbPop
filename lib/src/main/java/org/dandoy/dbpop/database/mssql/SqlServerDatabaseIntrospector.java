@@ -18,7 +18,11 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     @Override
     @SneakyThrows
     public void visit(DatabaseVisitor databaseVisitor) {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT name FROM sys.databases d")) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                SELECT name
+                FROM sys.databases d
+                WHERE d.state = 0
+                ORDER BY name""")) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {
                     String catalog = resultSet.getString("name");
@@ -32,29 +36,38 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         }
     }
 
+    @Override
+    public void visitTables(DatabaseVisitor databaseVisitor, String catalog) {
+    }
+
+    @Override
     @SneakyThrows
-    public void visitModuleMetas(SqlServerDatabaseVisitor databaseVisitor, String catalog) {
+    public void visitModuleMetas(DatabaseVisitor databaseVisitor, String catalog) {
         use(catalog);
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                 WHERE o.is_ms_shipped = 0
+                  AND o.type_desc IN ('SQL_TRIGGER', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION', 'VIEW', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE')
+                ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {
+                    int objectId = resultSet.getInt("object_id");
                     String schema = resultSet.getString("schema");
                     String name = resultSet.getString("name");
                     String typeDesc = resultSet.getString("type_desc");
                     Date modifyDate = resultSet.getDate("modify_date");
-                    databaseVisitor.moduleMeta(catalog, schema, name, typeDesc, modifyDate);
+                    databaseVisitor.moduleMeta(objectId, catalog, schema, name, typeDesc, modifyDate);
                 }
             }
         }
     }
 
+    @Override
     @SneakyThrows
-    public void visitModuleDefinitions(SqlServerDatabaseVisitor databaseVisitor, String catalog) {
+    public void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog) {
         use(catalog);
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date, sm.definition
@@ -62,6 +75,8 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          JOIN sys.sql_modules sm ON sm.object_id = o.object_id
                 WHERE o.is_ms_shipped = 0
+                  AND o.type_desc IN ('SQL_TRIGGER', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION', 'VIEW', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE')
+                ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {
@@ -82,8 +97,9 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         }
     }
 
+    @Override
     @SneakyThrows
-    public void visitDependencies(SqlServerDatabaseVisitor databaseVisitor, String catalog) {
+    public void visitDependencies(DatabaseVisitor databaseVisitor, String catalog) {
         use(catalog);
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT s.name       AS "schema",
@@ -99,6 +115,8 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.schemas ds ON ds.schema_id = do.schema_id
                 WHERE o.is_ms_shipped = 0
                   AND do.is_ms_shipped = 0
+                  AND o.type_desc IN ('SQL_TRIGGER', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION', 'VIEW', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE')
+                ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {

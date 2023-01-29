@@ -2,63 +2,32 @@ package org.dandoy.dbpopd.code;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.DatabaseIntrospector;
+import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.mssql.SqlServerDatabaseIntrospector;
-import org.dandoy.dbpop.database.mssql.SqlServerDatabaseVisitor;
+import org.dandoy.dbpopd.utils.FileUtils;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Date;
-import java.util.HashSet;
 import java.util.Set;
 
 @Slf4j
-public class DbToFileVisitor implements AutoCloseable, SqlServerDatabaseVisitor {
+public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     private final DatabaseIntrospector introspector;
     private final File directory;
-    private final Set<File> existingFiles = new HashSet<>();
+    private final Set<File> existingFiles;
 
     public DbToFileVisitor(DatabaseIntrospector introspector, File directory) {
         this.introspector = introspector;
         this.directory = directory;
-        if (directory.isDirectory()) {
-            try {
-                Path start = directory.toPath();
-                int baseNameCount = start.getNameCount();
-                Files.walkFileTree(start, new SimpleFileVisitor<>() {
-                    @Override
-                    public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
-                        int nameCount = path.getNameCount();
-                        if (nameCount - baseNameCount == 4) {
-                            String typeName = path.getName(baseNameCount + 2).toString();
-                            if (CodeService.CODE_TYPES.contains(typeName)) {
-                                File file = path.toFile();
-                                if (file.getName().endsWith(".sql")) {
-                                    existingFiles.add(file);
-                                }
-                            }
-                        }
-                        return FileVisitResult.CONTINUE;
-                    }
-                });
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        this.existingFiles = CodeUtils.getCodeFiles(directory);
     }
 
     @Override
     public void close() {
-        for (File file : existingFiles) {
-            if (!file.delete() && file.exists()) {
-                log.error("Failed to delete " + file);
-            }
-        }
+        FileUtils.deleteFiles(existingFiles);
     }
 
     @Override
@@ -68,13 +37,9 @@ public class DbToFileVisitor implements AutoCloseable, SqlServerDatabaseVisitor 
         }
     }
 
-    private File toFile(String... parts) {
-        return new File(directory, String.join("/", parts));
-    }
-
     @Override
     public void moduleDefinition(String catalog, String schema, String name, String moduleType, Date modifyDate, String definition) {
-        File sqlFile = toFile(catalog, schema, moduleType, name + ".sql");
+        File sqlFile = FileUtils.toFile(directory, catalog, schema, moduleType, name + ".sql");
         existingFiles.remove(sqlFile);
         File dir = sqlFile.getParentFile();
         if (!dir.isDirectory() && !dir.mkdirs()) throw new RuntimeException("Failed to create " + dir);

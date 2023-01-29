@@ -105,7 +105,11 @@ public class SqlServerDatabase extends DefaultDatabase {
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
         Map<TableName, List<Index>> indexes = new HashMap<>();
         Map<TableName, SqlServerPrimaryKey> primaryKeyMap = new HashMap<>();
-        try (PreparedStatement databasesStatement = connection.prepareStatement("SELECT name FROM sys.databases WHERE name NOT IN ('tempdb')")) {
+        try (PreparedStatement databasesStatement = connection.prepareStatement("""
+                SELECT name
+                FROM sys.databases
+                WHERE name NOT IN ('tempdb')
+                AND state = 0""")) {
             try (Statement statement = connection.createStatement()) {
                 try (ResultSet databaseResultSet = databasesStatement.executeQuery()) {
                     while (databaseResultSet.next()) {
@@ -275,7 +279,11 @@ public class SqlServerDatabase extends DefaultDatabase {
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
         Map<TableName, List<Index>> indexes = new HashMap<>();
         Map<TableName, SqlServerPrimaryKey> primaryKeyMap = new HashMap<>();
-        try (PreparedStatement databasesStatement = connection.prepareStatement("SELECT name FROM sys.databases WHERE name NOT IN ('tempdb')")) {
+        try (PreparedStatement databasesStatement = connection.prepareStatement("""
+                SELECT name
+                FROM sys.databases
+                WHERE name NOT IN ('tempdb')
+                AND state = 0""")) {
             try (Statement statement = connection.createStatement()) {
                 try (ResultSet databaseResultSet = databasesStatement.executeQuery()) {
                     while (databaseResultSet.next()) {

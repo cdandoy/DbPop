@@ -11,13 +11,28 @@ public class CodeController {
         this.codeService = codeService;
     }
 
-    @Get("source-to-file")
-    public void sourceToFile() {
-        codeService.sourceToFile();
+    @Get("source/compare")
+    public CodeDiff compareSourceToFile() {
+        return codeService.compareSourceToFile();
     }
 
-    @Get("source-to-file")
-    public void fileToTarget() {
-        codeService.fileToTarget();
+    @Get("source/download")
+    public void downloadSourceToFile() {
+        codeService.downloadSourceToFile();
+    }
+
+    @Get("target/compare")
+    public CodeDiff compareTargetToFile() {
+        return codeService.compareTargetToFile();
+    }
+
+    @Get("target/upload")
+    public void uploadFileToTarget() {
+        codeService.uploadFileToTarget();
+    }
+
+    @Get("target/download")
+    public void downloadTargetToFile() {
+        codeService.downloadTargetToFile();
     }
 }

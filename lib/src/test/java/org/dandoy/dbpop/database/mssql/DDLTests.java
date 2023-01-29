@@ -1,6 +1,7 @@
 package org.dandoy.dbpop.database.mssql;
 
 import org.dandoy.LocalCredentials;
+import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.utils.ElapsedStopWatch;
@@ -80,7 +81,7 @@ public class DDLTests {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlserver://10.131.3.228;database=tempdb;trustServerCertificate=true", "DBA", "secured@00")) {
             try (SqlServerDatabase database = new SqlServerDatabase(connection)) {
                 SqlServerDatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
-                SqlServerDatabaseVisitor databaseVisitor = new SqlServerDatabaseVisitor() {
+                DatabaseVisitor databaseVisitor = new DatabaseVisitor() {
                     @Override
                     public void catalog(String catalog) {
                         System.out.println("-------------------- " + catalog);
