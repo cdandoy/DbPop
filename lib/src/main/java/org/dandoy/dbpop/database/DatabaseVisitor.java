@@ -1,6 +1,6 @@
 package org.dandoy.dbpop.database;
 
-import java.sql.Date;
+import java.util.Date;
 
 public interface DatabaseVisitor {
     default void catalog(String catalog) {}

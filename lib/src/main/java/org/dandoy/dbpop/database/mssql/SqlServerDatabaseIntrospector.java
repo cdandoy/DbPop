@@ -2,42 +2,31 @@ package org.dandoy.dbpop.database.mssql;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.dandoy.dbpop.database.DatabaseIntrospector;
-import org.dandoy.dbpop.database.DatabaseVisitor;
+import org.dandoy.dbpop.database.*;
 
 import java.sql.*;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     private final Connection connection;
+    private final Database database;
 
-    public SqlServerDatabaseIntrospector(Connection connection) {
-        this.connection = connection;
+    public SqlServerDatabaseIntrospector(Database database) {
+        this.database = database;
+        this.connection = database.getConnection();
     }
 
     @Override
     @SneakyThrows
     public void visit(DatabaseVisitor databaseVisitor) {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT name
-                FROM sys.databases d
-                WHERE d.state = 0
-                ORDER BY name""")) {
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    String catalog = resultSet.getString("name");
-                    try {
-                        databaseVisitor.catalog(catalog);
-                    } catch (Exception e) {
-                        log.error("Cannot visit " + catalog, e);
-                    }
-                }
-            }
+        for (String catalog : database.getCatalogs()) {
+            databaseVisitor.catalog(catalog);
         }
-    }
-
-    @Override
-    public void visitTables(DatabaseVisitor databaseVisitor, String catalog) {
     }
 
     @Override
@@ -49,7 +38,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                 WHERE o.is_ms_shipped = 0
-                  AND o.type_desc IN ('SQL_TRIGGER', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION', 'VIEW', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE')
+                  AND o.type_desc IN ('USER_TABLE', 'SQL_TRIGGER', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION', 'VIEW', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE')
                 ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -58,7 +47,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String schema = resultSet.getString("schema");
                     String name = resultSet.getString("name");
                     String typeDesc = resultSet.getString("type_desc");
-                    Date modifyDate = resultSet.getDate("modify_date");
+                    Timestamp modifyDate = resultSet.getTimestamp("modify_date");
                     databaseVisitor.moduleMeta(objectId, catalog, schema, name, typeDesc, modifyDate);
                 }
             }
@@ -68,14 +57,17 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     @Override
     @SneakyThrows
     public void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog) {
+        Collection<Table> tables = database.getTables(catalog);
+        Map<TableName, Table> tablesByName = tables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
+
         use(catalog);
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date, sm.definition
+                SELECT s.name AS "schema", o.name, o.type_desc, o.modify_date, sm.definition
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
-                         JOIN sys.sql_modules sm ON sm.object_id = o.object_id
+                         LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
                 WHERE o.is_ms_shipped = 0
-                  AND o.type_desc IN ('SQL_TRIGGER', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION', 'VIEW', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE')
+                  AND o.type_desc IN ('USER_TABLE', 'SQL_TRIGGER', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION', 'VIEW', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE')
                 ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -84,8 +76,24 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String name = resultSet.getString("name");
                     String typeDesc = resultSet.getString("type_desc");
                     Date modifyDate = resultSet.getDate("modify_date");
-                    String definition = resultSet.getString("definition");
-                    databaseVisitor.moduleDefinition(catalog, schema, name, typeDesc, modifyDate, definition);
+                    if (typeDesc.equals("USER_TABLE")) {
+                        Table table = tablesByName.get(new TableName(catalog, schema, name));
+                        databaseVisitor.moduleDefinition(catalog, schema, name, typeDesc, modifyDate, table.tableDDL(database));
+                        for (ForeignKey foreignKey : table.getForeignKeys()) {
+                            String fkDDL = foreignKey.toDDL(database);
+                            String definition = "ALTER TABLE %s ADD %s".formatted(
+                                    database.quote(table.getTableName()),
+                                    fkDDL
+                            );
+                            databaseVisitor.moduleDefinition(catalog, schema, name + "_fk_" + foreignKey.getName(), "FOREIGN_KEY_CONSTRAINT", modifyDate, definition);
+                        }
+                        for (Index index : table.getIndexes()) {
+                            databaseVisitor.moduleDefinition(catalog, schema, name + "_idx_" + index.getName(), "INDEX", modifyDate, index.toDDL(database));
+                        }
+                    } else {
+                        String definition = resultSet.getString("definition");
+                        databaseVisitor.moduleDefinition(catalog, schema, name, typeDesc, modifyDate, definition);
+                    }
                 }
             }
         }

@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.database.pgsql;
 
+import lombok.SneakyThrows;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
@@ -66,15 +67,27 @@ public class PostgresDatabase extends DefaultDatabase {
         }
     }
 
+    @Override
+    @SneakyThrows
+    public Collection<Table> getTables() {
+        String catalog = connection.getCatalog();
+        return getTables(catalog);
+    }
+
+    @Override
+    @SneakyThrows
+    public Collection<String> getCatalogs() {
+        return Collections.singleton(connection.getCatalog());
+    }
+
     @SuppressWarnings("DuplicatedCode")
     @Override
-    public Collection<Table> getTables() {
+    public Collection<Table> getTables(String catalog) {
         try {
             Map<TableName, List<Column>> tableColumns = new HashMap<>();
             Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
             Map<TableName, List<Index>> indexes = new HashMap<>();
             Map<TableName, PrimaryKey> primaryKeyMap = new HashMap<>();
-            String catalog = connection.getCatalog();
             try (PreparedStatement preparedStatement = connection.prepareStatement("""
                     SELECT table_schema,
                            table_name,

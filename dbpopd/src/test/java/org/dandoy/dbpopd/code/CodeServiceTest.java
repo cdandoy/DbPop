@@ -17,6 +17,11 @@ class CodeServiceTest {
     }
 
     @Test
+    void testDownloadSourceToFile() {
+        codeService.downloadSourceToFile();
+    }
+
+    @Test
     void testCompareSourceToFile() {
         codeService.compareSourceToFile();
     }

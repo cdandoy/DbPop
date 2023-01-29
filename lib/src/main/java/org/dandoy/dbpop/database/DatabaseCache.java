@@ -34,6 +34,11 @@ public class DatabaseCache extends Database {
         return delegate.createDatabaseIntrospector();
     }
 
+    @Override
+    public Collection<String> getCatalogs() {
+        return delegate.getCatalogs();
+    }
+
     private static <T> List<T> concat(Collection<T> t1, Collection<T> t2) {
         ArrayList<T> ret = new ArrayList<>(t1);
         ret.addAll(t2);
@@ -82,6 +87,11 @@ public class DatabaseCache extends Database {
                 .values().stream()
                 .map(this::addVFKs)
                 .toList();
+    }
+
+    @Override
+    public Collection<Table> getTables(String catalog) {
+        return delegate.getTables(catalog);
     }
 
     @Override

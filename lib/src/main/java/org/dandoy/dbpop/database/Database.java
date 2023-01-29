@@ -55,9 +55,13 @@ public abstract class Database implements AutoCloseable {
 
     public abstract DatabaseIntrospector createDatabaseIntrospector();
 
+    public abstract Collection<String> getCatalogs();
+
     public abstract Collection<TableName> getTableNames(String catalog, String schema);
 
     public abstract Collection<Table> getTables();
+
+    public abstract Collection<Table> getTables(String catalog);
 
     public abstract Collection<Table> getTables(Set<TableName> datasetTableNames);
 

@@ -68,10 +68,13 @@ public class DatabaseService {
             synchronized (sourceRowCountLock) {
                 try (Database database = configurationService.createSourceDatabase()) {
                     Map<TableName, RowCount> rowCounts = new HashMap<>();
-                    for (Table table : sourceDatabase.getTables()) {
-                        TableName tableName = table.getTableName();
-                        RowCount rowCount = database.getRowCount(tableName);
-                        rowCounts.put(tableName, rowCount);
+                    for (String catalog : sourceDatabase.getCatalogs()) {
+                        if ("tempdb".equals(catalog)) continue;
+                        for (Table table : sourceDatabase.getTables(catalog)) {
+                            TableName tableName = table.getTableName();
+                            RowCount rowCount = database.getRowCount(tableName);
+                            rowCounts.put(tableName, rowCount);
+                        }
                     }
                     sourceRowCounts = rowCounts;
                 }

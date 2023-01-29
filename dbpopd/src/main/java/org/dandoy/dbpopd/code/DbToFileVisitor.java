@@ -3,14 +3,13 @@ package org.dandoy.dbpopd.code;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.DatabaseIntrospector;
 import org.dandoy.dbpop.database.DatabaseVisitor;
-import org.dandoy.dbpop.database.mssql.SqlServerDatabaseIntrospector;
 import org.dandoy.dbpopd.utils.FileUtils;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.sql.Date;
+import java.util.Date;
 import java.util.Set;
 
 @Slf4j
@@ -32,9 +31,8 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
 
     @Override
     public void catalog(String catalog) {
-        if (introspector instanceof SqlServerDatabaseIntrospector sqlServerIntrospector) {
-            sqlServerIntrospector.visitModuleDefinitions(this, catalog);
-        }
+        if ("tempdb".equals(catalog)) return;
+        introspector.visitModuleDefinitions(this, catalog);
     }
 
     @Override

@@ -36,6 +36,11 @@ public class DatabaseProxy extends Database {
     }
 
     @Override
+    public Collection<String> getCatalogs() {
+        return delegate.getCatalogs();
+    }
+
+    @Override
     public Collection<TableName> getTableNames(String catalog, String schema) {
         return delegate.getTableNames(catalog, schema);
     }
@@ -43,6 +48,11 @@ public class DatabaseProxy extends Database {
     @Override
     public Collection<Table> getTables() {
         return delegate.getTables();
+    }
+
+    @Override
+    public Collection<Table> getTables(String catalog) {
+        return delegate.getTables(catalog);
     }
 
     @Override
