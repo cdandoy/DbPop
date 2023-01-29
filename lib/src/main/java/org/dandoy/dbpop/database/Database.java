@@ -3,6 +3,7 @@ package org.dandoy.dbpop.database;
 import org.dandoy.dbpop.database.mssql.SqlServerDatabase;
 import org.dandoy.dbpop.database.pgsql.PostgresDatabase;
 import org.dandoy.dbpop.upload.DataFileHeader;
+import org.dandoy.dbpop.utils.NotImplementedException;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -52,6 +53,8 @@ public abstract class Database implements AutoCloseable {
 
     public abstract Connection getConnection();
 
+    public abstract DatabaseIntrospector createDatabaseIntrospector();
+
     public abstract Collection<TableName> getTableNames(String catalog, String schema);
 
     public abstract Collection<Table> getTables();
@@ -89,4 +92,12 @@ public abstract class Database implements AutoCloseable {
     public abstract void enableForeignKey(ForeignKey foreignKey);
 
     public abstract void disableForeignKey(ForeignKey foreignKey);
+
+    public void createCatalog(String catalog) {
+        throw new NotImplementedException();
+    }
+
+    public void createShema(String catalog, String schema) {
+        throw new NotImplementedException();
+    }
 }

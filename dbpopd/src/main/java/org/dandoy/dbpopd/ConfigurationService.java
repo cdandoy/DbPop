@@ -30,6 +30,8 @@ public class ConfigurationService {
     private final File datasetsDirectory;
     @Getter
     private final File setupDirectory;
+    @Getter
+    private final File codeDirectory;
     private DatabaseCache sourceDatabaseCache;
     private DatabaseCache targetDatabaseCache;
     @Getter
@@ -39,7 +41,8 @@ public class ConfigurationService {
     public ConfigurationService(
             @Property(name = "dbpopd.configuration.path") String configurationPath,
             @Property(name = "dbpopd.configuration.datasets") @Nullable String datasetsDirectory,
-            @Property(name = "dbpopd.configuration.setup") @Nullable String setupDirectory
+            @Property(name = "dbpopd.configuration.setup") @Nullable String setupDirectory,
+            @Property(name = "dbpopd.configuration.code") @Nullable String codeDirectory
     ) {
         configurationDir = new File(configurationPath);
         File configurationFile = new File(configurationDir, PROP_FILE_NAME);
@@ -52,6 +55,7 @@ public class ConfigurationService {
         virtualFkCache = VirtualFkCache.createVirtualFkCache(vfkFile);
         this.datasetsDirectory = datasetsDirectory != null ? new File(datasetsDirectory) : new File(configurationDir, "datasets");
         this.setupDirectory = setupDirectory != null ? new File(setupDirectory) : new File(configurationDir, "setup");
+        this.codeDirectory = codeDirectory != null ? new File(codeDirectory) : new File(configurationDir, "code");
     }
 
     private static UrlConnectionBuilder createConnectionBuilder(Properties properties, String jdbcurlProperty, String usernameProperty, String passwordProperty) {

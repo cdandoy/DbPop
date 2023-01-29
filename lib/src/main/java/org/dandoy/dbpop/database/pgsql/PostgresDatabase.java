@@ -4,6 +4,7 @@ import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
+import org.dandoy.dbpop.utils.NotImplementedException;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -16,6 +17,11 @@ public class PostgresDatabase extends DefaultDatabase {
 
     public PostgresDatabase(Connection connection) {
         super(connection);
+    }
+
+    @Override
+    public DatabaseIntrospector createDatabaseIntrospector() {
+        throw new NotImplementedException();
     }
 
     private void checkCatalog(String catalog) {

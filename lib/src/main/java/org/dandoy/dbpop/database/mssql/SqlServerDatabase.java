@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.database.mssql;
 
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.Settings;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
@@ -11,6 +12,7 @@ import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class SqlServerDatabase extends DefaultDatabase {
     private static final Set<String> SYS_SCHEMAS = new HashSet<>(Arrays.asList("guest", "INFORMATION_SCHEMA", "sys", "db_owner", "db_accessadmin", "db_securityadmin", "db_ddladmin", "db_backupoperator", "db_datareader", "db_datawriter", "db_denydatareader", "db_denydatawriter"));
     private static final boolean QUOTE_WITH_BRACKETS = true;
@@ -91,6 +93,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         }
     }
 
+    @Override
     public SqlServerDatabaseIntrospector createDatabaseIntrospector() {
         return new SqlServerDatabaseIntrospector(connection);
     }
@@ -703,6 +706,30 @@ public class SqlServerDatabase extends DefaultDatabase {
                 quote(foreignKey.getFkTableName()),
                 quote(foreignKey.getName())
         ));
+    }
+
+    @Override
+    public void createCatalog(String catalog) {
+        String s = String.format("CREATE DATABASE %s", catalog);
+        try {
+            log.debug("SQL: {}", s);
+            statement.execute(s);
+        } catch (SQLException e) {
+            if ("S0003".equals(e.getSQLState())) return;
+            throw new RuntimeException(String.format("Failed to execute \"%s\"", s), e);
+        }
+    }
+
+    @Override
+    public void createShema(String catalog, String schema) {
+        String sql = "CREATE SCHEMA %s".formatted(quote(schema));
+        try {
+            log.debug("SQL: {}", sql);
+            statement.execute(sql);
+        } catch (SQLException e) {
+            if ("S0001".equals(e.getSQLState())) return;
+            throw new RuntimeException(String.format("Failed to execute \"%s\"", sql), e);
+        }
     }
 
     @Override

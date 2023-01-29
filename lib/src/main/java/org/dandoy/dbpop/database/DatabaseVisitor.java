@@ -1,5 +1,5 @@
 package org.dandoy.dbpop.database;
 
-public class DatabaseVisitor {
-    public void catalog(String catalog) {}
+public interface DatabaseVisitor {
+    default void catalog(String catalog) {}
 }

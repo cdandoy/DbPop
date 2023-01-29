@@ -31,6 +31,11 @@ public class DatabaseProxy extends Database {
     }
 
     @Override
+    public DatabaseIntrospector createDatabaseIntrospector() {
+        return delegate.createDatabaseIntrospector();
+    }
+
+    @Override
     public Collection<TableName> getTableNames(String catalog, String schema) {
         return delegate.getTableNames(catalog, schema);
     }
@@ -148,5 +153,15 @@ public class DatabaseProxy extends Database {
     @Override
     public void disableForeignKey(ForeignKey foreignKey) {
         delegate.disableForeignKey(foreignKey);
+    }
+
+    @Override
+    public void createCatalog(String catalog) {
+        delegate.createCatalog(catalog);
+    }
+
+    @Override
+    public void createShema(String catalog, String schema) {
+        delegate.createShema(catalog, schema);
     }
 }

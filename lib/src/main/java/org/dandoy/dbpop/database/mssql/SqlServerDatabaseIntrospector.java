@@ -1,11 +1,13 @@
 package org.dandoy.dbpop.database.mssql;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.DatabaseIntrospector;
 import org.dandoy.dbpop.database.DatabaseVisitor;
 
 import java.sql.*;
 
+@Slf4j
 public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     private final Connection connection;
 
@@ -20,7 +22,11 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {
                     String catalog = resultSet.getString("name");
-                    databaseVisitor.catalog(catalog);
+                    try {
+                        databaseVisitor.catalog(catalog);
+                    } catch (Exception e) {
+                        log.error("Cannot visit " + catalog, e);
+                    }
                 }
             }
         }
@@ -102,7 +108,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String dependentSchema = resultSet.getString("d_schema");
                     String dependentName = resultSet.getString("d_name");
                     String dependentTypeDesc = resultSet.getString("d_type_desc");
-                    databaseVisitor.dependency(schema,name,typeDesc, dependentSchema,dependentName,dependentTypeDesc);
+                    databaseVisitor.dependency(schema, name, typeDesc, dependentSchema, dependentName, dependentTypeDesc);
                 }
             }
         }

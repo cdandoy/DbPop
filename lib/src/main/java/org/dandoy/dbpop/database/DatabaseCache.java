@@ -29,6 +29,11 @@ public class DatabaseCache extends Database {
         return delegate.getConnection();
     }
 
+    @Override
+    public DatabaseIntrospector createDatabaseIntrospector() {
+        return delegate.createDatabaseIntrospector();
+    }
+
     private static <T> List<T> concat(Collection<T> t1, Collection<T> t2) {
         ArrayList<T> ret = new ArrayList<>(t1);
         ret.addAll(t2);
@@ -189,5 +194,15 @@ public class DatabaseCache extends Database {
         if (!virtualFkCache.getForeignKeys().contains(foreignKey)) {
             delegate.disableForeignKey(foreignKey);
         }
+    }
+
+    @Override
+    public void createCatalog(String catalog) {
+        delegate.createCatalog(catalog);
+    }
+
+    @Override
+    public void createShema(String catalog, String schema) {
+        delegate.createShema(catalog, schema);
     }
 }
