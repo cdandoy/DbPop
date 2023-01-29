@@ -112,7 +112,7 @@ public class SqlServerDatabase extends DefaultDatabase {
 
     @Override
     public Collection<String> getCatalogs() {
-        try (PreparedStatement databasesStatement = connection.prepareStatement("""
+        try (PreparedStatement databasesStatement = getConnection().prepareStatement("""
                 SELECT name
                 FROM sys.databases
                 WHERE state = 0
@@ -139,9 +139,9 @@ public class SqlServerDatabase extends DefaultDatabase {
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
         Map<TableName, List<Index>> indexes = new HashMap<>();
         Map<TableName, SqlServerPrimaryKey> primaryKeyMap = new HashMap<>();
-        statement.execute("USE " + catalog);
+        use(catalog);
         // Collects the tables and columns
-        try (PreparedStatement tablesStatement = connection.prepareStatement("""
+        try (PreparedStatement tablesStatement = getConnection().prepareStatement("""
                 SELECT s.name             AS s,
                        t.name             AS t,
                        c.name             AS c,
@@ -179,7 +179,7 @@ public class SqlServerDatabase extends DefaultDatabase {
             }
         }
         // Collects the indexes
-        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement("""
                 SELECT s.name AS s,
                        t.name AS t,
                        i.name AS i,
@@ -228,7 +228,7 @@ public class SqlServerDatabase extends DefaultDatabase {
             }
         }
         // Collects the foreign keys
-        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement("""
                 SELECT s.name   AS s,
                        t.name   AS t,
                        fk.name  AS fk_name,
@@ -291,12 +291,14 @@ public class SqlServerDatabase extends DefaultDatabase {
 
     @SuppressWarnings("DuplicatedCode")
     @Override
+    @SneakyThrows
     public Collection<Table> getTables(Set<TableName> datasetTableNames) {
         Set<String> catalogs = datasetTableNames.stream().map(TableName::getCatalog).collect(Collectors.toSet());
         Map<TableName, List<Column>> tableColumns = new HashMap<>();
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
         Map<TableName, List<Index>> indexes = new HashMap<>();
         Map<TableName, SqlServerPrimaryKey> primaryKeyMap = new HashMap<>();
+        Connection connection = getConnection();
         try (PreparedStatement databasesStatement = connection.prepareStatement("""
                 SELECT name
                 FROM sys.databases
@@ -737,13 +739,15 @@ public class SqlServerDatabase extends DefaultDatabase {
 
     @Override
     public void createCatalog(String catalog) {
-        String s = String.format("CREATE DATABASE %s", catalog);
+        String sql = String.format("CREATE DATABASE %s", catalog);
         try {
-            log.debug("SQL: {}", s);
-            statement.execute(s);
+            log.debug("SQL: {}", sql);
+            try (Statement statement = getConnection().createStatement()) {
+                statement.execute(sql);
+            }
         } catch (SQLException e) {
             if ("S0003".equals(e.getSQLState())) return;
-            throw new RuntimeException(String.format("Failed to execute \"%s\"", s), e);
+            throw new RuntimeException(String.format("Failed to execute \"%s\"", sql), e);
         }
     }
 
@@ -752,7 +756,9 @@ public class SqlServerDatabase extends DefaultDatabase {
         String sql = "CREATE SCHEMA %s".formatted(quote(schema));
         try {
             log.debug("SQL: {}", sql);
-            statement.execute(sql);
+            try (Statement statement = getConnection().createStatement()) {
+                statement.execute(sql);
+            }
         } catch (SQLException e) {
             if ("S0001".equals(e.getSQLState())) return;
             throw new RuntimeException(String.format("Failed to execute \"%s\"", sql), e);

@@ -16,6 +16,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     private final Connection connection;
     private final Database database;
 
+    @SneakyThrows
     public SqlServerDatabaseIntrospector(Database database) {
         this.database = database;
         this.connection = database.getConnection();

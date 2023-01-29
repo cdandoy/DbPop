@@ -71,14 +71,14 @@ public class PostgresDatabase extends DefaultDatabase {
     @Override
     @SneakyThrows
     public Collection<Table> getTables() {
-        String catalog = connection.getCatalog();
+        String catalog = getConnection().getCatalog();
         return getTables(catalog);
     }
 
     @Override
     @SneakyThrows
     public Collection<String> getCatalogs() {
-        return Collections.singleton(connection.getCatalog());
+        return Collections.singleton(getConnection().getCatalog());
     }
 
     @SuppressWarnings("DuplicatedCode")
