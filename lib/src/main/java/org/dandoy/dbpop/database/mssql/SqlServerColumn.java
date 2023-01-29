@@ -54,14 +54,14 @@ public class SqlServerColumn extends Column {
     private String getTypeDDL() {
         return switch (typeName) {
             case "bigint", "binary", "bit", "date", "datetime", "datetime2", "float", "geography", "image",
-                    "int", "money", "ntext", "smalldatetime", "smallint", "text", "time", "timestamp", "tinyint",
+                    "int", "money", "ntext", "smalldatetime", "smallint", "sysname", "text", "time", "timestamp", "tinyint",
                     "uniqueidentifier" -> typeName.toUpperCase();
             case "numeric" -> "NUMERIC(%d, %d)".formatted(typePrecision, typeScale);
             case "decimal" -> "DECIMAL(%d, %d)".formatted(typePrecision, typeScale);
             case "varchar" -> "VARCHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
-            case "nvarchar" -> "NVARCHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
+            case "nvarchar" -> "NVARCHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength / 2);
             case "char" -> "CHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
-            case "nchar" -> "NCHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
+            case "nchar" -> "NCHAR(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength / 2);
             case "varbinary" -> "VARBINARY(%s)".formatted(typeMaxLength == -1 ? "MAX" : typeMaxLength);
             default -> {
                 log.error("Unknown data type: " + typeName);

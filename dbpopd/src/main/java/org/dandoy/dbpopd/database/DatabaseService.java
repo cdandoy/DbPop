@@ -5,6 +5,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpopd.ConfigurationService;
 
@@ -14,6 +15,7 @@ import java.util.stream.Collectors;
 @SuppressWarnings("DuplicatedCode")
 @Singleton
 @Context
+@Slf4j
 public class DatabaseService {
     private final ConfigurationService configurationService;
     private final DatabaseCache sourceDatabase;
@@ -32,6 +34,7 @@ public class DatabaseService {
         if (configurationService.hasSourceConnection()) {
             VirtualFkCache virtualFkCache = configurationService.getVirtualFkCache();
             ConnectionBuilder sourceConnectionBuilder = configurationService.getSourceConnectionBuilder();
+            log.info("Checking the source connection");
             DefaultDatabase defaultDatabase = Database.createDefaultDatabase(sourceConnectionBuilder);
             sourceDatabase = new DatabaseCache(defaultDatabase, virtualFkCache);
         } else {
@@ -39,6 +42,7 @@ public class DatabaseService {
         }
 
         if (configurationService.hasTargetConnection()) {
+            log.info("Checking the target connection");
             ConnectionBuilder targetConnectionBuilder = configurationService.getTargetConnectionBuilder();
             DefaultDatabase defaultDatabase = Database.createDefaultDatabase(targetConnectionBuilder);
             targetDatabase = new DatabaseCache(defaultDatabase, VirtualFkCache.createVirtualFkCache());

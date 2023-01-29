@@ -89,7 +89,9 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                             databaseVisitor.moduleDefinition(catalog, schema, name + "_fk_" + foreignKey.getName(), "FOREIGN_KEY_CONSTRAINT", modifyDate, definition);
                         }
                         for (Index index : table.getIndexes()) {
-                            databaseVisitor.moduleDefinition(catalog, schema, name + "_idx_" + index.getName(), "INDEX", modifyDate, index.toDDL(database));
+                            if (!index.isPrimaryKey()) {
+                                databaseVisitor.moduleDefinition(catalog, schema, name + "_idx_" + index.getName(), "INDEX", modifyDate, index.toDDL(database));
+                            }
                         }
                     } else {
                         String definition = resultSet.getString("definition");

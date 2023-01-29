@@ -1,6 +1,15 @@
 package org.dandoy.dbpopd.code;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.*;
+
+import static org.dandoy.dbpopd.code.CodeService.CODE_TYPES;
 
 public class CodeFileInspector {
 
@@ -10,32 +19,43 @@ public class CodeFileInspector {
     public static void inspect(File codeDirectory, CodeFileVisitor visitor) {
         File[] catalogDirs = codeDirectory.listFiles();
         if (catalogDirs != null) {
+            int directoryCount = codeDirectory.toPath().getNameCount();
             for (File catalogDir : catalogDirs) {
                 String catalog = catalogDir.getName();
                 visitor.catalog(catalog);
-                File[] schemaFiles = catalogDir.listFiles();
-                if (schemaFiles != null) {
-                    for (File schemaFile : schemaFiles) {
-                        String schema = schemaFile.getName();
-                        visitor.schema(catalog, schema);
-                        File[] codeTypeFiles = schemaFile.listFiles();
-                        if (codeTypeFiles != null) {
-                            for (File codeTypeFile : codeTypeFiles) {
-                                String codeType = codeTypeFile.getName();
-                                if (CodeService.CODE_TYPES.contains(codeType)) {
-                                    File[] sqlFiles = codeTypeFile.listFiles();
-                                    if (sqlFiles != null) {
-                                        for (File sqlFile : sqlFiles) {
-                                            String name = sqlFile.getName();
-                                            if (sqlFile.isFile() && name.endsWith(".sql")) {
-                                                visitor.module(catalog, schema, codeType, name, sqlFile);
-                                            }
-                                        }
-                                    }
+
+                try {
+                    Map<Integer, List<Path>> filesByPriority = new HashMap<>();
+                    Set<String> schemas = new HashSet<>();
+                    // Collect the files by priority: tables, foreign keys, indexes, stored procedures, ...
+                    Files.walkFileTree(catalogDir.toPath(), new SimpleFileVisitor<>() {
+                        @Override
+                        public FileVisitResult visitFile(Path filePath, BasicFileAttributes attrs) {
+                            if (filePath.getNameCount() - directoryCount == 4) {
+                                String schema = filePath.getName(directoryCount + 1).toString();
+                                if (schemas.add(schema)) {
+                                    visitor.schema(catalog, schema);
+                                }
+                                String type = filePath.getName(directoryCount + 2).toString();
+                                String filename = filePath.getName(directoryCount + 3).toString();
+                                if (filename.toLowerCase().endsWith(".sql")) {
+                                    filesByPriority.computeIfAbsent(CODE_TYPES.indexOf(type), ArrayList::new)
+                                            .add(filePath);
                                 }
                             }
+                            return FileVisitResult.CONTINUE;
+                        }
+                    });
+                    for (Map.Entry<Integer, List<Path>> entry : filesByPriority.entrySet()) {
+                        for (Path filePath : entry.getValue()) {
+                            String schema = filePath.getName(directoryCount + 1).toString();
+                            String type = filePath.getName(directoryCount + 2).toString();
+                            String name = filePath.getName(directoryCount + 3).toString();
+                            visitor.module(catalog, schema, type, name, filePath.toFile());
                         }
                     }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }

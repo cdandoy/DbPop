@@ -31,7 +31,7 @@ public class SqlServerTable extends Table {
                 (
                 %s
                 )
-                GO""".formatted(
+                """.formatted(
                 database.quote(getTableName()),
                 items.stream().map(s -> INDENT + s).collect(Collectors.joining(",\n"))
         );

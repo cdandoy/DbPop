@@ -28,8 +28,8 @@ import java.util.stream.Collectors;
 @Singleton
 @Slf4j
 public class CodeService {
-    static final Set<String> CODE_TYPES = Set.of(
-            "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER", "VIEW"
+    static final List<String> CODE_TYPES = List.of(
+            "USER_TABLE", "FOREIGN_KEY_CONSTRAINT", "INDEX", "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER", "VIEW"
     );
 
     private final ConfigurationService configurationService;
@@ -76,12 +76,14 @@ public class CodeService {
                         @Override
                         @SneakyThrows
                         public void catalog(String catalog) {
+                            targetDatabase.createCatalog(catalog);
                             statement.execute("USE " + catalog);
                         }
 
                         @Override
                         @SneakyThrows
                         public void schema(String catalog, String schema) {
+                            statement.getConnection().commit();
                             if (!"dbo".equals(schema)) {
                                 targetDatabase.createShema(catalog, schema);
                             }
@@ -90,7 +92,7 @@ public class CodeService {
                         @Override
                         @SneakyThrows
                         public void module(String catalog, String schema, String type, String name, File sqlFile) {
-                            execute(statement, sqlFile);
+                            execute(statement, type, sqlFile);
                         }
                     });
                 }
@@ -102,24 +104,26 @@ public class CodeService {
 
     private static final Pattern CREATE_PATTERN = Pattern.compile("(.*)\\bCREATE(\\s+(?:FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b.*)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
-    private void execute(Statement statement, File sqlFile) throws IOException {
+    private void execute(Statement statement, String type, File sqlFile) throws IOException {
+        log.info("Executing {}", sqlFile);
         try (BufferedReader bufferedReader = Files.newBufferedReader(sqlFile.toPath())) {
             String sql = bufferedReader.lines().collect(Collectors.joining("\n"));
-            Matcher matcher = CREATE_PATTERN.matcher(sql);
-            if (matcher.matches()) {
-                String pre = matcher.group(1);
-                String post = matcher.group(2);
-                //noinspection SqlResolve
-                String createOrAlter = pre + "CREATE OR ALTER" + post;
-                try {
-                    log.info("Executing {}", sqlFile);
-                    statement.execute(createOrAlter);
-                } catch (SQLException e) {
-                    log.error(e.getMessage());
-                }
+            if (type.equals("USER_TABLE") || type.equals("FOREIGN_KEY_CONSTRAINT") || type.equals("INDEX")) {
+                statement.execute(sql);
             } else {
-                log.warn("Could not identify " + sqlFile);
+                Matcher matcher = CREATE_PATTERN.matcher(sql);
+                if (matcher.matches()) {
+                    String pre = matcher.group(1);
+                    String post = matcher.group(2);
+                    //noinspection SqlResolve
+                    String createOrAlter = pre + "CREATE OR ALTER" + post;
+                    statement.execute(createOrAlter);
+                } else {
+                    log.warn("Could not identify " + sqlFile);
+                }
             }
+        } catch (SQLException e) {
+            log.error(e.getMessage());
         }
     }
 

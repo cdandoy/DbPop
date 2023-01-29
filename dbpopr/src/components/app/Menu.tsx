@@ -24,6 +24,12 @@ export default function Menu() {
             </li>
 
             <li className="nav-link">
+                <NavLink to={"/code"}>
+                    <SidebarMenu text="Code" icons="fa fa-code"/>
+                </NavLink>
+            </li>
+
+            <li className="nav-link">
                 <NavLink to={"/vfk"}>
                     <SidebarMenu text="Virtual FKs" icons="fa fa-link"/>
                 </NavLink>

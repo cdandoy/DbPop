@@ -43,6 +43,7 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
         if (!dir.isDirectory() && !dir.mkdirs()) throw new RuntimeException("Failed to create " + dir);
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(sqlFile.toPath())) {
             bufferedWriter.write(definition);
+            bufferedWriter.write('\n');
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
