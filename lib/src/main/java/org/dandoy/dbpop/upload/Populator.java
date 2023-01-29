@@ -138,6 +138,8 @@ public class Populator {
                     databasePreparationStrategy.afterInserts();
                 }
                 return rowCount;
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
         });
     }

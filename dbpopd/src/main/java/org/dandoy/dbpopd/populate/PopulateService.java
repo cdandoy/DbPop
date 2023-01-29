@@ -1,5 +1,7 @@
 package org.dandoy.dbpopd.populate;
 
+import io.micronaut.http.HttpStatus;
+import io.micronaut.http.exceptions.HttpStatusException;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.DatabaseCache;
@@ -15,6 +17,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Singleton
 @Slf4j
@@ -33,6 +36,7 @@ public class PopulateService {
     }
 
     public PopulateResult populate(List<String> datasets, boolean forceStatic) {
+        if (datasets.isEmpty()) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "No datasets to download");
         try {
             long t0 = System.currentTimeMillis();
             DatabaseCache databaseCache = configurationService.getTargetDatabaseCache();
@@ -51,12 +55,16 @@ public class PopulateService {
 
             return new PopulateResult(rows, t1 - t0);
         } catch (Exception e) {
-            ExceptionUtils.getCause(e, PopulateDatasetException.class)
-                    .ifPresent(populateDatasetException -> {
-                        String dataset = populateDatasetException.getDataset();
-                        List<String> causes = MultiCauseException.getCauses(populateDatasetException);
-                        datasetsService.setFailedDataset(dataset, causes);
-                    });
+            Optional<PopulateDatasetException> optionalCause = ExceptionUtils.getCause(e, PopulateDatasetException.class);
+            if (optionalCause.isPresent()) {
+                PopulateDatasetException populateDatasetException = optionalCause.get();
+                String dataset = populateDatasetException.getDataset();
+                List<String> causes = MultiCauseException.getCauses(populateDatasetException);
+                datasetsService.setFailedDataset(dataset, causes);
+            } else { // Not sure which dataset failed to load
+                List<String> causes = MultiCauseException.getCauses(e);
+                datasetsService.setFailedDataset(datasets.get(0), causes);
+            }
             throw e;
         }
     }

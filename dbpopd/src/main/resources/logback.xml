@@ -5,7 +5,12 @@
         <!-- encoders are assigned the type
              ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
         <encoder>
-<!--            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>-->
+            <!--No Colors-->
+            <!--            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>-->
+
+            <!--Include line number-->
+            <!--            <pattern>%cyan(%d{HH:mm:ss.SSS}) %gray([%thread]) %highlight(%-5level) %magenta(%logger{40}.%M\(%class{0}.java:%line\)) - %msg%n</pattern>-->
+
             <pattern>%cyan(%d{HH:mm:ss.SSS}) %gray([%thread]) %highlight(%-5level) %magenta(%logger{36}) - %msg%n</pattern>
         </encoder>
     </appender>
@@ -13,6 +18,6 @@
     <root level="info">
         <appender-ref ref="STDOUT"/>
     </root>
-<!--    <logger name="io.micronaut.runtime.Micronaut" level="WARN"/>-->
-<!--    <logger name="org.dandoy.dbpop.download.TableFetcher" level="DEBUG"/>-->
+    <!--    <logger name="io.micronaut.runtime.Micronaut" level="WARN"/>-->
+    <!--    <logger name="org.dandoy.dbpop.download.TableFetcher" level="DEBUG"/>-->
 </configuration>

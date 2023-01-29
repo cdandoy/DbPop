@@ -1,11 +1,13 @@
 package org.dandoy.dbpopd.setup;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@Disabled("We no longer use ; as a separator because of sprocs")
 class SetupServiceTest {
     @Test
     void testLinesToSql() {

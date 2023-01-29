@@ -25,7 +25,12 @@ public class DatabaseCache extends Database {
     }
 
     @Override
-    public Connection getConnection() {
+    public void verifyConnection() {
+        delegate.verifyConnection();
+    }
+
+    @Override
+    public Connection getConnection() throws SQLException {
         return delegate.getConnection();
     }
 

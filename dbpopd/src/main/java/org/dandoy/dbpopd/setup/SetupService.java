@@ -67,7 +67,7 @@ public class SetupService {
 
     private void setActivity(String activity) {
         setupState = new SetupState(activity, null);
-        log.info(activity);
+        log.info(activity == null ? "Done" : activity);
     }
 
     private boolean setError(String format, Object... params) {
@@ -80,21 +80,42 @@ public class SetupService {
 
     private void doit() {
         try {
-            if (!checkDatasetDirectory()) return;
-            if (!checkTargetSettings()) return;
+            if (!checkDatasetDirectory()) {
+                log.error("checkDatasetDirectory failed");
+                return;
+            }
+            if (!checkTargetSettings()) {
+                log.error("checkTargetSettings failed");
+                return;
+            }
 
             Connection targetConnection = checkTargetConnection();
-            if (targetConnection == null) return;
+            if (targetConnection == null) {
+                log.error("targetConnection == null failed");
+                return;
+            }
             try {
-                if (!executeInstall(targetConnection)) return;
-                if (!executeStartup()) return;
+                if (!executeInstall(targetConnection)) {
+                    log.error("executeInstall failed");
+                    return;
+                }
+                if (!executeStartup()) {
+                    log.error("executeStartup failed");
+                    return;
+                }
             } finally {
                 safeClose(targetConnection);
             }
             if (loadDatasets) {
-                if (!checkPopulate()) return;
+                if (!checkPopulate()) {
+                    log.error("checkPopulate failed");
+                    return;
+                }
             }
-            if (!checkSourceConnection()) return;
+            if (!checkSourceConnection()) {
+                log.error("checkSourceConnection failed");
+                return;
+            }
             setActivity(null);
         } catch (RuntimeException e) {
             log.error("Failed to setup", e);
@@ -104,29 +125,31 @@ public class SetupService {
 
     private boolean executeInstall(Connection targetConnection) {
         File setupDirectory = configurationService.getSetupDirectory();
-        File installComplete = new File(setupDirectory, "install-complete.txt");
-        if (!installComplete.exists()) {
-            if (!executeScript(new File(setupDirectory, "pre-install.sh"))) {
-                return false;
-            }
+        if (setupDirectory.exists()) {
+            File installComplete = new File(setupDirectory, "install-complete.txt");
+            if (!installComplete.exists()) {
+                if (!executeScript(new File(setupDirectory, "pre-install.sh"))) {
+                    return false;
+                }
 
-            File[] sqlFiles = setupDirectory.listFiles((dir, name) -> name.endsWith(".sql"));
-            if (sqlFiles != null) {
-                ArrayList<File> sqlFileList = new ArrayList<>(List.of(sqlFiles));
-                sqlFileList.sort(Comparator.comparing(File::getAbsolutePath));
-                for (File sqlFile : sqlFileList) {
-                    if (!executeSql(targetConnection, sqlFile)) {
-                        return false;
+                File[] sqlFiles = setupDirectory.listFiles((dir, name) -> name.endsWith(".sql"));
+                if (sqlFiles != null) {
+                    ArrayList<File> sqlFileList = new ArrayList<>(List.of(sqlFiles));
+                    sqlFileList.sort(Comparator.comparing(File::getAbsolutePath));
+                    for (File sqlFile : sqlFileList) {
+                        if (!executeSql(targetConnection, sqlFile)) {
+                            return false;
+                        }
                     }
                 }
-            }
-            if (!executeScript(new File(setupDirectory, "post-install.sh"))) {
-                return false;
-            }
-            try (BufferedWriter writer = Files.newBufferedWriter(installComplete.toPath())) {
-                writer.write("install executed " + ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
-            } catch (IOException e) {
-                setError("Failed to write " + installComplete);
+                if (!executeScript(new File(setupDirectory, "post-install.sh"))) {
+                    return false;
+                }
+                try (BufferedWriter writer = Files.newBufferedWriter(installComplete.toPath())) {
+                    writer.write("install executed " + ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
+                } catch (IOException e) {
+                    setError("Failed to write " + installComplete);
+                }
             }
         }
         return true;
@@ -152,7 +175,7 @@ public class SetupService {
     }
 
     private boolean executeScript(File file) {
-        if (!file.exists()) return false;
+        if (!file.exists()) return true;
         try {
             String absolutePath = file.getCanonicalPath();
             setActivity("Executing " + absolutePath);
@@ -225,7 +248,7 @@ public class SetupService {
     }
 
     private boolean checkTargetSettings() {
-        setActivity("Connecting to the target database");
+        setActivity("Checking to the target database");
         if (!configurationService.hasTargetConnection()) {
             setError("Target database not configured");
             return false;

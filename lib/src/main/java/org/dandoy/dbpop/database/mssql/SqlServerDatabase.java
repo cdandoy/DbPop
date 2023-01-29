@@ -3,6 +3,7 @@ package org.dandoy.dbpop.database.mssql;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.Settings;
+import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
@@ -18,8 +19,8 @@ public class SqlServerDatabase extends DefaultDatabase {
     private static final Set<String> SYS_SCHEMAS = new HashSet<>(Arrays.asList("guest", "INFORMATION_SCHEMA", "sys", "db_owner", "db_accessadmin", "db_securityadmin", "db_ddladmin", "db_backupoperator", "db_datareader", "db_datawriter", "db_denydatareader", "db_denydatawriter"));
     private static final boolean QUOTE_WITH_BRACKETS = true;
 
-    public SqlServerDatabase(Connection connection) {
-        super(connection);
+    public SqlServerDatabase(ConnectionBuilder connectionBuilder) {
+        super(connectionBuilder);
     }
 
     @Override
@@ -32,7 +33,7 @@ public class SqlServerDatabase extends DefaultDatabase {
     }
 
     private void use(String catalog) throws SQLException {
-        try (Statement statement = connection.createStatement()) {
+        try (Statement statement = getConnection().createStatement()) {
             statement.execute("USE " + catalog);
         }
     }
@@ -41,7 +42,7 @@ public class SqlServerDatabase extends DefaultDatabase {
     public Collection<TableName> getTableNames(String catalog, String schema) {
         try {
             use(catalog);
-            try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT s.name AS schema_name, t.name AS table_name FROM sys.schemas s JOIN sys.tables t ON s.schema_id = t.schema_id WHERE s.name = ?")) {
+            try (PreparedStatement preparedStatement = getConnection().prepareStatement("SELECT s.name AS schema_name, t.name AS table_name FROM sys.schemas s JOIN sys.tables t ON s.schema_id = t.schema_id WHERE s.name = ?")) {
                 preparedStatement.setString(1, schema);
                 List<TableName> tableNames = new ArrayList<>();
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -480,6 +481,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         List<Index> indexes = new ArrayList<>();
         List<SqlServerPrimaryKey> primaryKeys = new ArrayList<>();
         try {
+            Connection connection = getConnection();
             try (Statement statement = connection.createStatement()) {
                 statement.execute("USE " + tableName.getCatalog());
             }
@@ -624,7 +626,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         try {
             List<ForeignKey> foreignKeys = new ArrayList<>();
             use(tableName.getCatalog());
-            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+            try (PreparedStatement preparedStatement = getConnection().prepareStatement("""
                     SELECT s.name   AS s,
                            t.name   AS t,
                            fk.name  AS fk_name,
@@ -680,7 +682,7 @@ public class SqlServerDatabase extends DefaultDatabase {
 
     public List<String> getSchemas(String catalog) {
         String sql = String.format("SELECT name FROM %s.sys.schemas", quote(catalog));
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement(sql)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 List<String> ret = new ArrayList<>();
                 while (resultSet.next()) {

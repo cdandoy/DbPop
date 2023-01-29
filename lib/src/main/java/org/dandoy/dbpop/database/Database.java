@@ -33,9 +33,9 @@ public abstract class Database implements AutoCloseable {
                 DatabaseMetaData metaData = connection.getMetaData();
                 String databaseProductName = metaData.getDatabaseProductName();
                 if ("Microsoft SQL Server".equals(databaseProductName)) {
-                    return new SqlServerDatabase(connection);
+                    return new SqlServerDatabase(connectionBuilder);
                 } else if ("PostgreSQL".equals(databaseProductName)) {
-                    return new PostgresDatabase(connection);
+                    return new PostgresDatabase(connectionBuilder);
                 } else {
                     throw new RuntimeException("Unsupported database " + databaseProductName);
                 }
@@ -51,7 +51,9 @@ public abstract class Database implements AutoCloseable {
     @Override
     public abstract void close();
 
-    public abstract Connection getConnection();
+    public abstract void verifyConnection();
+
+    public abstract Connection getConnection() throws SQLException;
 
     public abstract DatabaseIntrospector createDatabaseIntrospector();
 

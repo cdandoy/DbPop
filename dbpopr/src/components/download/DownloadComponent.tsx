@@ -1,62 +1,60 @@
-import React from "react";
+import React, {useEffect, useState} from "react";
 import PageHeader from "../pageheader/PageHeader";
 import {NavLink} from "react-router-dom";
+import {siteApi, SiteResponse} from "../../api/siteApi";
 
-export const Pages = {
-    "selectMode": "selectMode",
-    "selectBulkTables": "selectBulkTables",
-    "selectBulkDependencies": "selectBulkDependencies",
+function Section({title, description, to}: {
+    title: string;
+    description: string | JSX.Element;
+    to: string;
+}) {
+    return <>
+        <div className={"mt-5"}>
+            <h3>{title}</h3>
+            <p>{description}</p>
+            <div className={"ms-5 button-bar"}>
+                <NavLink to={to}>
+                    <button className={"btn btn-primary"}>
+                        Next
+                        &nbsp;
+                        <i className={"fa fa-arrow-right"}/>
+                    </button>
+                </NavLink>
+            </div>
+        </div>
+    </>
 }
 
 export default function DownloadComponent() {
+    const [siteResponse, setSiteResponse] = useState<SiteResponse | undefined>();
+
+    useEffect(() => {   // I should use context or redux for that
+        siteApi()
+            .then(result => {
+                setSiteResponse(result.data);
+            })
+    }, []);
 
     return <>
         <PageHeader title={"Download"} subtitle={"Download table data to CSV files"}/>
-        <div>
-            <h3>
-                Structured Download
-            </h3>
-            <p>Select multiple tables and the dependencies established based database constraints, and filter the data you want to download.</p>
-            <div className={"ms-5 button-bar"}>
-                <NavLink to={"/download/structured"}>
-                    <button className={"btn btn-primary"}>
-                        Next
-                        &nbsp;
-                        <i className={"fa fa-arrow-right"}/>
-                    </button>
-                </NavLink>
-            </div>
-        </div>
-        <div className={"mt-5 button-bar"}>
-            <h3>
-                Bulk Download
-            </h3>
-            <p>Select multiple tables and download the full content.</p>
-            <div className={"ms-5"}>
-                <NavLink to={"/download/bulk"}>
-                    <button className={"btn btn-primary"}>
-                        Next
-                        &nbsp;
-                        <i className={"fa fa-arrow-right"}/>
-                    </button>
-                </NavLink>
-            </div>
-        </div>
-        <div className={"mt-5 button-bar"}>
-            <h3>
-                Full Download
-            </h3>
-            <p>Dump the full content of your TARGET database to CSV files.<br/>
-                This might be useful if you use your application to generate additional data and want to save the result to CSV files.</p>
-            <div className={"ms-5"}>
-                <NavLink to={"/download/target"}>
-                    <button className={"btn btn-primary"}>
-                        Next
-                        &nbsp;
-                        <i className={"fa fa-arrow-right"}/>
-                    </button>
-                </NavLink>
-            </div>
-        </div>
+
+        {siteResponse?.hasSource && (
+            <Section title={"Structured Download"}
+                     description={"Select multiple tables and the dependencies established based database constraints, and filter the data you want to download."}
+                     to={"/download/structured"}/>
+        )}
+
+        {siteResponse?.hasSource && (
+            <Section title={"Bulk Download"}
+                     description={"Select multiple tables and download the full content."}
+                     to={"/download/bulk"}/>
+        )}
+
+        {siteResponse?.hasTarget && (
+            <Section title={"Full Download"}
+                     description={<>Dump the full content of your TARGET database back to CSV files.<br/>
+                         This might be useful if you use your application to generate additional data and want to save the result to CSV files.</>}
+                     to={"/download/target"}/>
+        )}
     </>;
 }
