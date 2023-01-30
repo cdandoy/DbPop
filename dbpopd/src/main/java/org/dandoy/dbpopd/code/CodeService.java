@@ -67,10 +67,12 @@ public class CodeService {
         }
     }
 
-    public void uploadFileToTarget() {
+    public UploadResult uploadFileToTarget() {
         try (Database targetDatabase = configurationService.createTargetDatabase()) {
             try (Connection connection = targetDatabase.getConnection()) {
                 try (Statement statement = connection.createStatement()) {
+                    List<UploadResult.FileExecution> fileExecutions = new ArrayList<>();
+                    long t0 = System.currentTimeMillis();
                     File codeDirectory = configurationService.getCodeDirectory();
                     CodeFileInspector.inspect(codeDirectory, new CodeFileInspector.CodeFileVisitor() {
                         @Override
@@ -92,9 +94,12 @@ public class CodeService {
                         @Override
                         @SneakyThrows
                         public void module(String catalog, String schema, String type, String name, File sqlFile) {
-                            execute(statement, type, sqlFile);
+                            UploadResult.FileExecution fileExecution = execute(statement, type, sqlFile);
+                            fileExecutions.add(fileExecution);
                         }
                     });
+                    long t1 = System.currentTimeMillis();
+                    return new UploadResult(fileExecutions, t1 - t0);
                 }
             }
         } catch (SQLException e) {
@@ -104,7 +109,7 @@ public class CodeService {
 
     private static final Pattern CREATE_PATTERN = Pattern.compile("(.*)\\bCREATE(\\s+(?:FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b.*)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
-    private void execute(Statement statement, String type, File sqlFile) throws IOException {
+    private UploadResult.FileExecution execute(Statement statement, String type, File sqlFile) throws IOException {
         log.info("Executing {}", sqlFile);
         try (BufferedReader bufferedReader = Files.newBufferedReader(sqlFile.toPath())) {
             String sql = bufferedReader.lines().collect(Collectors.joining("\n"));
@@ -122,8 +127,10 @@ public class CodeService {
                     log.warn("Could not identify " + sqlFile);
                 }
             }
+            return new UploadResult.FileExecution(sqlFile.getPath(), null);
         } catch (SQLException e) {
             log.error(e.getMessage());
+            return new UploadResult.FileExecution(sqlFile.getPath(), e.getMessage());
         }
     }
 

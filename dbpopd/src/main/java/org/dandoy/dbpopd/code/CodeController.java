@@ -27,8 +27,8 @@ public class CodeController {
     }
 
     @Get("target/upload")
-    public void uploadFileToTarget() {
-        codeService.uploadFileToTarget();
+    public UploadResult uploadFileToTarget() {
+        return codeService.uploadFileToTarget();
     }
 
     @Get("target/download")

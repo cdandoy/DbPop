@@ -12,6 +12,16 @@ export interface CodeDiffEntry {
     fileTime: number | undefined;
 }
 
+export interface UploadResult {
+    fileExecutions: FileExecution[];
+    executionTime: number;
+}
+
+export interface FileExecution {
+    filename: string;
+    error: string | undefined;
+}
+
 export function compareSourceToFile() {
     return axios.get<CodeDiff>(`/code/source/compare`);
 }

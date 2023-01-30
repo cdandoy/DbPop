@@ -344,8 +344,6 @@ public class SetupService {
                             }
                         }
                     }
-                    System.out.print(".");
-                    System.out.flush();
                 } catch (SQLException e) {
                     String filename = setupFile.getAbsolutePath();
                     try {

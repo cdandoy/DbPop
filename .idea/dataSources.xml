@@ -30,7 +30,7 @@
       <jdbc-url>jdbc:sqlserver://localhost;database=tempdb</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="mssql-2433" uuid="4bdca445-a678-41e3-9f66-1558936bb956">
+    <data-source source="LOCAL" name="mssql-source-2433" uuid="4bdca445-a678-41e3-9f66-1558936bb956">
       <driver-ref>sqlserver.ms</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>com.microsoft.sqlserver.jdbc.SQLServerDriver</jdbc-driver>

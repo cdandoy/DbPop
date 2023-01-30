@@ -1,3 +1,4 @@
+DROP PROCEDURE IF EXISTS GetInvoices
 DROP TABLE IF EXISTS master.dbo.invoice_details;
 DROP TABLE IF EXISTS master.dbo.invoices;
 DROP TABLE IF EXISTS master.dbo.products;
@@ -134,4 +135,15 @@ CREATE TABLE master.advanced.order_details
     product_id      INT NOT NULL,
     CONSTRAINT order_details_orders_fk FOREIGN KEY (order_id) REFERENCES master.advanced.orders,
     CONSTRAINT order_details_products_fk FOREIGN KEY (product_id) REFERENCES master.advanced.products
-);
+)
+GO
+CREATE PROCEDURE GetInvoices @invoiceId INT
+AS
+BEGIN
+    SELECT *
+    FROM master.dbo.invoices i
+             JOIN invoice_details id ON i.invoice_id = id.invoice_id
+             JOIN customers c ON i.customer_id = c.customer_id
+             JOIN products p ON id.product_id = p.product_id
+    WHERE i.invoice_id = @invoiceId
+END

@@ -1,1 +1,0 @@
-SELECT 'executed install_02_create_tables.sql'

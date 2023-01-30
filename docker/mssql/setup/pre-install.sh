@@ -1,1 +1,0 @@
-echo pre-install.sh executed successfully

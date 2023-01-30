@@ -6,7 +6,7 @@ services:
       - "7104:7104"
       - "5005:5005"
     volumes:
-      - ./mssql:/var/opt/dbpop
+      - ../files/config:/var/opt/dbpop
     environment:
       - SOURCE_JDBCURL=jdbc:sqlserver://mssql-source;database=tempdb;trustServerCertificate=true
       - SOURCE_USERNAME=sa
