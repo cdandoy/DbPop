@@ -1,0 +1,20 @@
+#download-component {
+  .download-component-section {
+    padding: 1rem;
+
+    .col-4 {
+      text-align: end;
+
+      img {
+        width: 20em;
+        opacity: 50%;
+        transition: opacity .5s;
+      }
+    }
+  }
+
+  .download-component-section:hover img {
+    opacity: 100%;
+    transition: opacity .5s;
+  }
+}
