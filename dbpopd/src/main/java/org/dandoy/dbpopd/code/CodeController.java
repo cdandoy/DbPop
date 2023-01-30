@@ -17,8 +17,8 @@ public class CodeController {
     }
 
     @Get("source/download")
-    public void downloadSourceToFile() {
-        codeService.downloadSourceToFile();
+    public DownloadResult downloadSourceToFile() {
+        return codeService.downloadSourceToFile();
     }
 
     @Get("target/compare")
@@ -32,7 +32,7 @@ public class CodeController {
     }
 
     @Get("target/download")
-    public void downloadTargetToFile() {
-        codeService.downloadTargetToFile();
+    public DownloadResult downloadTargetToFile() {
+        return codeService.downloadTargetToFile();
     }
 }

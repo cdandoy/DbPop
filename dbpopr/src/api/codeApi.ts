@@ -17,6 +17,16 @@ export interface UploadResult {
     executionTime: number;
 }
 
+export interface DownloadResult {
+    codeTypeCounts: Pair[];
+    executionTime: number;
+}
+
+export interface Pair {
+    left: any;
+    right: any;
+}
+
 export interface FileExecution {
     filename: string;
     error: string | undefined;
@@ -27,7 +37,7 @@ export function compareSourceToFile() {
 }
 
 export function downloadSourceToFile() {
-    return axios.get(`/code/source/download`);
+    return axios.get<DownloadResult>(`/code/source/download`);
 }
 
 export function compareTargetToFile() {

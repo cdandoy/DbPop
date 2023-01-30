@@ -137,7 +137,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String dependentSchema = resultSet.getString("d_schema");
                     String dependentName = resultSet.getString("d_name");
                     String dependentTypeDesc = resultSet.getString("d_type_desc");
-                    databaseVisitor.dependency(schema, name, typeDesc, dependentSchema, dependentName, dependentTypeDesc);
+                    databaseVisitor.dependency(catalog, schema, name, typeDesc, dependentSchema, dependentName, dependentTypeDesc);
                 }
             }
         }

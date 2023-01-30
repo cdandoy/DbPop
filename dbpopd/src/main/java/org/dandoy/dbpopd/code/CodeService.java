@@ -9,6 +9,7 @@ import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.utils.FileUtils;
+import org.dandoy.dbpopd.utils.Pair;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,10 +18,7 @@ import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -41,29 +39,55 @@ public class CodeService {
     /**
      * Dumps the content of the SOURCE database to the file system
      */
-    public void downloadSourceToFile() {
+    public DownloadResult downloadSourceToFile() {
         try (Database database = configurationService.createSourceDatabase()) {
-            downloadToFile(database);
+            return downloadToFile(database);
         }
     }
 
     /**
      * Dumps the content of the TARGET database to the file system
      */
-    public void downloadTargetToFile() {
+    public DownloadResult downloadTargetToFile() {
         try (Database database = configurationService.createSourceDatabase()) {
-            downloadToFile(database);
+            return downloadToFile(database);
         }
     }
 
     /**
      * Dumps the content of the database to the file system
      */
-    private void downloadToFile(Database database) {
+    private DownloadResult downloadToFile(Database database) {
+        long t0 = System.currentTimeMillis();
         DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
         File codeDirectory = configurationService.getCodeDirectory();
         try (DbToFileVisitor visitor = new DbToFileVisitor(databaseIntrospector, codeDirectory)) {
             databaseIntrospector.visit(visitor);
+
+            // Translate USER_TABLE -> Tables
+            List<Pair<String, Integer>> typeCounts = visitor
+                    .getTypeCounts()
+                    .entrySet().stream()
+                    .map(it -> {
+                        String codeType = it.getKey();
+                        return Pair.of(
+                                switch (codeType) {
+                                    case "FOREIGN_KEY_CONSTRAINT" -> "Foreign Keys";
+                                    case "INDEX" -> "Indexes";
+                                    case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER" -> "Stored Procedures";
+                                    case "USER_TABLE" -> "Tables";
+                                    case "VIEW" -> "Views";
+                                    default -> codeType;
+                                },
+                                it.getValue());
+                    })
+                    .sorted(Comparator.comparing(Pair::left))
+                    .toList();
+            long t1 = System.currentTimeMillis();
+            return new DownloadResult(
+                    typeCounts,
+                    t1 - t0
+            );
         }
     }
 

@@ -9,5 +9,5 @@ public interface DatabaseVisitor {
 
     default void moduleDefinition(String catalog, String schema, String name, String moduleType, Date modifyDate, String definition) {}
 
-    default void dependency(String schema, String name, String moduleType, String dependentSchema, String dependentName, String dependentModuleType) {}
+    default void dependency(String catalog, String schema, String name, String moduleType, String dependentSchema, String dependentName, String dependentModuleType) {}
 }

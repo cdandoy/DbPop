@@ -1,22 +1,27 @@
 package org.dandoy.dbpopd.code;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.DatabaseIntrospector;
 import org.dandoy.dbpop.database.DatabaseVisitor;
+import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpopd.utils.FileUtils;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Date;
-import java.util.Set;
+import java.util.*;
 
 @Slf4j
 public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     private final DatabaseIntrospector introspector;
     private final File directory;
     private final Set<File> existingFiles;
+    private final List<Dependency> dependencies = new ArrayList<>();
+    @Getter
+    private final Map<String, Integer> typeCounts = new HashMap<>();
 
     public DbToFileVisitor(DatabaseIntrospector introspector, File directory) {
         this.introspector = introspector;
@@ -32,7 +37,25 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     @Override
     public void catalog(String catalog) {
         if ("tempdb".equals(catalog)) return;
+        // Write the modules to file
         introspector.visitModuleDefinitions(this, catalog);
+
+        // Collect the dependencies
+        dependencies.clear();
+        introspector.visitDependencies(this, catalog);
+
+        if (!dependencies.isEmpty()) {
+            Collections.sort(dependencies);
+            // Write dependencies.json
+            File dependencyFile = FileUtils.toFile(directory, catalog, "dependencies.json");
+            try (BufferedWriter bufferedWriter = Files.newBufferedWriter(dependencyFile.toPath())) {
+                new ObjectMapper()
+                        .writerWithDefaultPrettyPrinter()
+                        .writeValue(bufferedWriter, dependencies);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to write the dependencies to " + dependencyFile, e);
+            }
+        }
     }
 
     @Override
@@ -49,5 +72,17 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
         if (!sqlFile.setLastModified(modifyDate.getTime())) {
             log.error("Failed to setLastModified on " + sqlFile);
         }
+        int count = typeCounts.getOrDefault(moduleType, 0);
+        typeCounts.put(moduleType, count + 1);
+    }
+
+    @Override
+    public void dependency(String catalog, String schema, String name, String moduleType, String dependentSchema, String dependentName, String dependentModuleType) {
+        dependencies.add(
+                new Dependency(
+                        new TableName(catalog, schema, name),
+                        new TableName(catalog, dependentSchema, dependentName)
+                )
+        );
     }
 }
