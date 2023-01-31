@@ -76,7 +76,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String schema = resultSet.getString("schema");
                     String name = resultSet.getString("name");
                     String typeDesc = resultSet.getString("type_desc");
-                    Date modifyDate = resultSet.getDate("modify_date");
+                    Date modifyDate = resultSet.getTimestamp("modify_date");
                     if (typeDesc.equals("USER_TABLE")) {
                         Table table = tablesByName.get(new TableName(catalog, schema, name));
                         databaseVisitor.moduleDefinition(catalog, schema, name, typeDesc, modifyDate, table.tableDDL(database));
