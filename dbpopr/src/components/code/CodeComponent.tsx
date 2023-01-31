@@ -5,6 +5,8 @@ import {siteApi, SiteResponse} from "../../api/siteApi";
 import compare_source from "./compare_source.png"
 import download_source from "./download_source.png"
 import upload_target from "./upload_target.png"
+import download_target from "./download_target.png"
+import compare_target from "./compare_target.png"
 
 
 function Section({title, description, to, img}: {
@@ -21,9 +23,7 @@ function Section({title, description, to, img}: {
                 <div className={"ms-5 button-bar"}>
                     <NavLink to={to}>
                         <button className={"btn btn-primary"}>
-                            Next
-                            &nbsp;
-                            <i className={"fa fa-arrow-right"}/>
+                            Select
                         </button>
                     </NavLink>
                 </div>
@@ -51,7 +51,7 @@ export default function CodeComponent() {
 
             {siteResponse?.hasSource && (
                 <Section title={"Compare Source"}
-                         description={"Compare the source database with the local files"}
+                         description={"Compare the tables and sprocs in the source database with the local SQL files"}
                          to={"/code/source/compare"}
                          img={compare_source}
                 />
@@ -59,17 +59,35 @@ export default function CodeComponent() {
 
             {siteResponse?.hasSource && (
                 <Section title={"Download Source"}
-                         description={"Download the source database to the local filesystem"}
+                         description={"Download the tables and sprocs from the source database to the local SQL files"}
                          to={"/code/source/download"}
                          img={download_source}
                 />
             )}
 
+            {siteResponse?.hasSource && siteResponse?.hasTarget && <hr/>}
+
             {siteResponse?.hasTarget && (
                 <Section title={"Upload to Target"}
-                         description={"Create"}
+                         description={"Upload the tables and sprocs from the SQL files to the Target database"}
                          to={"/code/target/upload"}
                          img={upload_target}
+                />
+            )}
+
+            {siteResponse?.hasTarget && (
+                <Section title={"Download from Target"}
+                         description={"Download the tables and sprocs from the Target database to the SQL files"}
+                         to={"/code/target/download"}
+                         img={download_target}
+                />
+            )}
+
+            {siteResponse?.hasTarget && (
+                <Section title={"Compare Target"}
+                         description={"Compare the tables and sprocs in the Target database with the local SQL files"}
+                         to={"/code/target/compare"}
+                         img={compare_target}
                 />
             )}
 

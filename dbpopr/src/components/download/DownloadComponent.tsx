@@ -21,7 +21,7 @@ function Section({title, description, to, img}: {
                 <div className={"ms-5 button-bar"}>
                     <NavLink to={to}>
                         <button className={"btn btn-primary"}>
-                            Next
+                            Select
                         </button>
                     </NavLink>
                 </div>
@@ -61,6 +61,8 @@ export default function DownloadComponent() {
                      to={"/download/bulk"}
                      img={bulk_download}/>
         )}
+
+        {siteResponse?.hasSource && siteResponse?.hasTarget && <hr/>}
 
         {siteResponse?.hasTarget && (
             <Section title={"Full Download"}
