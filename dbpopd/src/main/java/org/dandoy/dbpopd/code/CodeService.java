@@ -49,7 +49,7 @@ public class CodeService {
      * Dumps the content of the TARGET database to the file system
      */
     public DownloadResult downloadTargetToFile() {
-        try (Database database = configurationService.createSourceDatabase()) {
+        try (Database database = configurationService.createTargetDatabase()) {
             return downloadToFile(database);
         }
     }
@@ -165,7 +165,7 @@ public class CodeService {
     }
 
     public CodeDiff compareTargetToFile() {
-        try (Database sourceDatabase = configurationService.createSourceDatabase()) {
+        try (Database sourceDatabase = configurationService.createTargetDatabase()) {
             return compareToFile(sourceDatabase);
         }
     }
@@ -186,27 +186,42 @@ public class CodeService {
             public void moduleMeta(int objectId, String catalog, String schema, String name, String moduleType, Date modifyDate) {
                 File file = FileUtils.toFile(codeDirectory, catalog, schema, moduleType, name + ".sql");
                 boolean exists = file.exists();
-                entries.add(new CodeDiff.Entry(
-                        new TableName(catalog, schema, name),
-                        moduleType,
-                        modifyDate.getTime(),
-                        exists ? file.lastModified() : null
-                ));
+                long databaseTime = modifyDate.getTime();
                 if (exists) {
+                    long fileTime = file.lastModified();
+                    if (databaseTime != fileTime) {
+                        entries.add(new CodeDiff.Entry(
+                                new TableName(catalog, schema, name),
+                                moduleType,
+                                databaseTime,
+                                fileTime
+                        ));
+                    }
                     codeFiles.remove(file);
+                } else {
+                    entries.add(new CodeDiff.Entry(
+                            new TableName(catalog, schema, name),
+                            moduleType,
+                            databaseTime,
+                            null
+                    ));
                 }
             }
         });
         for (File codeFile : codeFiles) {
-            CodeUtils.toCode(codeDirectory, codeFile, (tableName, type) -> entries.add(
-                    new CodeDiff.Entry(
-                            tableName,
-                            type,
-                            null,
-                            codeFile.lastModified()
-                    )
-            ));
+            CodeUtils.toCode(codeDirectory, codeFile, (tableName, type) -> {
+                if ("FOREIGN_KEY_CONSTRAINT".equals(type)) return; // FKs are reported as part of the table
+                entries.add(
+                        new CodeDiff.Entry(
+                                tableName,
+                                type,
+                                null,
+                                codeFile.lastModified()
+                        )
+                );
+            });
         }
+        entries.sort(Comparator.comparing(CodeDiff.Entry::tableName));
 
         return new CodeDiff(entries);
     }

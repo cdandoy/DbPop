@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 import PageHeader from "../pageheader/PageHeader";
 import LoadingOverlay from "../utils/LoadingOverlay";
-import {CodeDiff, compareSourceToFile} from "../../api/codeApi";
+import {CodeDiff, CodeDiffEntry, compareSourceToFile} from "../../api/codeApi";
 import {Alert} from "react-bootstrap";
 import {tableNameToFqName} from "../../models/TableName";
 import "./CodeSourceCompare.scss"
@@ -19,7 +19,27 @@ export default function CodeSourceCompare() {
             .then(result => setCodeDiff(result.data))
             .catch((error) => setError(error))
             .finally(() => setLoading(false));
-    }, [])
+    }, []);
+
+    function getDatabaseText(codeDiffEntry: CodeDiffEntry) {
+        const databaseTime = codeDiffEntry.databaseTime;
+        const fileTime = codeDiffEntry.fileTime;
+        if (!databaseTime) return "";
+        if (!fileTime) return "New";
+        if (databaseTime < fileTime) return "Older";
+        if (databaseTime > fileTime) return "Newer";
+        return "Same";
+    }
+
+    function getFileText(codeDiffEntry: CodeDiffEntry) {
+        const databaseTime = codeDiffEntry.databaseTime;
+        const fileTime = codeDiffEntry.fileTime;
+        if (!fileTime) return "";
+        if (!databaseTime) return "New";
+        if (fileTime < databaseTime) return "Older";
+        if (fileTime > databaseTime) return "Newer";
+        return "Same"
+    }
 
     return <div id={"code-source-compare"}>
         <PageHeader title={"Compare Source"} subtitle={"Compare the tables and sprocs in the source database with the local SQL files"} tool={<img src={compare_source} style={{width: "20em"}} alt={"image"}/>}/>
@@ -31,7 +51,9 @@ export default function CodeSourceCompare() {
                     <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Status</th>
+                        <th>Database</th>
+                        <th>File</th>
+                        <th></th>
                     </tr>
                     </thead>
                     <tbody>
@@ -41,9 +63,10 @@ export default function CodeSourceCompare() {
                             <tr key={fqName}>
                                 <td>{fqName}</td>
                                 <td>
-                                    {codeDiffEntry.databaseTime && codeDiffEntry.fileTime && (codeDiffEntry.databaseTime > codeDiffEntry.fileTime) && "Updated"}
-                                    {codeDiffEntry.databaseTime && !codeDiffEntry.fileTime && "Created"}
-                                    {!codeDiffEntry.databaseTime && "Deleted"}
+                                    {getDatabaseText(codeDiffEntry)}
+                                </td>
+                                <td>
+                                    {getFileText(codeDiffEntry)}
                                 </td>
                             </tr>
                         )

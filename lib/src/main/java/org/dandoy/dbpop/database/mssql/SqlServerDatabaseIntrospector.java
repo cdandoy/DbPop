@@ -39,7 +39,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                 WHERE o.is_ms_shipped = 0
-                  AND o.type_desc IN ('USER_TABLE', 'SQL_TRIGGER', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION', 'VIEW', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE')
+                  AND o.type_desc IN ('USER_TABLE', 'INDEX', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE', 'SQL_TABLE_VALUED_FUNCTION', 'SQL_TRIGGER', 'VIEW')
                 ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -68,7 +68,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
                 WHERE o.is_ms_shipped = 0
-                  AND o.type_desc IN ('USER_TABLE', 'SQL_TRIGGER', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION', 'VIEW', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE')
+                  AND o.type_desc IN ('USER_TABLE', 'INDEX', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE', 'SQL_TABLE_VALUED_FUNCTION', 'SQL_TRIGGER', 'VIEW')
                 ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {

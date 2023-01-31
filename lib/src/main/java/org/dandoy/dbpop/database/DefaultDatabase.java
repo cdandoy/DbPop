@@ -397,6 +397,7 @@ public abstract class DefaultDatabase extends Database {
         public synchronized Connection getConnection() throws SQLException {
             if (connection == null) {
                 connection = connectionBuilder.createConnection();
+                connection.setAutoCommit(true);
             }
             return connection;
         }

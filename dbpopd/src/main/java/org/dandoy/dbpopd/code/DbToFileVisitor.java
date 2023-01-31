@@ -60,20 +60,22 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
 
     @Override
     public void moduleDefinition(String catalog, String schema, String name, String moduleType, Date modifyDate, String definition) {
-        File sqlFile = FileUtils.toFile(directory, catalog, schema, moduleType, name + ".sql");
-        existingFiles.remove(sqlFile);
-        File dir = sqlFile.getParentFile();
-        if (!dir.isDirectory() && !dir.mkdirs()) throw new RuntimeException("Failed to create " + dir);
-        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(sqlFile.toPath())) {
-            bufferedWriter.write(definition);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        try {
+            File sqlFile = FileUtils.toFile(directory, catalog, schema, moduleType, name + ".sql");
+            existingFiles.remove(sqlFile);
+            File dir = sqlFile.getParentFile();
+            if (!dir.isDirectory() && !dir.mkdirs()) throw new RuntimeException("Failed to create " + dir);
+            try (BufferedWriter bufferedWriter = Files.newBufferedWriter(sqlFile.toPath())) {
+                bufferedWriter.write(definition);
+            }
+            if (!sqlFile.setLastModified(modifyDate.getTime())) {
+                log.error("Failed to setLastModified on " + sqlFile);
+            }
+            int count = typeCounts.getOrDefault(moduleType, 0);
+            typeCounts.put(moduleType, count + 1);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to write %s/%s/%s/%s.sql".formatted(catalog, schema, moduleType, name), e);
         }
-        if (!sqlFile.setLastModified(modifyDate.getTime())) {
-            log.error("Failed to setLastModified on " + sqlFile);
-        }
-        int count = typeCounts.getOrDefault(moduleType, 0);
-        typeCounts.put(moduleType, count + 1);
     }
 
     @Override

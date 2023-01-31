@@ -6,7 +6,6 @@ import org.dandoy.dbpop.upload.DataFileHeader;
 import org.dandoy.dbpop.utils.NotImplementedException;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Collection;
@@ -28,23 +27,22 @@ public abstract class Database implements AutoCloseable {
 
     public static DefaultDatabase createDefaultDatabase(ConnectionBuilder connectionBuilder) {
         try {
-            Connection connection = connectionBuilder.createConnection();
-            try {
-                DatabaseMetaData metaData = connection.getMetaData();
-                String databaseProductName = metaData.getDatabaseProductName();
-                if ("Microsoft SQL Server".equals(databaseProductName)) {
-                    return new SqlServerDatabase(connectionBuilder);
-                } else if ("PostgreSQL".equals(databaseProductName)) {
-                    return new PostgresDatabase(connectionBuilder);
-                } else {
-                    throw new RuntimeException("Unsupported database " + databaseProductName);
-                }
-            } catch (Exception e) {
-                connection.close();
-                throw e;
+            String databaseProductName = getDatabaseProductName(connectionBuilder);
+            if ("Microsoft SQL Server".equals(databaseProductName)) {
+                return new SqlServerDatabase(connectionBuilder);
+            } else if ("PostgreSQL".equals(databaseProductName)) {
+                return new PostgresDatabase(connectionBuilder);
+            } else {
+                throw new RuntimeException("Unsupported database " + databaseProductName);
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static String getDatabaseProductName(ConnectionBuilder connectionBuilder) throws SQLException {
+        try (Connection connection = connectionBuilder.createConnection()) {
+            return connection.getMetaData().getDatabaseProductName();
         }
     }
 
