@@ -4,12 +4,13 @@ import PageHeader from "../../pageheader/PageHeader";
 import {tableNameToFqName} from "../../../models/TableName";
 import {Plural} from "../../../utils/DbPopUtils";
 import {NavLink} from "react-router-dom";
+import structured_download from "../structured_download.png";
 
 export default function DownloadResultsComponent({downloadResponse}: {
     downloadResponse: DownloadResponse
 }) {
     return <>
-        <PageHeader title={"Structured Download"} subtitle={"Your data has been dowbloaded"}/>
+        <PageHeader title={"Structured Download"} subtitle={"Your data has been dowbloaded"} tool={<img src={structured_download} style={{width: "20em"}} alt={"image"}/>}/>
 
         <div className={"table-container"}>
             <table className={"table table-hover"}>

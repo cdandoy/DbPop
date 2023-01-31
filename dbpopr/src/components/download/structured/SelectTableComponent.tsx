@@ -6,6 +6,7 @@ import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/Tab
 import {Plural} from "../../../utils/DbPopUtils";
 import SelectTableDependenciesComponent from "../SelectTableDependenciesComponent";
 import {NavLink} from "react-router-dom";
+import structured_download from "../structured_download.png";
 
 export default function SelectTableComponent({
                                                  tableInfos,
@@ -36,7 +37,7 @@ export default function SelectTableComponent({
 
     return <>
         <div id={"structured-select-root"}>
-            <PageHeader title={"Structured Download"} subtitle={"Select the root table"}/>
+            <PageHeader title={"Structured Download"} subtitle={"Select the root table"} tool={<img src={structured_download} style={{width: "20em"}} alt={"image"}/>}/>
             <div className={"mt-3 mb-3 button-bar"}>
                 <div className={"btn-group"}>
                     <NavLink to={"/download/"} className={"btn btn-primary"}>
