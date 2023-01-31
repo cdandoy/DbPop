@@ -4,6 +4,7 @@ import LoadingOverlay from "../utils/LoadingOverlay";
 import {uploadFileToTarget, UploadResult} from "../../api/codeApi";
 import {Alert} from "react-bootstrap";
 import "./CodeTargetUload.scss"
+import upload_target from "./upload_target.png"
 
 export default function CodeTargetUload() {
     const [loading, setLoading] = useState(false);
@@ -26,7 +27,7 @@ export default function CodeTargetUload() {
     }, [])
 
     return <div id={"code-source-download"}>
-        <PageHeader title={"Upload to Target"} subtitle={"Create"}/>
+        <PageHeader title={"Upload to Target"} subtitle={"Upload the tables and sprocs from the SQL files to the Target database"} tool={<img src={upload_target} style={{width: "20em"}} alt={"image"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}
 

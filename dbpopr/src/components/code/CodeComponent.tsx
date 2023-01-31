@@ -8,12 +8,12 @@ import upload_target from "./upload_target.png"
 import download_target from "./download_target.png"
 import compare_target from "./compare_target.png"
 
-
-function Section({title, description, to, img}: {
+function Section({title, description, to, img, disabled}: {
     title: string;
     description: string | JSX.Element;
     to: string;
     img?: any;
+    disabled?: boolean;
 }) {
     return <>
         <div className={"code-component-section row mt-5"}>
@@ -22,7 +22,7 @@ function Section({title, description, to, img}: {
                 <p>{description}</p>
                 <div className={"ms-5 button-bar"}>
                     <NavLink to={to}>
-                        <button className={"btn btn-primary"}>
+                        <button className={"btn btn-primary"} disabled={disabled}>
                             Select
                         </button>
                     </NavLink>
@@ -68,6 +68,14 @@ export default function CodeComponent() {
             {siteResponse?.hasSource && siteResponse?.hasTarget && <hr/>}
 
             {siteResponse?.hasTarget && (
+                <Section title={"Compare Target"}
+                         description={"Compare the tables and sprocs in the Target database with the local SQL files"}
+                         to={"/code/target/compare"}
+                         img={compare_target}
+                />
+            )}
+
+            {siteResponse?.hasTarget && (
                 <Section title={"Upload to Target"}
                          description={"Upload the tables and sprocs from the SQL files to the Target database"}
                          to={"/code/target/upload"}
@@ -80,14 +88,6 @@ export default function CodeComponent() {
                          description={"Download the tables and sprocs from the Target database to the SQL files"}
                          to={"/code/target/download"}
                          img={download_target}
-                />
-            )}
-
-            {siteResponse?.hasTarget && (
-                <Section title={"Compare Target"}
-                         description={"Compare the tables and sprocs in the Target database with the local SQL files"}
-                         to={"/code/target/compare"}
-                         img={compare_target}
                 />
             )}
 

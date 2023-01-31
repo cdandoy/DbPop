@@ -1,4 +1,4 @@
-#code-component{
+#code-component {
   .code-component-section {
     padding: 1rem;
 
@@ -20,8 +20,8 @@
 }
 
 
-#code-source-compare{
-  .table-container{
+#code-source-compare, #code-target-compare {
+  .table-container {
     height: 30em;
     overflow-y: auto;
   }

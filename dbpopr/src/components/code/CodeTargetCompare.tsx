@@ -1,13 +1,13 @@
 import React, {useEffect, useState} from "react";
 import PageHeader from "../pageheader/PageHeader";
 import LoadingOverlay from "../utils/LoadingOverlay";
-import {CodeDiff, compareSourceToFile} from "../../api/codeApi";
+import {CodeDiff, compareTargetToFile} from "../../api/codeApi";
 import {Alert} from "react-bootstrap";
 import {tableNameToFqName} from "../../models/TableName";
 import "./CodeSourceCompare.scss"
-import compare_source from "./compare_source.png"
+import compare_target from "./compare_target.png"
 
-export default function CodeSourceCompare() {
+export default function CodeTargetCompare() {
     const [loading, setLoading] = useState(false);
     const [codeDiff, setCodeDiff] = useState<CodeDiff | undefined>();
     const [error, setError] = useState<string | undefined>();
@@ -15,14 +15,14 @@ export default function CodeSourceCompare() {
     useEffect(() => {
         setLoading(true);
         setError(undefined);
-        compareSourceToFile()
+        compareTargetToFile()
             .then(result => setCodeDiff(result.data))
             .catch((error) => setError(error))
             .finally(() => setLoading(false));
     }, [])
 
-    return <div id={"code-source-compare"}>
-        <PageHeader title={"Compare Source"} subtitle={"Compare the tables and sprocs in the source database with the local SQL files"} tool={<img src={compare_source} style={{width: "20em"}} alt={"image"}/>}/>
+    return <div id={"code-target-compare"}>
+        <PageHeader title={"Compare Target"} subtitle={"Compare the tables and sprocs in the Target database with the local SQL files"} tool={<img src={compare_target} style={{width: "20em"}} alt={"image"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}
         {codeDiff && (

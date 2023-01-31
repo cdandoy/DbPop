@@ -13,6 +13,8 @@ import CodeComponent from "./code/CodeComponent";
 import CodeSourceDownload from "./code/CodeSourceDownload";
 import CodeSourceCompare from "./code/CodeSourceCompare";
 import CodeTargetUload from "./code/CodeTargetUload";
+import CodeTargetDownload from "./code/CodeTargetDownload";
+import CodeTargetCompare from "./code/CodeTargetCompare";
 
 export default function RoutesComponent() {
     return <>
@@ -25,9 +27,11 @@ export default function RoutesComponent() {
             <Route path="/download/target" element=<DownloadTargetComponent/>/>
 
             <Route path="/code" element=<CodeComponent/>/>
-            <Route path="/code/source/download" element=<CodeSourceDownload/>/>
             <Route path="/code/source/compare" element=<CodeSourceCompare/>/>
+            <Route path="/code/source/download" element=<CodeSourceDownload/>/>
+            <Route path="/code/target/compare" element=<CodeTargetCompare/>/>
             <Route path="/code/target/upload" element=<CodeTargetUload/>/>
+            <Route path="/code/target/download" element=<CodeTargetDownload/>/>
 
             <Route path="/vfk" element=<VirtualFksComponent/>/>
             <Route path="/vfk/add" element=<AddVirtualFkComponent/>/>
