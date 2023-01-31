@@ -27,7 +27,7 @@ function Section({title, description, to, img}: {
                 </div>
             </div>
             <div className={"col-4"}>
-                <img src={img} alt={"Structured Download"}/>
+                <img src={img} alt={title}/>
             </div>
         </div>
     </>

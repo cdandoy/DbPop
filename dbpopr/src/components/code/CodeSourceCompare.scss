@@ -1,3 +1,25 @@
+#code-component{
+  .code-component-section {
+    padding: 1rem;
+
+    .col-4 {
+      text-align: end;
+
+      img {
+        width: 20em;
+        opacity: 50%;
+        transition: opacity .5s;
+      }
+    }
+  }
+
+  .code-component-section:hover img {
+    opacity: 100%;
+    transition: opacity .5s;
+  }
+}
+
+
 #code-source-compare{
   .table-container{
     height: 30em;
