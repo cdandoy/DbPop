@@ -1,12 +1,12 @@
-import React, {useEffect, useState} from "react";
+import React, {useContext} from "react";
 import PageHeader from "../pageheader/PageHeader";
 import {NavLink} from "react-router-dom";
-import {siteApi, SiteResponse} from "../../api/siteApi";
 import compare_source from "./compare_source.png"
 import download_source from "./download_source.png"
 import upload_target from "./upload_target.png"
 import download_target from "./download_target.png"
 import compare_target from "./compare_target.png"
+import {SiteContext} from "../app/App";
 
 function Section({title, description, to, img, disabled}: {
     title: string;
@@ -36,14 +36,7 @@ function Section({title, description, to, img, disabled}: {
 }
 
 export default function CodeComponent() {
-    const [siteResponse, setSiteResponse] = useState<SiteResponse | undefined>();
-
-    useEffect(() => {   // I should use context or redux for that
-        siteApi()
-            .then(result => {
-                setSiteResponse(result.data);
-            })
-    }, []);
+    const siteResponse = useContext(SiteContext);
 
     return <div id={"code-component"}>
         <div>

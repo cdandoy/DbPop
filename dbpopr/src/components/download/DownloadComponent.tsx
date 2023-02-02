@@ -1,11 +1,11 @@
-import React, {useEffect, useState} from "react";
+import React, {useContext} from "react";
 import PageHeader from "../pageheader/PageHeader";
 import {NavLink} from "react-router-dom";
-import {siteApi, SiteResponse} from "../../api/siteApi";
 import './DownloadComponent.scss'
 import structured_download from "./structured_download.png"
 import bulk_download from "./bulk_download.png"
 import full_download from "./full_download.png"
+import {SiteContext} from "../app/App";
 
 function Section({title, description, to, img}: {
     title: string;
@@ -34,14 +34,7 @@ function Section({title, description, to, img}: {
 }
 
 export default function DownloadComponent() {
-    const [siteResponse, setSiteResponse] = useState<SiteResponse | undefined>();
-
-    useEffect(() => {   // I should use context or redux for that
-        siteApi()
-            .then(result => {
-                setSiteResponse(result.data);
-            })
-    }, []);
+    const siteResponse = useContext(SiteContext);
 
     return <div id={"download-component"}>
         <PageHeader title={"Download"} subtitle={"Download table data to CSV files"}/>

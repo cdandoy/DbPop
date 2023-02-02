@@ -1,19 +1,19 @@
 import {Plural, toHumanReadableSize} from "../../utils/DbPopUtils";
-import React from "react";
+import React, {useContext} from "react";
 import {DatasetContent} from "../../api/datasetContent";
+import {SiteContext} from "../app/App";
 
 export function Dataset({
                             datasetContent,
-                            hasUpload,
                             loadingDataset,
                             loadDataset,
                         }: {
     datasetContent: DatasetContent;
-    hasUpload: boolean;
     loadingDataset: string | null,
     loadDataset: (p: string) => void,
 }) {
     const datasetName = datasetContent.name;
+    const siteResponse = useContext(SiteContext);
 
     function RefreshButton({disabled, title, hidden, loading, onClick}: {
         title: string;
@@ -39,7 +39,7 @@ export function Dataset({
     }
 
     function buttonContent() {
-        const title = !hasUpload ? "Target database not available" :
+        const title = !siteResponse.hasTarget ? "Target database not available" :
             !!loadingDataset ? "Loading" :
                 "Reload";
 

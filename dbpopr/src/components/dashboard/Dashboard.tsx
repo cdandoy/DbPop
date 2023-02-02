@@ -1,8 +1,6 @@
 import React, {useEffect, useState} from "react";
-import {Configuration} from "../../models/Configuration";
 import {Dataset} from "./Dataset";
 import {datasetContent, DatasetContentResponse} from "../../api/datasetContent";
-import {siteApi} from "../../api/siteApi";
 import LoadingOverlay from "../utils/LoadingOverlay";
 import './Dashboard.scss'
 import {populate} from "../../api/Populate";
@@ -10,26 +8,9 @@ import {populate} from "../../api/Populate";
 export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [configuration, setConfiguration] = useState<Configuration>({hasSource: false, hasTarget: false});
     const [contentResponse, setContentResponse] = useState<DatasetContentResponse | null>(null);
     const [loadingDataset, setLoadingDataset] = useState<string | null>(null);
     const [datasetContentCN, setDatasetContentCN] = useState(0);
-
-    useEffect(() => {
-        setLoading(true);
-        siteApi()
-            .then(result => {
-                setConfiguration({
-                    hasSource: result.data.hasSource,
-                    hasTarget: result.data.hasTarget,
-                });
-                setDatasetContentCN(datasetContentCN + 1);
-            })
-            .catch(error => {
-                setLoading(false);
-                setError(error);
-            });
-    }, []);
 
     useEffect(() => {
         datasetContent()
@@ -50,7 +31,6 @@ export default function Dashboard() {
             .finally(() => setDatasetContentCN(datasetContentCN + 1))
     }
 
-
     return (
         <div id={"dashboard"}>
             <LoadingOverlay active={loading}/>
@@ -67,7 +47,6 @@ export default function Dashboard() {
                         <div key={datasetContent.name}>
                             <Dataset
                                 datasetContent={datasetContent}
-                                hasUpload={configuration.hasTarget}
                                 loadingDataset={loadingDataset}
                                 loadDataset={loadDataset}
                             />
