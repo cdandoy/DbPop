@@ -68,7 +68,9 @@ public class DownloadController {
                     downloadRequest.getMaxRows()
             );
             if (!downloadRequest.isDryRun()) {
-                populateService.populate(List.of(downloadRequest.getDataset()));
+                if (datasetsService.canPopulate(downloadRequest.getDataset())) {
+                    populateService.populate(List.of(downloadRequest.getDataset()));
+                }
             }
             return new DownloadResponse(
                     executionContext.getRowCounts(),

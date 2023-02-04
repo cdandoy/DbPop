@@ -30,7 +30,8 @@ export default function DataFilterComponent({
                                                 dependency,
                                                 dependencyQueries, setDependencyQueries,
                                                 previewResponse,
-                                                onDownload
+                                                onDownload,
+                                                error
                                             }: {
     setPage: ((p: string) => void),
     datasets: string[],
@@ -48,6 +49,7 @@ export default function DataFilterComponent({
     setDependencyQueries: ((p: DependencyQuery[]) => void),
     previewResponse: DownloadResponse | undefined,
     onDownload: (() => void),
+    error: string | undefined
 }) {
     const [editDependencyQuery, setEditDependencyQuery] = useState<DependencyQuery | null>(null);
     const [dataFilterRows, setDataFilterRows] = useState<DataFilterRow[]>([]);
@@ -142,6 +144,12 @@ export default function DataFilterComponent({
             {previewResponse?.rowCount === 0 && (
                 <div className={"alert alert-danger"}>
                     Nothing to download
+                </div>
+            )}
+
+            {error && (
+                <div className={"alert alert-danger"}>
+                    {error}
                 </div>
             )}
 

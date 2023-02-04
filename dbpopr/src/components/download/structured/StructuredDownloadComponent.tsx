@@ -23,6 +23,8 @@ export default function StructuredDownloadComponent() {
     const [loadingDataFilter, setLoadingDataFilter] = useState(false);
     const [loadingCsv, setLoadingCsv] = useState(false);
 
+    const [error, setError] = useState<string | undefined>();
+
     // SelectTableComponent
     const [tableInfos, setTableInfos] = useState<TableInfo[]>([]);
     const [nameFilter, setNameFilter] = useState("");
@@ -130,6 +132,7 @@ export default function StructuredDownloadComponent() {
         // Take a copy of selectedDependency and copy the queries over it
         if (selectedDependency) {
             setLoadingCsv(true);
+            setError(undefined);
             const dependency = structuredClone(selectedDependency);
             applyQueries(dependency, dependencyQueries);
             executeDownload(dataset, dependency, {}, false, rowLimit)
@@ -137,6 +140,7 @@ export default function StructuredDownloadComponent() {
                     setDownloadResponse(result.data);
                     setPage("download-result");
                 })
+                .catch(error => setError(error.response.data.detail || error.message || "Error"))
                 .finally(() => {
                     setLoadingCsv(false);
                 })
@@ -208,6 +212,7 @@ export default function StructuredDownloadComponent() {
                                  }}
                                  previewResponse={previewResponse}
                                  onDownload={onDownload}
+                                 error={error}
             />
         )}
 

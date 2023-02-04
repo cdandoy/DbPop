@@ -100,7 +100,9 @@ public class Datasets {
                     .filter(dataFile -> missingTables.contains(dataFile.getTableName()))
                     .findFirst()
                     .orElseThrow(RuntimeException::new);
-            throw new RuntimeException(String.format(
+            throw new MissingTablesException(
+                    badDataFile,
+                    String.format(
                     "Table %s does not exist for this data file %s",
                     badDataFile.getTableName().toQualifiedName(),
                     badDataFile.getFile()
