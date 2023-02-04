@@ -1,7 +1,7 @@
 package org.dandoy.dbpop.database.mssql;
 
-import org.dandoy.LocalCredentials;
 import org.dandoy.DbPopUtils;
+import org.dandoy.LocalCredentials;
 import org.dandoy.dbpop.database.Column;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.ForeignKey;
@@ -49,8 +49,10 @@ public class MsSqlTests {
 
             List<ForeignKey> relatedForeignKeys = targetDatabase.getRelatedForeignKeys(customers);
             {
-                assertEquals(1, relatedForeignKeys.size());
-                ForeignKey foreignKey = relatedForeignKeys.get(0);
+                assertEquals(2, relatedForeignKeys.size());
+                ForeignKey foreignKey = relatedForeignKeys.stream()
+                        .filter(it -> "invoices_customers_fk".equals(it.getName()))
+                        .findFirst().orElseThrow();
                 assertEquals("invoices_customers_fk", foreignKey.getName());
                 assertEquals("customers", foreignKey.getPkTableName().getTable());
                 assertEquals("invoices", foreignKey.getFkTableName().getTable());

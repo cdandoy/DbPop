@@ -1,7 +1,8 @@
 package org.dandoy.dbpop;
 
-import org.dandoy.LocalCredentials;
 import org.dandoy.DbPopUtils;
+import org.dandoy.LocalCredentials;
+import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.upload.Populator;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -37,33 +39,39 @@ public class DbPopTests {
 
     @Test
     void testPopulate() throws SQLException {
-        Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql");
-        populator.load("invoices");
-        assertCount(targetConnection, "customers", 3);
-        assertCount(targetConnection, "invoices", 4);
-        assertCount(targetConnection, "invoice_details", 7);
-        assertCount(targetConnection, "products", 3);
+        LocalCredentials localCredentials = LocalCredentials.from("mssql");
+        try (Database database = Database.createDatabase(localCredentials.targetConnectionBuilder())) {
+            Populator populator = Populator.createPopulator(database, new File("src/test/resources/mssql"));
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 4);
+            assertCount(targetConnection, "invoice_details", 7);
+            assertCount(targetConnection, "products", 3);
+        }
     }
 
     @Test
     void testDbPopMain() throws SQLException {
-        Populator populator = LocalCredentials.mssqlPopulator("src/test/resources/mssql");
-        populator.load("base");
-        assertCount(targetConnection, "customers", 3);
-        assertCount(targetConnection, "invoices", 0);
-        assertCount(targetConnection, "invoice_details", 0);
-        assertCount(targetConnection, "products", 3);
+        LocalCredentials localCredentials = LocalCredentials.from("mssql");
+        try (Database database = Database.createDatabase(localCredentials.targetConnectionBuilder())) {
+            Populator populator = Populator.createPopulator(database, new File("src/test/resources/mssql"));
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 4);
+            assertCount(targetConnection, "invoice_details", 7);
+            assertCount(targetConnection, "products", 3);
 
-        populator.load("base", "invoices");
-        assertCount(targetConnection, "customers", 3);
-        assertCount(targetConnection, "invoices", 4);
-        assertCount(targetConnection, "invoice_details", 7);
-        assertCount(targetConnection, "products", 3);
+            populator.load("extra");
+            assertCount(targetConnection, "customers", 4);
+            assertCount(targetConnection, "invoices", 4);
+            assertCount(targetConnection, "invoice_details", 7);
+            assertCount(targetConnection, "products", 3);
 
-        populator.load("base");
-        assertCount(targetConnection, "customers", 3);
-        assertCount(targetConnection, "invoices", 0);
-        assertCount(targetConnection, "invoice_details", 0);
-        assertCount(targetConnection, "products", 3);
+            populator.load("base");
+            assertCount(targetConnection, "customers", 3);
+            assertCount(targetConnection, "invoices", 4);
+            assertCount(targetConnection, "invoice_details", 7);
+            assertCount(targetConnection, "products", 3);
+        }
     }
 }

@@ -1,21 +1,29 @@
 package org.dandoy.dbpopd.code;
 
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
+import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DatabaseIntrospector;
-import org.dandoy.dbpop.database.UrlConnectionBuilder;
-import org.dandoy.dbpop.database.mssql.SqlServerDatabase;
+import org.dandoy.dbpop.tests.TestUtils;
+import org.dandoy.dbpopd.ConfigurationService;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 
+@MicronautTest
 class DbToFileVisitorTest {
+    @Inject
+    ConfigurationService configurationService;
+
     @Test
     void name() {
-        UrlConnectionBuilder connectionBuilder = new UrlConnectionBuilder("jdbc:sqlserver://10.131.3.228;database=tempdb;trustServerCertificate=true", "DBA", "secured@00");
-        try (SqlServerDatabase database = new SqlServerDatabase(connectionBuilder)) {
+        try (Database database = configurationService.createSourceDatabase()) {
             DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
-            try (DbToFileVisitor visitor = new DbToFileVisitor(databaseIntrospector, new File("D:\\dbpop\\ops-win-dev\\config\\code"))) {
+            try (DbToFileVisitor visitor = new DbToFileVisitor(databaseIntrospector, configurationService.getCodeDirectory())) {
                 databaseIntrospector.visit(visitor);
             }
+        } finally {
+            TestUtils.delete(new File(TestUtils.SRC_DIR, "code"));
         }
     }
 }

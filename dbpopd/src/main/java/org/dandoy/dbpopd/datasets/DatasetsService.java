@@ -2,6 +2,7 @@ package org.dandoy.dbpopd.datasets;
 
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
+import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.upload.DataFile;
@@ -13,6 +14,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.dandoy.dbpop.datasets.Datasets.DATASET_NAME_COMPARATOR;
 
@@ -106,4 +108,17 @@ public class DatasetsService {
         lastStatus = new Status(datasetName, rows, time);
     }
 
+    public boolean canPopulate(String datasetName) {
+        List<String> datasetsToLoad = List.of("static", "base", datasetName);
+        List<TableName> tableNames = Datasets.getDatasets(configurationService.getDatasetsDirectory()).stream()
+                .filter(dataset -> datasetsToLoad.contains(dataset.getName()))
+                .flatMap(dataset -> dataset.getDataFiles().stream().map(DataFile::getTableName))
+                .toList();
+        // If the target database contains all the tables we have downloaded
+        return configurationService.getTargetDatabaseCache()
+                .getTables().stream()
+                .map(Table::getTableName)
+                .collect(Collectors.toSet())
+                .containsAll(tableNames);
+    }
 }

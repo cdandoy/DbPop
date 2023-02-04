@@ -22,7 +22,7 @@ import static org.dandoy.DbPopUtils.*;
 @EnabledIf("org.dandoy.DbPopUtils#hasSourceMssql")
 class ExecutionPlanTest {
 
-    public static final File DATASETS_DIRECTORY = new File("src/test/resources/mssql");
+    public static final File DATASETS_DIRECTORY = new File(TestUtils.TEMP_DIR, "datasets");
     public static final LocalCredentials LOCAL_CREDENTIALS = LocalCredentials.from("mssql");
     private static Database sourceDatabase;
 
@@ -31,6 +31,7 @@ class ExecutionPlanTest {
     static void beforeAll() {
         DbPopUtils.prepareMssqlSource();
         sourceDatabase = Database.createDatabase(LOCAL_CREDENTIALS.sourceConnectionBuilder());
+        TestUtils.prepareTempConfigDir();
     }
 
     @AfterAll
@@ -50,13 +51,14 @@ class ExecutionPlanTest {
 
     @Test
     void testFullModel() throws IOException {
+        TestUtils.delete(TestUtils.TEMP_DIR);
         TableExecutionModel tableExecutionModel = readTableExecutionModel("fullTableExecutionModel1.json");
         ExecutionContext executionContext = ExecutionPlan.execute(sourceDatabase, DATASETS_DIRECTORY, "download", invoices, tableExecutionModel, Collections.emptyList(), Collections.emptySet(), ExecutionMode.SAVE, null);
         Map<TableName, Integer> rowCounts = executionContext.getRowCounts();
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, 7);
-        assertRowCounts(rowCounts, customers, 0);
-        assertRowCounts(rowCounts, products, 0);
+        assertRowCounts(rowCounts, customers, 2);
+        assertRowCounts(rowCounts, products, 3);
     }
 
     @Test
@@ -77,9 +79,9 @@ class ExecutionPlanTest {
         Map<TableName, Integer> rowCounts = executionContext.getRowCounts();
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, null);
-        assertRowCounts(rowCounts, customers, 0);
+        assertRowCounts(rowCounts, customers, 2);
         assertRowCounts(rowCounts, products, null);
-        Assertions.assertTrue(new File(DATASETS_DIRECTORY, "download/master/dbo/invoices.csv").exists());
+        Assertions.assertTrue(new File(DATASETS_DIRECTORY, "download/dbpop/dbo/invoices.csv").exists());
     }
 
     @Test
@@ -89,9 +91,9 @@ class ExecutionPlanTest {
         Map<TableName, Integer> rowCounts = executionContext.getRowCounts();
         assertRowCounts(rowCounts, invoices, 4);
         assertRowCounts(rowCounts, invoiceDetails, null);
-        assertRowCounts(rowCounts, customers, 0);
+        assertRowCounts(rowCounts, customers, 2);
         assertRowCounts(rowCounts, products, null);
-        Assertions.assertFalse(new File(DATASETS_DIRECTORY, "download/master/dbo/invoices.csv").exists());
+        Assertions.assertFalse(new File(DATASETS_DIRECTORY, "download/dbpop/dbo/invoices.csv").exists());
     }
 
     private TableExecutionModel readTableExecutionModel(String name) throws IOException {
