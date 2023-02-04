@@ -11,6 +11,7 @@ import org.dandoy.dbpop.download.*;
 import org.dandoy.dbpop.upload.DataFile;
 import org.dandoy.dbpop.upload.Dataset;
 import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.datasets.DatasetsService;
 import org.dandoy.dbpopd.populate.PopulateService;
 
 import java.io.File;
@@ -21,10 +22,12 @@ import java.util.stream.Collectors;
 public class DownloadController {
     private final ConfigurationService configurationService;
     private final PopulateService populateService;
+    private final DatasetsService datasetsService;
 
-    public DownloadController(ConfigurationService configurationService, PopulateService populateService) {
+    public DownloadController(ConfigurationService configurationService, PopulateService populateService, DatasetsService datasetsService) {
         this.configurationService = configurationService;
         this.populateService = populateService;
+        this.datasetsService = datasetsService;
     }
 
     @Post("/model")
@@ -91,7 +94,12 @@ public class DownloadController {
                 }
             }
         }
-        populateService.populate(List.of(downloadBulkBody.dataset));
+
+        // If the target database contains all the tables we have downloaded
+        if (datasetsService.canPopulate(downloadBulkBody.dataset())) {
+            populateService.populate(List.of(downloadBulkBody.dataset));
+        }
+
         return new DownloadResponse(
                 executionContext.getRowCounts(),
                 executionContext.getRowsSkipped(),
@@ -112,6 +120,7 @@ public class DownloadController {
         try (Database targetDatabase = configurationService.createTargetDatabase()) {
             for (String datasetName : datasetNames) {
                 Dataset dataset = Datasets.getDataset(configurationService.getDatasetsDirectory(), datasetName);
+                if (dataset == null) throw new RuntimeException("Dataset does not exist: " + datasetName);
                 for (DataFile dataFile : dataset.getDataFiles()) {
                     TableName tableName = dataFile.getTableName();
                     File file = dataFile.getFile();
@@ -149,7 +158,7 @@ public class DownloadController {
         );
     }
 
-    record DownloadBulkBody(String dataset, List<TableName> tableNames) {}
+    public record DownloadBulkBody(String dataset, List<TableName> tableNames) {}
 
     public record DownloadTargetBody(String dataset) {}
 }

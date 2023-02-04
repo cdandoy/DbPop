@@ -1,11 +1,16 @@
 package org.dandoy.dbpopd;
 
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import org.dandoy.dbpop.database.Dependency;
+import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.tests.TestUtils;
 import org.dandoy.dbpopd.download.DownloadController;
+import org.dandoy.dbpopd.download.DownloadRequest;
 import org.dandoy.dbpopd.download.DownloadResponse;
+import org.dandoy.dbpopd.populate.PopulateResult;
 import org.dandoy.dbpopd.populate.PopulateService;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -14,6 +19,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
+
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
+import static org.junit.jupiter.api.Assertions.*;
 
 @MicronautTest(environments = "temp-test")
 public class FullDownloadTest {
@@ -24,7 +33,12 @@ public class FullDownloadTest {
 
     @BeforeAll
     static void beforeAll() {
-        TestUtils.prepareTempDatasetDir();
+        TestUtils.prepareTempConfigDir();
+    }
+
+    @AfterAll
+    static void afterAll() {
+        TestUtils.deleteTempConfigDir();
     }
 
     public FullDownloadTest(
@@ -41,38 +55,101 @@ public class FullDownloadTest {
 
     @Test
     void test() throws SQLException {
-        try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
+        try (Connection connection = configurationService.getSourceConnectionBuilder().createConnection()) {
             SqlExecutor.execute(
                     connection,
-                    "/mssql/drop_tables.sql",
-                    "/mssql/create_tables.sql"
+                    "/mssql/drop.sql",
+                    "/mssql/create.sql",
+                    "/mssql/insert_data.sql"
             );
         }
 
-        populateService.populate(List.of("invoices", "invoice_details"), true);
+        // source -> dataset
+        DownloadResponse bulkStaticResponse = downloadController.downloadBulk(
+                new DownloadController.DownloadBulkBody(
+                        "static",
+                        List.of(
+                                new TableName("dbpop", "dbo", "customer_types"),
+                                new TableName("dbpop", "dbo", "product_categories"),
+                                new TableName("dbpop", "dbo", "customers"),
+                                new TableName("dbpop", "dbo", "products")
+                        )
+                )
+        );
+        assertEquals(10, bulkStaticResponse.getRowCount());
+        for (DownloadResponse.TableRowCount tableRowCount : bulkStaticResponse.getTableRowCounts()) {
+            int expectedRowCount = switch (tableRowCount.getTableName().getTable()) {
+                case "customer_types", "product_categories" -> 2;
+                case "customers", "products" -> 3;
+                default -> throw new RuntimeException();
+            };
+            assertEquals(expectedRowCount, tableRowCount.getRowCount());
+        }
 
+        DownloadResponse structuredDownloadResponse = downloadController.download(
+                new DownloadRequest()
+                        .setDataset("base")
+                        .setDependency(
+                                new Dependency(
+                                        new TableName("dbpop", "dbo", "invoices"),
+                                        null,
+                                        List.of(
+                                                new Dependency(
+                                                        new TableName("dbpop", "dbo", "customers"),
+                                                        "invoices_customers_fk",
+                                                        List.of(),
+                                                        true,
+                                                        true,
+                                                        emptyList()
+                                                ),
+                                                new Dependency(
+                                                        new TableName("dbpop", "dbo", "invoice_details"),
+                                                        "invoice_details_invoices_fk",
+                                                        List.of(),
+                                                        true,
+                                                        false,
+                                                        emptyList()
+                                                )
+                                        ),
+                                        true,
+                                        true,
+                                        emptyList()
+                                )
+                        )
+                        .setQueryValues(emptyMap())
+                        .setDryRun(false)
+        );
+        assertEquals(11, structuredDownloadResponse.getRowCount()); // 4 invoices, 7 invoice details
+        assertEquals(2, structuredDownloadResponse.getRowsSkipped()); // 2 customers
+
+        // Dataset -> target
+        PopulateResult populateResult = populateService.populate(List.of("base"), true);
+        assertEquals(21, populateResult.rows());
+
+        // Add some data to target
         try (PreparedStatement preparedStatement = configurationService.getTargetDatabaseCache()
                 .getConnection()
                 .prepareStatement("""
-                        INSERT INTO master.dbo.products(part_no, part_desc)
+                        INSERT INTO dbpop.dbo.products(part_no, part_desc)
                         VALUES ('9999', 'NineNineNineNine');
                                                 
-                        UPDATE master.dbo.products
+                        UPDATE dbpop.dbo.products
                         SET part_desc = 'Circuit Playground Classique'
                         WHERE part_no = '3000'
                                                 
-                        UPDATE master.dbo.invoice_details
+                        UPDATE dbpop.dbo.invoice_details
                         SET product_id = 13
                         WHERE invoice_detail_id = 10001""")) {
             preparedStatement.executeUpdate();
             preparedStatement.getConnection().commit();
         }
 
-        DownloadResponse downloadResponse = downloadController.downloadTarget(new DownloadController.DownloadTargetBody("invoice_details"));
-        Assertions.assertEquals(14, downloadResponse.getRowCount());
+        // Download back target -> source
+        DownloadResponse downloadResponse = downloadController.downloadTarget(new DownloadController.DownloadTargetBody("base"));
+        Assertions.assertEquals(22, downloadResponse.getRowCount());
         Assertions.assertEquals(0, downloadResponse.getRowsSkipped());
         csvAssertionService
-                .csvAssertion("master.dbo.products")
+                .csvAssertion("dbpop.dbo.products")
                 .assertUnique("part_no")
                 .assertExists(
                         List.of("part_no", "part_desc"),
@@ -82,7 +159,7 @@ public class FullDownloadTest {
                         List.of("9999", "NineNineNineNine")
                 );
         csvAssertionService
-                .csvAssertion("invoice_details", "master.dbo.invoice_details")
+                .csvAssertion("base", "dbpop.dbo.invoice_details")
                 .assertUnique("invoice_detail_id")
                 .assertExists(
                         List.of("invoice_id", "product_id"),

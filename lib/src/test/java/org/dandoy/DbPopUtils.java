@@ -3,10 +3,10 @@ package org.dandoy;
 import org.dandoy.dbpop.database.TableName;
 
 public class DbPopUtils {
-    public static final TableName invoices = new TableName("master", "dbo", "invoices");
-    public static final TableName invoiceDetails = new TableName("master", "dbo", "invoice_details");
-    public static final TableName customers = new TableName("master", "dbo", "customers");
-    public static final TableName products = new TableName("master", "dbo", "products");
+    public static final TableName invoices = new TableName("dbpop", "dbo", "invoices");
+    public static final TableName invoiceDetails = new TableName("dbpop", "dbo", "invoice_details");
+    public static final TableName customers = new TableName("dbpop", "dbo", "customers");
+    public static final TableName products = new TableName("dbpop", "dbo", "products");
 
     public static boolean hasMssql() {
         return hasSourceMssql() && hasTargetMssql();
@@ -36,8 +36,8 @@ public class DbPopUtils {
         LocalCredentials
                 .from("mssql")
                 .executeSource(
-                        "/mssql/drop_tables.sql",
-                        "/mssql/create_tables.sql",
+                        "/mssql/drop.sql",
+                        "/mssql/create.sql",
                         "/mssql/insert_data.sql"
                 );
     }
@@ -46,8 +46,8 @@ public class DbPopUtils {
         LocalCredentials
                 .from("mssql")
                 .executeTarget(
-                        "/mssql/drop_tables.sql",
-                        "/mssql/create_tables.sql"
+                        "/mssql/drop.sql",
+                        "/mssql/create.sql"
                 );
     }
 
@@ -56,8 +56,8 @@ public class DbPopUtils {
         LocalCredentials
                 .from("pgsql")
                 .executeSource(
-                        "/pgsql/drop_tables.sql",
-                        "/pgsql/create_tables.sql",
+                        "/pgsql/drop.sql",
+                        "/pgsql/create.sql",
                         "/pgsql/insert_data.sql"
                 );
     }
@@ -66,8 +66,8 @@ public class DbPopUtils {
         LocalCredentials
                 .from("pgsql")
                 .executeSource(
-                        "/pgsql/drop_tables.sql",
-                        "/pgsql/create_tables.sql"
+                        "/pgsql/drop.sql",
+                        "/pgsql/create.sql"
                 );
     }
 }

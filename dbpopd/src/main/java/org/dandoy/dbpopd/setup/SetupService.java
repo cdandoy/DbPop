@@ -12,6 +12,7 @@ import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.utils.ExceptionUtils;
 import org.dandoy.dbpop.utils.StringUtils;
 import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.datasets.DatasetsService;
 import org.dandoy.dbpopd.populate.PopulateService;
 
 import java.io.BufferedWriter;
@@ -36,6 +37,7 @@ import java.util.regex.Pattern;
 public class SetupService {
     private final ConfigurationService configurationService;
     private final PopulateService populateService;
+    private final DatasetsService datasetsService;
     // When running the tests, we don't want the data to be preloaded
     private final boolean loadDatasets;
     // When running the tests, we do not want the setup to run in a background thread
@@ -47,11 +49,13 @@ public class SetupService {
     public SetupService(
             ConfigurationService configurationService,
             PopulateService populateService,
+            DatasetsService datasetsService,
             @Property(name = "dbpopd.startup.loadDatasets", defaultValue = "true") boolean loadDatasets,
             @Property(name = "dbpopd.startup.parallel", defaultValue = "true") boolean parallel
     ) {
         this.configurationService = configurationService;
         this.populateService = populateService;
+        this.datasetsService = datasetsService;
         this.loadDatasets = loadDatasets;
         this.parallel = parallel;
     }
@@ -239,7 +243,9 @@ public class SetupService {
     private boolean checkPopulate() {
         setActivity("Populating static and base datasets");
         try {
-            populateService.populate(List.of(Datasets.STATIC, Datasets.BASE));
+            if (datasetsService.canPopulate(Datasets.BASE)) {
+                populateService.populate(List.of(Datasets.STATIC, Datasets.BASE));
+            }
         } catch (Exception e) {
             // The dataset has already been marked as failed
             log.error("Failed to load static+base", e);
