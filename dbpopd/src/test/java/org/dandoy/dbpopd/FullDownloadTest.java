@@ -65,7 +65,7 @@ public class FullDownloadTest {
         }
 
         // source -> dataset
-        DownloadResponse bulkStaticResponse = downloadController.downloadBulk(
+        DownloadResponse bulkStaticResponse = downloadController.bulkDownload(
                 new DownloadController.DownloadBulkBody(
                         "static",
                         List.of(
@@ -86,7 +86,7 @@ public class FullDownloadTest {
             assertEquals(expectedRowCount, tableRowCount.getRowCount());
         }
 
-        DownloadResponse structuredDownloadResponse = downloadController.download(
+        DownloadResponse structuredDownloadResponse = downloadController.structuredDownload(
                 new DownloadRequest()
                         .setDataset("base")
                         .setDependency(

@@ -25,7 +25,7 @@ export function executeDownload(dataset: string, dependency: Dependency, queryVa
         }
     }
 
-    return axios.post<Dependency, AxiosResponse<DownloadResponse>>(`/download/model`, {
+    return axios.post<Dependency, AxiosResponse<DownloadResponse>>(`/download/structured`, {
         dataset,
         dependency: prunedDependency(dependency),
         queryValues,

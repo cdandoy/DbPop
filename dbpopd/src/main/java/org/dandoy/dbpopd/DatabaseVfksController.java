@@ -6,6 +6,7 @@ import io.micronaut.http.annotation.Delete;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.problem.HttpStatusType;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dandoy.dbpop.database.*;
 import org.zalando.problem.Problem;
 
@@ -13,6 +14,7 @@ import java.util.Comparator;
 import java.util.List;
 
 @Controller("/database")
+@Tag(name = "database")
 public class DatabaseVfksController {
     private final ConfigurationService configurationService;
 

@@ -3,6 +3,7 @@ package org.dandoy.dbpopd.download;
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.TableName;
@@ -19,6 +20,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Controller("/download")
+@Tag(name = "download")
 public class DownloadController {
     private final ConfigurationService configurationService;
     private final PopulateService populateService;
@@ -30,8 +32,8 @@ public class DownloadController {
         this.datasetsService = datasetsService;
     }
 
-    @Post("/model")
-    public DownloadResponse download(@Body DownloadRequest downloadRequest) {
+    @Post("/structured")
+    public DownloadResponse structuredDownload(@Body DownloadRequest downloadRequest) {
         configurationService.assertSourceConnection();
 
         ExecutionMode executionMode = downloadRequest.isDryRun() ? ExecutionMode.COUNT : ExecutionMode.SAVE;
@@ -77,7 +79,7 @@ public class DownloadController {
     }
 
     @Post("/bulk")
-    public DownloadResponse downloadBulk(@Body DownloadBulkBody downloadBulkBody) {
+    public DownloadResponse bulkDownload(@Body DownloadBulkBody downloadBulkBody) {
         ExecutionContext executionContext = new ExecutionContext();
         try (Database sourceDatabase = configurationService.createSourceDatabase()) {
             for (TableName tableName : downloadBulkBody.tableNames) {

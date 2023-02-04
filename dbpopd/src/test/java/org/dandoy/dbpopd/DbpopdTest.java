@@ -6,6 +6,7 @@ import org.dandoy.dbpop.database.ForeignKey;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.tests.TestUtils;
+import org.dandoy.dbpopd.database.DatabaseController;
 import org.dandoy.dbpopd.download.DownloadController;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.junit.jupiter.api.AfterEach;

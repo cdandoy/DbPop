@@ -1,19 +1,20 @@
-package org.dandoy.dbpopd;
+package org.dandoy.dbpopd.database;
 
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dandoy.dbpop.database.Column;
 import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpopd.database.DatabaseService;
-import org.dandoy.dbpopd.database.DependencyCalculator;
+import org.dandoy.dbpopd.ConfigurationService;
 
 import java.util.Comparator;
 import java.util.List;
 
 @Controller("/database")
+@Tag(name = "database")
 public class DatabaseController {
     private final ConfigurationService configurationService;
     private final DatabaseService databaseService;

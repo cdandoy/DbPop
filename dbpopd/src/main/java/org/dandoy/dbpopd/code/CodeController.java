@@ -2,8 +2,10 @@ package org.dandoy.dbpopd.code;
 
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Controller("/code")
+@Tag(name = "code")
 public class CodeController {
     private final CodeService codeService;
 
