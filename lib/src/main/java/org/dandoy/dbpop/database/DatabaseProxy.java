@@ -77,7 +77,9 @@ public class DatabaseProxy extends Database {
     @Override
     public Table getTable(TableName tableName) {
         Table table = delegate.getTable(tableName);
-        addVFKs(table);
+        if (table != null) {
+            addVFKs(table);
+        }
         return table;
     }
 

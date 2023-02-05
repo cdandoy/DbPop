@@ -614,6 +614,9 @@ public class SqlServerDatabase extends DefaultDatabase {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+        if (tableColumns.isEmpty()) {
+            return null;
+        }
         return new SqlServerTable(
                 tableName,
                 tableColumns,

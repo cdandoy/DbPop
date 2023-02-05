@@ -1,6 +1,7 @@
 package org.dandoy.dbpopd.code;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Nullable;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.DatabaseIntrospector;
@@ -12,6 +13,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.sql.Timestamp;
 import java.util.*;
 
 @Slf4j
@@ -19,14 +21,16 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     private final DatabaseIntrospector introspector;
     private final File directory;
     private final Set<File> existingFiles;
+    private final Map<CodeDB.TimestampObject, Timestamp> timestampMap;
     private final List<Dependency> dependencies = new ArrayList<>();
     @Getter
     private final Map<String, Integer> typeCounts = new HashMap<>();
 
-    public DbToFileVisitor(DatabaseIntrospector introspector, File directory) {
+    public DbToFileVisitor(DatabaseIntrospector introspector, File directory, @Nullable Map<CodeDB.TimestampObject, Timestamp> timestampMap) {
         this.introspector = introspector;
         this.directory = directory;
         this.existingFiles = CodeUtils.getCodeFiles(directory);
+        this.timestampMap = timestampMap;
     }
 
     @Override
@@ -61,8 +65,13 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     @Override
     public void moduleDefinition(String catalog, String schema, String name, String moduleType, Date modifyDate, String definition) {
         try {
+            if (isDbPopObject(catalog, schema, name, moduleType)) return;
             File sqlFile = FileUtils.toFile(directory, catalog, schema, moduleType, name + ".sql");
-            existingFiles.remove(sqlFile);
+            if (existingFiles.remove(sqlFile)) { // Only needed if the file exists
+                if (isFileNewerThanDb(catalog, schema, name, moduleType, modifyDate, sqlFile)) {
+                    return;
+                }
+            }
             File dir = sqlFile.getParentFile();
             if (!dir.isDirectory() && !dir.mkdirs()) throw new RuntimeException("Failed to create " + dir);
             try (BufferedWriter bufferedWriter = Files.newBufferedWriter(sqlFile.toPath())) {
@@ -76,6 +85,26 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
         } catch (Exception e) {
             throw new RuntimeException("Failed to write %s/%s/%s/%s.sql".formatted(catalog, schema, moduleType, name), e);
         }
+    }
+
+    @SuppressWarnings("unused")
+    private boolean isDbPopObject(String catalog, String schema, String name, String moduleType) {
+        return "dbpop_timestamps".equals(name);
+    }
+
+    private boolean isFileNewerThanDb(String catalog, String schema, String name, String moduleType, Date modifyDate, File sqlFile) {
+        long lastModified = sqlFile.lastModified();
+        if (timestampMap != null) { // If we have a timestampMap, use it
+            Timestamp dbTimestamp = timestampMap.get(new CodeDB.TimestampObject(moduleType, catalog, schema, name));
+            if (dbTimestamp != null) { // The code has been uploaded by dbpop.
+                return dbTimestamp.getTime() <= lastModified;
+            } else {
+                // The object doesn't exist in the dbpop_timestamps table, so it must have been created by the developer.
+                // We still want to check the modifyDate.
+            }
+        }  // if we don't have a timestampMap, use the modifyDate which is the DB's timestamp
+
+        return modifyDate.getTime() <= lastModified;
     }
 
     @Override

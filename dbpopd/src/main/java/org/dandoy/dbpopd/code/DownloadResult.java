@@ -14,4 +14,13 @@ public class DownloadResult {
         this.codeTypeCounts = codeTypeCounts;
         this.executionTime = executionTime;
     }
+
+    public int getCodeTypeCount(String codeType) {
+        for (Pair<String, Integer> codeTypeCount : codeTypeCounts) {
+            if (codeType.equals(codeTypeCount.left())) {
+                return codeTypeCount.right();
+            }
+        }
+        return 0;
+    }
 }

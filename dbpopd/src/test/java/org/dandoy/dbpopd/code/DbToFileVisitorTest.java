@@ -19,7 +19,7 @@ class DbToFileVisitorTest {
     void name() {
         try (Database database = configurationService.createSourceDatabase()) {
             DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
-            try (DbToFileVisitor visitor = new DbToFileVisitor(databaseIntrospector, configurationService.getCodeDirectory())) {
+            try (DbToFileVisitor visitor = new DbToFileVisitor(databaseIntrospector, configurationService.getCodeDirectory(), null)) {
                 databaseIntrospector.visit(visitor);
             }
         } finally {

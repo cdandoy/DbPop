@@ -1,5 +1,6 @@
 package org.dandoy.dbpopd.code;
 
+import jakarta.annotation.Nullable;
 import jakarta.inject.Singleton;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,7 +43,7 @@ public class CodeService {
      */
     public DownloadResult downloadSourceToFile() {
         try (Database database = configurationService.createSourceDatabase()) {
-            return downloadToFile(database);
+            return downloadToFile(database, null);
         }
     }
 
@@ -50,18 +52,22 @@ public class CodeService {
      */
     public DownloadResult downloadTargetToFile() {
         try (Database database = configurationService.createTargetDatabase()) {
-            return downloadToFile(database);
+
+            Map<CodeDB.TimestampObject, Timestamp> timestampMap = CodeDB.getObjectTimestampMap(database.getConnection());
+            return downloadToFile(database, timestampMap);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
     /**
      * Dumps the content of the database to the file system
      */
-    private DownloadResult downloadToFile(Database database) {
+    private DownloadResult downloadToFile(Database database, @Nullable Map<CodeDB.TimestampObject, Timestamp> timestampMap) {
         long t0 = System.currentTimeMillis();
         DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
         File codeDirectory = configurationService.getCodeDirectory();
-        try (DbToFileVisitor visitor = new DbToFileVisitor(databaseIntrospector, codeDirectory)) {
+        try (DbToFileVisitor visitor = new DbToFileVisitor(databaseIntrospector, codeDirectory, timestampMap)) {
             databaseIntrospector.visit(visitor);
 
             // Translate USER_TABLE -> Tables
@@ -95,35 +101,41 @@ public class CodeService {
         try (Database targetDatabase = configurationService.createTargetDatabase()) {
             try (Connection connection = targetDatabase.getConnection()) {
                 try (Statement statement = connection.createStatement()) {
-                    List<UploadResult.FileExecution> fileExecutions = new ArrayList<>();
-                    long t0 = System.currentTimeMillis();
-                    File codeDirectory = configurationService.getCodeDirectory();
-                    CodeFileInspector.inspect(codeDirectory, new CodeFileInspector.CodeFileVisitor() {
-                        @Override
-                        @SneakyThrows
-                        public void catalog(String catalog) {
-                            targetDatabase.createCatalog(catalog);
-                            statement.execute("USE " + catalog);
-                        }
-
-                        @Override
-                        @SneakyThrows
-                        public void schema(String catalog, String schema) {
-                            statement.getConnection().commit();
-                            if (!"dbo".equals(schema)) {
-                                targetDatabase.createShema(catalog, schema);
+                    try (CodeDB.TimestampInserter timestampInserter = CodeDB.createTimestampInserter(targetDatabase)) {
+                        List<UploadResult.FileExecution> fileExecutions = new ArrayList<>();
+                        long t0 = System.currentTimeMillis();
+                        File codeDirectory = configurationService.getCodeDirectory();
+                        CodeFileInspector.inspect(codeDirectory, new CodeFileInspector.CodeFileVisitor() {
+                            @Override
+                            @SneakyThrows
+                            public void catalog(String catalog) {
+                                targetDatabase.createCatalog(catalog);
+                                statement.execute("USE " + catalog);
                             }
-                        }
 
-                        @Override
-                        @SneakyThrows
-                        public void module(String catalog, String schema, String type, String name, File sqlFile) {
-                            UploadResult.FileExecution fileExecution = execute(statement, type, sqlFile);
-                            fileExecutions.add(fileExecution);
-                        }
-                    });
-                    long t1 = System.currentTimeMillis();
-                    return new UploadResult(fileExecutions, t1 - t0);
+                            @Override
+                            @SneakyThrows
+                            public void schema(String catalog, String schema) {
+                                statement.getConnection().commit();
+                                if (!"dbo".equals(schema)) {
+                                    targetDatabase.createShema(catalog, schema);
+                                }
+                            }
+
+                            @Override
+                            @SneakyThrows
+                            public void module(String catalog, String schema, String type, String name, File sqlFile) {
+                                UploadResult.FileExecution fileExecution = execute(statement, type, sqlFile);
+                                fileExecutions.add(fileExecution);
+                                if (name.endsWith(".sql")) {
+                                    String objectName = name.substring(0, name.length() - 4);
+                                    timestampInserter.addTimestamp(type, catalog, schema, objectName, new Timestamp(sqlFile.lastModified()));
+                                }
+                            }
+                        });
+                        long t1 = System.currentTimeMillis();
+                        return new UploadResult(fileExecutions, t1 - t0);
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -135,6 +147,10 @@ public class CodeService {
 
     private UploadResult.FileExecution execute(Statement statement, String type, File sqlFile) throws IOException {
         log.info("Executing {}", sqlFile);
+
+        String sqlFileName = sqlFile.getName();
+        String objectName = sqlFileName.endsWith(".sql") ? sqlFileName.substring(0, sqlFileName.length() - 4) : null;
+
         try (BufferedReader bufferedReader = Files.newBufferedReader(sqlFile.toPath())) {
             String sql = bufferedReader.lines().collect(Collectors.joining("\n"));
             if (type.equals("USER_TABLE") || type.equals("FOREIGN_KEY_CONSTRAINT") || type.equals("INDEX")) {
@@ -151,10 +167,10 @@ public class CodeService {
                     log.warn("Could not identify " + sqlFile);
                 }
             }
-            return new UploadResult.FileExecution(sqlFile.getPath(), null);
+            return new UploadResult.FileExecution(sqlFile.getPath(), type, objectName, null);
         } catch (SQLException e) {
             log.error(e.getMessage());
-            return new UploadResult.FileExecution(sqlFile.getPath(), e.getMessage());
+            return new UploadResult.FileExecution(sqlFile.getPath(), type, objectName, e.getMessage());
         }
     }
 

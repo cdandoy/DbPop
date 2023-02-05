@@ -4,17 +4,14 @@ import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
 import org.dandoy.dbpop.database.ForeignKey;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.tests.SqlExecutor;
-import org.dandoy.dbpop.tests.TestUtils;
 import org.dandoy.dbpopd.database.DatabaseController;
 import org.dandoy.dbpopd.download.DownloadController;
 import org.dandoy.dbpopd.populate.PopulateService;
-import org.junit.jupiter.api.AfterEach;
+import org.dandoy.dbpopd.utils.DbPopTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -32,30 +29,12 @@ class DbpopdTest {
     DatabaseVfksController databaseVfksController;
     @Inject
     ConfigurationService configurationService;
+    @Inject
+    DbPopTestUtils dbPopTestUtils;
 
     @BeforeEach
     void setUp() throws SQLException {
-        TestUtils.prepareTempConfigDir();
-        try (Connection connection = configurationService.getSourceConnectionBuilder().createConnection()) {
-            SqlExecutor.execute(
-                    connection,
-                    "/mssql/drop.sql",
-                    "/mssql/create.sql",
-                    "/mssql/insert_data.sql"
-            );
-        }
-        try (Connection connection = configurationService.getSourceConnectionBuilder().createConnection()) {
-            SqlExecutor.execute(
-                    connection,
-                    "/mssql/drop.sql",
-                    "/mssql/create.sql"
-            );
-        }
-    }
-
-    @AfterEach
-    void tearDown() {
-        TestUtils.deleteTempConfigDir();
+        dbPopTestUtils.setUp();
     }
 
     @SuppressWarnings("ThrowFromFinallyBlock")

@@ -4,8 +4,7 @@ micronaut:
     port: 8080
 dbpopd:
   configuration:
-    path: '../files/config/'
-    datasets: '../files/temp/datasets/'
+    path: '../files/temp/'
   startup:
     loadDatasets: false
     parallel: false
