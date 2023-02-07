@@ -3,6 +3,7 @@ package org.dandoy.dbpopd.code;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
 
@@ -23,18 +24,18 @@ class CodeDB {
         checkDbpopTable(database);
 
         Connection connection = database.getConnection();
-        Map<TimestampObject, Timestamp> timestamps = getObjectTimestampMap(connection);
+        Map<ObjectIdentifier, Timestamp> timestamps = getObjectTimestampMap(connection);
         return new TimestampInserter(timestamps, connection);
     }
 
-    static Map<TimestampObject, Timestamp> getObjectTimestampMap(Connection connection) {
-        Map<TimestampObject, Timestamp> timestamps = new HashMap<>();
+    static Map<ObjectIdentifier, Timestamp> getObjectTimestampMap(Connection connection) {
+        Map<ObjectIdentifier, Timestamp> timestamps = new HashMap<>();
         try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT object_type, object_catalog, object_schema, object_name, created FROM master.dbo.dbpop_timestamps")) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {
-                    TimestampObject timestampObject = TimestampInserter.toTimestampObject(resultSet);
+                    ObjectIdentifier objectIdentifier = TimestampInserter.toTimestampObject(resultSet);
                     Timestamp created = resultSet.getTimestamp("created");
-                    timestamps.put(timestampObject, created);
+                    timestamps.put(objectIdentifier, created);
                 }
             }
         } catch (SQLException e) {
@@ -72,11 +73,11 @@ class CodeDB {
     }
 
     static class TimestampInserter implements AutoCloseable {
-        private final Map<TimestampObject, Timestamp> timestamps;
+        private final Map<ObjectIdentifier, Timestamp> timestamps;
         private final PreparedStatement insertStatement;
         private final PreparedStatement updateStatement;
 
-        public TimestampInserter(Map<TimestampObject, Timestamp> timestamps, Connection connection) throws SQLException {
+        public TimestampInserter(Map<ObjectIdentifier, Timestamp> timestamps, Connection connection) throws SQLException {
             this.timestamps = timestamps;
             insertStatement = connection.prepareStatement("INSERT INTO master.dbo.dbpop_timestamps (object_type, object_catalog, object_schema, object_name, created) VALUES (?, ?, ?, ?, ?)");
             updateStatement = connection.prepareStatement("""
@@ -102,8 +103,8 @@ class CodeDB {
         }
 
         void addTimestamp(String type, String catalog, String schema, String name, Timestamp created) throws SQLException {
-            TimestampObject timestampObject = new TimestampObject(type, catalog, schema, name);
-            Timestamp timestamp = timestamps.put(timestampObject, created);
+            ObjectIdentifier objectIdentifier = new ObjectIdentifier(type, catalog, schema, name);
+            Timestamp timestamp = timestamps.put(objectIdentifier, created);
             if (timestamp == null) {
                 insertStatement.setString(1, type);
                 insertStatement.setString(2, catalog);
@@ -121,14 +122,12 @@ class CodeDB {
             }
         }
 
-        static TimestampObject toTimestampObject(ResultSet resultSet) throws SQLException {
+        static ObjectIdentifier toTimestampObject(ResultSet resultSet) throws SQLException {
             String type = resultSet.getString("object_type");
             String catalog = resultSet.getString("object_catalog");
             String schema = resultSet.getString("object_schema");
             String name = resultSet.getString("object_name");
-            return new TimestampObject(type, catalog, schema, name);
+            return new ObjectIdentifier(type, catalog, schema, name);
         }
     }
-
-    record TimestampObject(String type, String catalog, String schema, String name) {}
 }

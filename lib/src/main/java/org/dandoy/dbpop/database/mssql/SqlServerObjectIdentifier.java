@@ -20,13 +20,9 @@ public class SqlServerObjectIdentifier extends ObjectIdentifier {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof SqlServerObjectIdentifier that)) return false;
-        if (objectId != null) return this.objectId.equals(that.objectId);
+        if (o instanceof SqlServerObjectIdentifier that) {
+            if (objectId != null) return this.objectId.equals(that.objectId);
+        }
         return super.equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-        return objectId == null ? super.hashCode() : objectId;
     }
 }

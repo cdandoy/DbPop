@@ -82,10 +82,6 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
         }
     }
 
-    protected boolean isFileNewerThanDb(String catalog, String schema, String name, String moduleType, Date modifyDate, File sqlFile) {
-        return modifyDate.getTime() <= sqlFile.lastModified();
-    }
-
     @Override
     public void dependency(String catalog, String schema, String name, String moduleType, String dependentSchema, String dependentName, String dependentModuleType) {
         dependencies.add(

@@ -55,7 +55,7 @@ public class CodeService {
     public DownloadResult downloadTargetToFile() {
         try (Database database = configurationService.createTargetDatabase()) {
             File codeDirectory = configurationService.getCodeDirectory();
-            Map<CodeDB.TimestampObject, Timestamp> timestampMap = CodeDB.getObjectTimestampMap(database.getConnection());
+            Map<ObjectIdentifier, Timestamp> timestampMap = CodeDB.getObjectTimestampMap(database.getConnection());
             DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
             try (DbToNewerFileVisitor dbToNewerFileVisitor = new DbToNewerFileVisitor(databaseIntrospector, codeDirectory, timestampMap)) {
                 return downloadToFile(database, dbToNewerFileVisitor);

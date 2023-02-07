@@ -9,11 +9,11 @@ import java.sql.Timestamp;
 import java.util.*;
 
 public class DbToNewerFileVisitor extends DbToFileVisitor {
-    private final Map<CodeDB.TimestampObject, Timestamp> timestampMap;
+    private final Map<ObjectIdentifier, Timestamp> timestampMap;
     private final Set<File> existingFiles;
     private final List<ObjectIdentifier> toFetch = new ArrayList<>();
 
-    public DbToNewerFileVisitor(DatabaseIntrospector introspector, File directory, Map<CodeDB.TimestampObject, Timestamp> timestampMap) {
+    public DbToNewerFileVisitor(DatabaseIntrospector introspector, File directory, Map<ObjectIdentifier, Timestamp> timestampMap) {
         super(introspector, directory);
         this.existingFiles = CodeUtils.getCodeFiles(directory);
         this.timestampMap = timestampMap;
@@ -39,25 +39,24 @@ public class DbToNewerFileVisitor extends DbToFileVisitor {
         if (isDbPopObject(catalog, schema, name, type)) return;
         File sqlFile = DbPopdFileUtils.toFile(directory, catalog, schema, type, name + ".sql");
         if (existingFiles.remove(sqlFile)) { // Only needed if the file exists
-            if (isFileNewerThanDb(catalog, schema, name, type, modifyDate, sqlFile)) {
+            if (isFileNewerThanDb(objectIdentifier, modifyDate, sqlFile)) {
                 return;
             }
         }
         toFetch.add(objectIdentifier);
     }
 
-    protected boolean isFileNewerThanDb(String catalog, String schema, String name, String moduleType, Date modifyDate, File sqlFile) {
+    protected boolean isFileNewerThanDb(ObjectIdentifier objectIdentifier, Date modifyDate, File sqlFile) {
         long lastModified = sqlFile.lastModified();
         // If we have a timestampMap, use it
-        Timestamp dbTimestamp = timestampMap.get(new CodeDB.TimestampObject(moduleType, catalog, schema, name));
+        Timestamp dbTimestamp = timestampMap.get(objectIdentifier);
         if (dbTimestamp != null) { // The code has been uploaded by dbpop.
             return dbTimestamp.getTime() <= lastModified;
         } else {
             // The object doesn't exist in the dbpop_timestamps table, so it must have been created by the developer.
             // We still want to check the modifyDate.
+            return modifyDate.getTime() <= sqlFile.lastModified();
         }
-
-        return super.isFileNewerThanDb(catalog, schema, name, moduleType, modifyDate, sqlFile);
     }
 
     @SuppressWarnings("unused")
