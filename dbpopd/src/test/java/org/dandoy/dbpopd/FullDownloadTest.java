@@ -12,7 +12,7 @@ import org.dandoy.dbpopd.populate.PopulateResult;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopTestUtils;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -35,12 +35,10 @@ public class FullDownloadTest {
     PopulateService populateService;
     @Inject
     CsvAssertionService csvAssertionService;
-    @Inject
-    DbPopTestUtils dbPopTestUtils;
 
-    @BeforeEach
-    void setUp() throws SQLException {
-        dbPopTestUtils.setUp();
+    @BeforeAll
+    static void setUp() {
+        DbPopTestUtils.setUp();
     }
 
     @Test

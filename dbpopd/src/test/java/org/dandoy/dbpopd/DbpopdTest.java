@@ -8,11 +8,10 @@ import org.dandoy.dbpopd.database.DatabaseController;
 import org.dandoy.dbpopd.download.DownloadController;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopTestUtils;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.sql.SQLException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,12 +28,10 @@ class DbpopdTest {
     DatabaseVfksController databaseVfksController;
     @Inject
     ConfigurationService configurationService;
-    @Inject
-    DbPopTestUtils dbPopTestUtils;
 
-    @BeforeEach
-    void setUp() throws SQLException {
-        dbPopTestUtils.setUp();
+    @BeforeAll
+    static void setUp() {
+        DbPopTestUtils.setUp();
     }
 
     @SuppressWarnings("ThrowFromFinallyBlock")

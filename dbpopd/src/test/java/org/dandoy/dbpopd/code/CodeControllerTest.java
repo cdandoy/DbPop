@@ -4,10 +4,8 @@ import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.utils.DbPopTestUtils;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -18,12 +16,10 @@ class CodeControllerTest {
     CodeController codeController;
     @Inject
     ConfigurationService configurationService;
-    @Inject
-    DbPopTestUtils dbPopTestUtils;
 
-    @BeforeEach
-    void setUp() throws SQLException {
-        dbPopTestUtils.setUp();
+    @BeforeAll
+    static void setUp() {
+        DbPopTestUtils.setUp();
     }
 
     @Test
