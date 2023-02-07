@@ -28,23 +28,23 @@ class CodeControllerTest {
 
     @Test
     void name() {
-        {
+        {   // Download from the source
             DownloadResult downloadResult = codeController.downloadSourceToFile();
             assertEquals(2, downloadResult.getCodeTypeCount("Stored Procedures"));
         }
 
-        {
+        {   // Downloading again from the source must override
             DownloadResult downloadResult = codeController.downloadSourceToFile();
-            assertEquals(0, downloadResult.getCodeTypeCount("Stored Procedures"));
+            assertEquals(2, downloadResult.getCodeTypeCount("Stored Procedures"));
         }
 
-        {
+        {   // Upload to the target
             UploadResult uploadResult = codeController.uploadFileToTarget();
             assertNotNull(uploadResult.getFileExecution("SQL_STORED_PROCEDURE", "GetCustomers"));
             assertNotNull(uploadResult.getFileExecution("SQL_STORED_PROCEDURE", "GetInvoices"));
         }
 
-        {
+        {   // Download from the target should not find anything newer
             DownloadResult downloadResult = codeController.downloadTargetToFile();
             assertEquals(0, downloadResult.getCodeTypeCounts().size());
         }

@@ -49,7 +49,6 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String name = resultSet.getString("name");
                     String typeDesc = resultSet.getString("type_desc");
                     Timestamp modifyDate = resultSet.getTimestamp("modify_date");
-                    databaseVisitor.moduleMeta(objectId, catalog, schema, name, typeDesc, modifyDate);
                     databaseVisitor.moduleMeta(new SqlServerObjectIdentifier(objectId, typeDesc, catalog, schema, name), modifyDate);
                 }
             }
@@ -133,7 +132,6 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                         tablesByName = tables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
                     }
                     Table table = tablesByName.get(new TableName(catalog, schema, name));
-                    databaseVisitor.moduleDefinition(catalog, schema, name, typeDesc, modifyDate, table.tableDDL(database));
                     databaseVisitor.moduleDefinition(objectIdentifier, modifyDate, table.tableDDL(database));
                     for (ForeignKey foreignKey : table.getForeignKeys()) {
                         String fkDDL = foreignKey.toDDL(database);
@@ -141,18 +139,15 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                                 database.quote(table.getTableName()),
                                 fkDDL
                         );
-                        databaseVisitor.moduleDefinition(catalog, schema, name + "_fk_" + foreignKey.getName(), "FOREIGN_KEY_CONSTRAINT", modifyDate, definition);
                         databaseVisitor.moduleDefinition(new SqlServerObjectIdentifier(objectId, "FOREIGN_KEY_CONSTRAINT", catalog, schema, foreignKey.getName(), objectIdentifier), modifyDate, definition);
                     }
                     for (Index index : table.getIndexes()) {
                         if (!index.isPrimaryKey()) {
-                            databaseVisitor.moduleDefinition(catalog, schema, name + "_idx_" + index.getName(), "INDEX", modifyDate, index.toDDL(database));
                             databaseVisitor.moduleDefinition(new SqlServerObjectIdentifier(objectId, "INDEX", catalog, schema, index.getName(), objectIdentifier), modifyDate, index.toDDL(database));
                         }
                     }
                 } else {
                     String definition = resultSet.getString("definition");
-                    databaseVisitor.moduleDefinition(catalog, schema, name, typeDesc, modifyDate, definition);
                     databaseVisitor.moduleDefinition(objectIdentifier, modifyDate, definition);
                 }
             }

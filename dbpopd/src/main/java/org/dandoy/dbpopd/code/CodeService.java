@@ -1,15 +1,12 @@
 package org.dandoy.dbpopd.code;
 
-import jakarta.annotation.Nullable;
 import jakarta.inject.Singleton;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.dandoy.dbpop.database.Database;
-import org.dandoy.dbpop.database.DatabaseIntrospector;
-import org.dandoy.dbpop.database.DatabaseVisitor;
-import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.utils.FileUtils;
 import org.dandoy.dbpopd.ConfigurationService;
-import org.dandoy.dbpopd.utils.FileUtils;
+import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.Pair;
 
 import java.io.BufferedReader;
@@ -43,7 +40,12 @@ public class CodeService {
      */
     public DownloadResult downloadSourceToFile() {
         try (Database database = configurationService.createSourceDatabase()) {
-            return downloadToFile(database, null);
+            File codeDirectory = configurationService.getCodeDirectory();
+            FileUtils.deleteRecursively(codeDirectory);
+            DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
+            try (DbToFileVisitor dbToFileVisitor = new DbToFileVisitor(databaseIntrospector, codeDirectory)) {
+                return downloadToFile(database, dbToFileVisitor);
+            }
         }
     }
 
@@ -52,9 +54,12 @@ public class CodeService {
      */
     public DownloadResult downloadTargetToFile() {
         try (Database database = configurationService.createTargetDatabase()) {
-
+            File codeDirectory = configurationService.getCodeDirectory();
             Map<CodeDB.TimestampObject, Timestamp> timestampMap = CodeDB.getObjectTimestampMap(database.getConnection());
-            return downloadToFile(database, timestampMap);
+            DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
+            try (DbToNewerFileVisitor dbToNewerFileVisitor = new DbToNewerFileVisitor(databaseIntrospector, codeDirectory, timestampMap)) {
+                return downloadToFile(database, dbToNewerFileVisitor);
+            }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -63,38 +68,34 @@ public class CodeService {
     /**
      * Dumps the content of the database to the file system
      */
-    private DownloadResult downloadToFile(Database database, @Nullable Map<CodeDB.TimestampObject, Timestamp> timestampMap) {
+    private DownloadResult downloadToFile(Database database, DbToFileVisitor visitor) {
         long t0 = System.currentTimeMillis();
-        DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
-        File codeDirectory = configurationService.getCodeDirectory();
-        try (DbToFileVisitor visitor = new DbToFileVisitor(databaseIntrospector, codeDirectory, timestampMap)) {
-            databaseIntrospector.visit(visitor);
+        database.createDatabaseIntrospector().visit(visitor);
 
-            // Translate USER_TABLE -> Tables
-            List<Pair<String, Integer>> typeCounts = visitor
-                    .getTypeCounts()
-                    .entrySet().stream()
-                    .map(it -> {
-                        String codeType = it.getKey();
-                        return Pair.of(
-                                switch (codeType) {
-                                    case "FOREIGN_KEY_CONSTRAINT" -> "Foreign Keys";
-                                    case "INDEX" -> "Indexes";
-                                    case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER" -> "Stored Procedures";
-                                    case "USER_TABLE" -> "Tables";
-                                    case "VIEW" -> "Views";
-                                    default -> codeType;
-                                },
-                                it.getValue());
-                    })
-                    .sorted(Comparator.comparing(Pair::left))
-                    .toList();
-            long t1 = System.currentTimeMillis();
-            return new DownloadResult(
-                    typeCounts,
-                    t1 - t0
-            );
-        }
+        // Translate USER_TABLE -> Tables
+        List<Pair<String, Integer>> typeCounts = visitor
+                .getTypeCounts()
+                .entrySet().stream()
+                .map(it -> {
+                    String codeType = it.getKey();
+                    return Pair.of(
+                            switch (codeType) {
+                                case "FOREIGN_KEY_CONSTRAINT" -> "Foreign Keys";
+                                case "INDEX" -> "Indexes";
+                                case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER" -> "Stored Procedures";
+                                case "USER_TABLE" -> "Tables";
+                                case "VIEW" -> "Views";
+                                default -> codeType;
+                            },
+                            it.getValue());
+                })
+                .sorted(Comparator.comparing(Pair::left))
+                .toList();
+        long t1 = System.currentTimeMillis();
+        return new DownloadResult(
+                typeCounts,
+                t1 - t0
+        );
     }
 
     public UploadResult uploadFileToTarget() {
@@ -199,8 +200,12 @@ public class CodeService {
             }
 
             @Override
-            public void moduleMeta(int objectId, String catalog, String schema, String name, String moduleType, Date modifyDate) {
-                File file = FileUtils.toFile(codeDirectory, catalog, schema, moduleType, name + ".sql");
+            public void moduleMeta(ObjectIdentifier objectIdentifier, Date modifyDate) {
+                String type = objectIdentifier.getType();
+                String catalog = objectIdentifier.getCatalog();
+                String schema = objectIdentifier.getSchema();
+                String name = objectIdentifier.getName();
+                File file = DbPopdFileUtils.toFile(codeDirectory, catalog, schema, type, name + ".sql");
                 boolean exists = file.exists();
                 long databaseTime = modifyDate.getTime();
                 if (exists) {
@@ -208,7 +213,7 @@ public class CodeService {
                     if (databaseTime != fileTime) {
                         entries.add(new CodeDiff.Entry(
                                 new TableName(catalog, schema, name),
-                                moduleType,
+                                type,
                                 databaseTime,
                                 fileTime
                         ));
@@ -217,7 +222,7 @@ public class CodeService {
                 } else {
                     entries.add(new CodeDiff.Entry(
                             new TableName(catalog, schema, name),
-                            moduleType,
+                            type,
                             databaseTime,
                             null
                     ));

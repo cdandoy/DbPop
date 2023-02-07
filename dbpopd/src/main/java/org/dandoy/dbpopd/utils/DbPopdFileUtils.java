@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class FileUtils {
+public class DbPopdFileUtils {
     public static List<File> getFiles(File dir) {
         ArrayList<File> ret = new ArrayList<>();
         getFiles(dir, ret);
@@ -62,7 +62,7 @@ public class FileUtils {
         return new File(
                 directory,
                 Arrays.stream(parts)
-                        .map(FileUtils::toFileName)
+                        .map(DbPopdFileUtils::toFileName)
                         .collect(Collectors.joining("/"))
         );
     }

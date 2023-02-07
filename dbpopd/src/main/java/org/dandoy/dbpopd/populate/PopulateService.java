@@ -11,7 +11,7 @@ import org.dandoy.dbpop.utils.ExceptionUtils;
 import org.dandoy.dbpop.utils.MultiCauseException;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.datasets.DatasetsService;
-import org.dandoy.dbpopd.utils.FileUtils;
+import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 
 import java.io.File;
 import java.util.HashMap;
@@ -74,7 +74,7 @@ public class PopulateService {
         File datasetsDirectory = configurationService.getDatasetsDirectory();
         File staticDir = new File(datasetsDirectory, "static");
         if (staticDir.isDirectory()) {
-            List<File> files = FileUtils.getFiles(staticDir);
+            List<File> files = DbPopdFileUtils.getFiles(staticDir);
             for (File file : files) {
                 Long lastModified = fileTimestamps.get(file);
                 long thatLastModified = file.lastModified();
@@ -92,7 +92,7 @@ public class PopulateService {
         File datasetsDirectory = configurationService.getDatasetsDirectory();
         File staticDir = new File(datasetsDirectory, "static");
         if (staticDir.isDirectory()) {
-            List<File> files = FileUtils.getFiles(staticDir);
+            List<File> files = DbPopdFileUtils.getFiles(staticDir);
             Map<File, Long> newMap = new HashMap<>();
             for (File file : files) {
                 long lastModified = file.lastModified();
