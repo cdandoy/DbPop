@@ -14,5 +14,6 @@ IF DB_ID('dbpop') IS NOT NULL
         DROP TABLE IF EXISTS order_types
         DROP TABLE IF EXISTS product_categories
         DROP TABLE IF EXISTS customer_types
+        DROP TABLE IF EXISTS test_new_table
     END
 
