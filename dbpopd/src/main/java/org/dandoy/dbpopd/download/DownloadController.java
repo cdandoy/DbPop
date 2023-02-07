@@ -6,6 +6,7 @@ import io.micronaut.http.annotation.Post;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Dependency;
+import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.download.*;
@@ -115,31 +116,38 @@ public class DownloadController {
     public DownloadResponse downloadTarget(@Body DownloadTargetBody downloadTargetBody) {
         File datasetsDirectory = configurationService.getDatasetsDirectory();
 
-        List<String> datasetNames;
-        if (Datasets.STATIC.equals(downloadTargetBody.dataset())) datasetNames = List.of(Datasets.STATIC);
-        else if (Datasets.BASE.equals(downloadTargetBody.dataset())) datasetNames = List.of(Datasets.STATIC, Datasets.BASE);
-        else datasetNames = List.of(Datasets.STATIC, Datasets.BASE, downloadTargetBody.dataset());
+        Map<TableName, String> tableNamesToDataSet = new HashMap<>();
+        Map<TableName, File> tableNamesToFile = new HashMap<>();
+        for (Dataset dataset : Datasets.getDatasets(datasetsDirectory)) {
+            String datasetName = dataset.getName();
+            if (Datasets.STATIC.equals(datasetName) || Datasets.BASE.equals(datasetName) || downloadTargetBody.dataset.equals(datasetName)) {
+                for (DataFile dataFile : dataset.getDataFiles()) {
+                    TableName tableName = dataFile.getTableName();
+                    tableNamesToDataSet.put(tableName, dataset.getName());
+                    tableNamesToFile.put(tableName, dataFile.getFile());
+                }
+            }
+        }
 
         ExecutionContext executionContext = new ExecutionContext();
         try (Database targetDatabase = configurationService.createTargetDatabase()) {
-            for (String datasetName : datasetNames) {
-                Dataset dataset = Datasets.getDataset(configurationService.getDatasetsDirectory(), datasetName);
-                if (dataset == null) throw new RuntimeException("Dataset does not exist: " + datasetName);
-                for (DataFile dataFile : dataset.getDataFiles()) {
-                    TableName tableName = dataFile.getTableName();
-                    File file = dataFile.getFile();
+            for (Table table : targetDatabase.getTables()) {
+                TableName tableName = table.getTableName();
+                File file = tableNamesToFile.get(tableName);
+                if (file != null) {
                     if (!file.delete() && file.exists()) throw new RuntimeException("Failed to replace " + file);
-                    try (TableDownloader tableDownloader = TableDownloader.builder()
-                            .setDatabase(targetDatabase)
-                            .setDatasetsDirectory(datasetsDirectory)
-                            .setDataset(datasetName)
-                            .setTableName(tableName)
-                            .setExecutionMode(ExecutionMode.SAVE)
-                            .setExecutionContext(executionContext)
-                            .build()) {
-                        executionContext.tableAdded(tableName);
-                        tableDownloader.download();
-                    }
+                }
+                String datasetName = tableNamesToDataSet.getOrDefault(tableName, Datasets.BASE);
+                try (TableDownloader tableDownloader = TableDownloader.builder()
+                        .setDatabase(targetDatabase)
+                        .setDatasetsDirectory(datasetsDirectory)
+                        .setDataset(datasetName)
+                        .setTableName(tableName)
+                        .setExecutionMode(ExecutionMode.SAVE)
+                        .setExecutionContext(executionContext)
+                        .build()) {
+                    executionContext.tableAdded(tableName);
+                    tableDownloader.download();
                 }
             }
         }

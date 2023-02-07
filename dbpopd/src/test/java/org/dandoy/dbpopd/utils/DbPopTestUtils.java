@@ -18,6 +18,11 @@ public class DbPopTestUtils {
     @Inject
     ConfigurationService configurationService;
 
+    /**
+     * Copies the .../files/config to .../files/temp
+     * Drops and re-creates the source database tables and inserts the data.
+     * Drops the target database. Doesn't create it because we want to eventually handle that with /code/
+     */
     public void setUp() throws SQLException {
         TestUtils.delete(new File("../files/temp"));
         try {

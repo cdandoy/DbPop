@@ -1,66 +1,55 @@
 package org.dandoy.dbpopd;
 
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
 import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.tests.SqlExecutor;
-import org.dandoy.dbpop.tests.TestUtils;
 import org.dandoy.dbpopd.download.DownloadController;
 import org.dandoy.dbpopd.download.DownloadRequest;
 import org.dandoy.dbpopd.download.DownloadResponse;
 import org.dandoy.dbpopd.populate.PopulateResult;
 import org.dandoy.dbpopd.populate.PopulateService;
-import org.junit.jupiter.api.AfterAll;
+import org.dandoy.dbpopd.utils.DbPopTestUtils;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @MicronautTest(environments = "temp-test")
 public class FullDownloadTest {
-    private final ConfigurationService configurationService;
-    private final DownloadController downloadController;
-    private final PopulateService populateService;
-    private final CsvAssertionService csvAssertionService;
+    @Inject
+    ConfigurationService configurationService;
+    @Inject
+    DownloadController downloadController;
+    @Inject
+    PopulateService populateService;
+    @Inject
+    CsvAssertionService csvAssertionService;
+    @Inject
+    DbPopTestUtils dbPopTestUtils;
 
-    @BeforeAll
-    static void beforeAll() {
-        TestUtils.prepareTempConfigDir();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        TestUtils.deleteTempConfigDir();
-    }
-
-    public FullDownloadTest(
-            ConfigurationService configurationService,
-            DownloadController downloadController,
-            PopulateService populateService,
-            CsvAssertionService csvAssertionService
-    ) {
-        this.configurationService = configurationService;
-        this.downloadController = downloadController;
-        this.populateService = populateService;
-        this.csvAssertionService = csvAssertionService;
+    @BeforeEach
+    void setUp() throws SQLException {
+        dbPopTestUtils.setUp();
     }
 
     @Test
     void test() throws SQLException {
-        try (Connection connection = configurationService.getSourceConnectionBuilder().createConnection()) {
+        try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
             SqlExecutor.execute(
                     connection,
                     "/mssql/drop.sql",
-                    "/mssql/create.sql",
-                    "/mssql/insert_data.sql"
+                    "/mssql/create.sql"
             );
         }
 
@@ -127,8 +116,8 @@ public class FullDownloadTest {
         assertEquals(21, populateResult.rows());
 
         // Add some data to target
-        try (PreparedStatement preparedStatement = configurationService.getTargetDatabaseCache()
-                .getConnection()
+        Connection connection = configurationService.getTargetDatabaseCache().getConnection();
+        try (PreparedStatement preparedStatement = connection
                 .prepareStatement("""
                         INSERT INTO dbpop.dbo.products(part_no, part_desc)
                         VALUES ('9999', 'NineNineNineNine');
@@ -144,9 +133,23 @@ public class FullDownloadTest {
             preparedStatement.getConnection().commit();
         }
 
+        // Add a table
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("");
+            statement.execute("""
+                    DROP TABLE IF EXISTS dbpop.dbo.test_new_table;
+                    CREATE TABLE dbpop.dbo.test_new_table
+                    (
+                        id  INTEGER PRIMARY KEY IDENTITY,
+                        txt VARCHAR(64)
+                    );
+                    INSERT INTO dbpop.dbo.test_new_table (txt) VALUES ('one')
+                    """);
+        }
+
         // Download back target -> source
         DownloadResponse downloadResponse = downloadController.downloadTarget(new DownloadController.DownloadTargetBody("base"));
-        Assertions.assertEquals(22, downloadResponse.getRowCount());
+        Assertions.assertEquals(23, downloadResponse.getRowCount());
         Assertions.assertEquals(0, downloadResponse.getRowsSkipped());
         csvAssertionService
                 .csvAssertion("dbpop.dbo.products")
@@ -170,6 +173,13 @@ public class FullDownloadTest {
                         List.of("1003", "11"),
                         List.of("1003", "12"),
                         List.of("1003", "13")
+                );
+        csvAssertionService
+                .csvAssertion("base", "dbpop.dbo.test_new_table")
+                .assertUnique("id")
+                .assertExists(
+                        List.of("id", "txt"),
+                        List.of("1", "one")
                 );
     }
 }
