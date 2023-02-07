@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.DatabaseIntrospector;
 import org.dandoy.dbpop.database.DatabaseVisitor;
+import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpopd.utils.FileUtils;
 
@@ -25,6 +26,7 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     private final List<Dependency> dependencies = new ArrayList<>();
     @Getter
     private final Map<String, Integer> typeCounts = new HashMap<>();
+    private final List<ObjectIdentifier> toFetch = new ArrayList<>();
 
     public DbToFileVisitor(DatabaseIntrospector introspector, File directory, @Nullable Map<CodeDB.TimestampObject, Timestamp> timestampMap) {
         this.introspector = introspector;
@@ -42,7 +44,9 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     public void catalog(String catalog) {
         if ("tempdb".equals(catalog)) return;
         // Write the modules to file
-        introspector.visitModuleDefinitions(this, catalog);
+        introspector.visitModuleMetas(this, catalog);
+        introspector.visitModuleDefinitions(this, toFetch);
+        toFetch.clear();
 
         // Collect the dependencies
         dependencies.clear();
@@ -63,15 +67,29 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     }
 
     @Override
-    public void moduleDefinition(String catalog, String schema, String name, String moduleType, Date modifyDate, String definition) {
-        try {
-            if (isDbPopObject(catalog, schema, name, moduleType)) return;
-            File sqlFile = FileUtils.toFile(directory, catalog, schema, moduleType, name + ".sql");
-            if (existingFiles.remove(sqlFile)) { // Only needed if the file exists
-                if (isFileNewerThanDb(catalog, schema, name, moduleType, modifyDate, sqlFile)) {
-                    return;
-                }
+    public void moduleMeta(ObjectIdentifier objectIdentifier, Date modifyDate) {
+        String catalog = objectIdentifier.getCatalog();
+        String schema = objectIdentifier.getSchema();
+        String name = objectIdentifier.getName();
+        String type = objectIdentifier.getType();
+        if (isDbPopObject(catalog, schema, name, type)) return;
+        File sqlFile = FileUtils.toFile(directory, catalog, schema, type, name + ".sql");
+        if (existingFiles.remove(sqlFile)) { // Only needed if the file exists
+            if (isFileNewerThanDb(catalog, schema, name, type, modifyDate, sqlFile)) {
+                return;
             }
+        }
+        toFetch.add(objectIdentifier);
+    }
+
+    @Override
+    public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
+        String catalog = objectIdentifier.getCatalog();
+        String schema = objectIdentifier.getSchema();
+        String name = objectIdentifier.getName();
+        String type = objectIdentifier.getType();
+        File sqlFile = FileUtils.toFile(directory, catalog, schema, type, name + ".sql");
+        try {
             File dir = sqlFile.getParentFile();
             if (!dir.isDirectory() && !dir.mkdirs()) throw new RuntimeException("Failed to create " + dir);
             try (BufferedWriter bufferedWriter = Files.newBufferedWriter(sqlFile.toPath())) {
@@ -80,10 +98,10 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
             if (!sqlFile.setLastModified(modifyDate.getTime())) {
                 log.error("Failed to setLastModified on " + sqlFile);
             }
-            int count = typeCounts.getOrDefault(moduleType, 0);
-            typeCounts.put(moduleType, count + 1);
+            int count = typeCounts.getOrDefault(type, 0);
+            typeCounts.put(type, count + 1);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to write %s/%s/%s/%s.sql".formatted(catalog, schema, moduleType, name), e);
+            throw new RuntimeException("Failed to write %s".formatted(sqlFile), e);
         }
     }
 
