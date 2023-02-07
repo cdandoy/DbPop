@@ -3,11 +3,11 @@ package org.dandoy.dbpop.database.mssql;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.utils.StringUtils;
 
 import java.sql.*;
-import java.util.Collection;
 import java.util.Date;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -50,6 +50,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String typeDesc = resultSet.getString("type_desc");
                     Timestamp modifyDate = resultSet.getTimestamp("modify_date");
                     databaseVisitor.moduleMeta(objectId, catalog, schema, name, typeDesc, modifyDate);
+                    databaseVisitor.moduleMeta(new SqlServerObjectIdentifier(objectId, typeDesc, catalog, schema, name), modifyDate);
                 }
             }
         }
@@ -58,12 +59,9 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     @Override
     @SneakyThrows
     public void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog) {
-        Collection<Table> tables = database.getTables(catalog);
-        Map<TableName, Table> tablesByName = tables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
-
         use(catalog);
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT s.name AS "schema", o.name, o.type_desc, o.modify_date, sm.definition
+                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date, sm.definition
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
@@ -71,35 +69,95 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                   AND o.type_desc IN ('USER_TABLE', 'INDEX', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE', 'SQL_TABLE_VALUED_FUNCTION', 'SQL_TRIGGER', 'VIEW')
                 ORDER BY s.name, o.name
                 """)) {
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    String schema = resultSet.getString("schema");
-                    String name = resultSet.getString("name");
-                    String typeDesc = resultSet.getString("type_desc");
-                    Date modifyDate = resultSet.getTimestamp("modify_date");
-                    if (typeDesc.equals("USER_TABLE")) {
-                        Table table = tablesByName.get(new TableName(catalog, schema, name));
-                        databaseVisitor.moduleDefinition(catalog, schema, name, typeDesc, modifyDate, table.tableDDL(database));
-                        for (ForeignKey foreignKey : table.getForeignKeys()) {
-                            String fkDDL = foreignKey.toDDL(database);
-                            String definition = "ALTER TABLE %s ADD %s".formatted(
-                                    database.quote(table.getTableName()),
-                                    fkDDL
-                            );
-                            databaseVisitor.moduleDefinition(catalog, schema, name + "_fk_" + foreignKey.getName(), "FOREIGN_KEY_CONSTRAINT", modifyDate, definition);
-                        }
-                        for (Index index : table.getIndexes()) {
-                            if (!index.isPrimaryKey()) {
-                                databaseVisitor.moduleDefinition(catalog, schema, name + "_idx_" + index.getName(), "INDEX", modifyDate, index.toDDL(database));
-                            }
-                        }
-                    } else {
-                        String definition = resultSet.getString("definition");
-                        databaseVisitor.moduleDefinition(catalog, schema, name, typeDesc, modifyDate, definition);
+            visitModuleDefinitions(databaseVisitor, catalog, preparedStatement);
+        }
+    }
+
+    public void visitModuleDefinitions(DatabaseVisitor databaseVisitor, Collection<ObjectIdentifier> objectIdentifiers) {
+        objectIdentifiers.stream()
+                .collect(Collectors.groupingBy(ObjectIdentifier::getCatalog))
+                .forEach((catalog, catalogObjectIdentifier) -> visitModuleDefinitions(databaseVisitor, catalog, catalogObjectIdentifier));
+    }
+
+    private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, Collection<ObjectIdentifier> objectIdentifiers) {
+        List<SqlServerObjectIdentifier> sqlServerObjectIdentifiers = new ArrayList<>();
+        for (ObjectIdentifier objectIdentifier : objectIdentifiers) {
+            if (!(objectIdentifier instanceof SqlServerObjectIdentifier sqlServerObjectIdentifier)) throw new RuntimeException("Expected SqlServerObjectIdentifiers, found " + (objectIdentifier == null ? "null" : objectIdentifier.getClass()));
+            sqlServerObjectIdentifiers.add(sqlServerObjectIdentifier);
+        }
+        int bindCount = 1000;
+        while (!sqlServerObjectIdentifiers.isEmpty()) {
+            int max = Math.min(sqlServerObjectIdentifiers.size(), bindCount);
+            visitModuleDefinitions(databaseVisitor, catalog, sqlServerObjectIdentifiers.subList(0, max), bindCount);
+            sqlServerObjectIdentifiers = sqlServerObjectIdentifiers.subList(max, sqlServerObjectIdentifiers.size());
+        }
+    }
+
+    @SneakyThrows
+    private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<SqlServerObjectIdentifier> sqlServerObjectIdentifiers, int bindCount) {
+
+        use(catalog);
+        String sql = """
+                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date, sm.definition
+                FROM sys.schemas s
+                         JOIN sys.objects o ON o.schema_id = s.schema_id
+                         LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
+                WHERE o.object_id in (%s)
+                ORDER BY s.name, o.name
+                """.formatted(StringUtils.repeat("?", bindCount, ","));
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            int i;
+            for (i = 0; i < bindCount && i < sqlServerObjectIdentifiers.size(); i++) {
+                preparedStatement.setInt(i + 1, sqlServerObjectIdentifiers.get(i).getObjectId());
+            }
+            for (; i < bindCount; i++) {
+                preparedStatement.setNull(i + 1, Types.INTEGER);
+            }
+            visitModuleDefinitions(databaseVisitor, catalog, preparedStatement);
+        }
+    }
+
+    private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, PreparedStatement preparedStatement) throws SQLException {
+        Map<TableName, Table> tablesByName = null;
+        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            while (resultSet.next()) {
+                int objectId = resultSet.getInt("object_id");
+                String schema = resultSet.getString("schema");
+                String name = resultSet.getString("name");
+                String typeDesc = resultSet.getString("type_desc");
+                Date modifyDate = resultSet.getTimestamp("modify_date");
+                SqlServerObjectIdentifier objectIdentifier = new SqlServerObjectIdentifier(objectId, typeDesc, catalog, schema, name);
+                if (typeDesc.equals("USER_TABLE")) {
+                    if (tablesByName == null) {
+                        Collection<Table> tables = database.getTables(catalog);
+                        tablesByName = tables.stream().collect(Collectors.toMap(Table::getTableName, Function.identity()));
                     }
+                    Table table = tablesByName.get(new TableName(catalog, schema, name));
+                    databaseVisitor.moduleDefinition(catalog, schema, name, typeDesc, modifyDate, table.tableDDL(database));
+                    databaseVisitor.moduleDefinition(objectIdentifier, modifyDate, table.tableDDL(database));
+                    for (ForeignKey foreignKey : table.getForeignKeys()) {
+                        String fkDDL = foreignKey.toDDL(database);
+                        String definition = "ALTER TABLE %s ADD %s".formatted(
+                                database.quote(table.getTableName()),
+                                fkDDL
+                        );
+                        databaseVisitor.moduleDefinition(catalog, schema, name + "_fk_" + foreignKey.getName(), "FOREIGN_KEY_CONSTRAINT", modifyDate, definition);
+                        databaseVisitor.moduleDefinition(new SqlServerObjectIdentifier(objectId, "FOREIGN_KEY_CONSTRAINT", catalog, schema, foreignKey.getName(), objectIdentifier), modifyDate, definition);
+                    }
+                    for (Index index : table.getIndexes()) {
+                        if (!index.isPrimaryKey()) {
+                            databaseVisitor.moduleDefinition(catalog, schema, name + "_idx_" + index.getName(), "INDEX", modifyDate, index.toDDL(database));
+                            databaseVisitor.moduleDefinition(new SqlServerObjectIdentifier(objectId, "INDEX", catalog, schema, index.getName(), objectIdentifier), modifyDate, index.toDDL(database));
+                        }
+                    }
+                } else {
+                    String definition = resultSet.getString("definition");
+                    databaseVisitor.moduleDefinition(catalog, schema, name, typeDesc, modifyDate, definition);
+                    databaseVisitor.moduleDefinition(objectIdentifier, modifyDate, definition);
                 }
             }
         }
+
     }
 
     private void use(String catalog) throws SQLException {
