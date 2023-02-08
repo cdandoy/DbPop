@@ -19,8 +19,7 @@ public class SiteController {
     public SiteResponse site() {
         return new SiteResponse(
                 configurationService.hasSourceConnection(),
-                configurationService.hasTargetConnection(),
-                configurationService.isFeatureFlag_code()
+                configurationService.hasTargetConnection()
         );
     }
 
@@ -29,5 +28,5 @@ public class SiteController {
         return setupService.getSetupState();
     }
 
-    public record SiteResponse(boolean hasSource, boolean hasTarget, boolean featureFlagCode) {}
+    public record SiteResponse(boolean hasSource, boolean hasTarget) {}
 }

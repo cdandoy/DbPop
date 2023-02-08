@@ -40,7 +40,7 @@ export default function App() {
         if (!debug) return <></>;
         return (
             <div>
-                {["hasSource", "hasTarget", "featureFlagCode"].map(name => (
+                {["hasSource", "hasTarget"].map(name => (
                     <span key={name}
                           style={{marginLeft: "2em"}}
                           onClick={() => flipProperty(name)}>{name}: {(siteResponse as any)[name] ? 'Yes' : 'No'}

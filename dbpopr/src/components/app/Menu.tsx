@@ -1,11 +1,8 @@
 import {NavLink} from "react-router-dom";
 import SidebarMenu from "../sidebar/SidebarMenu";
-import React, {useContext} from "react";
-import {SiteContext} from "./App";
+import React from "react";
 
 export default function Menu() {
-    const siteResponse = useContext(SiteContext);
-
     return (
         <ul className="menu-links">
             <li className="nav-link">
@@ -26,13 +23,11 @@ export default function Menu() {
                 </NavLink>
             </li>
 
-            {siteResponse?.featureFlagCode && (
-                <li className="nav-link">
-                    <NavLink to={"/code"}>
-                        <SidebarMenu text="Code" icons="fa fa-code"/>
-                    </NavLink>
-                </li>
-            )}
+            <li className="nav-link">
+                <NavLink to={"/code"}>
+                    <SidebarMenu text="Code" icons="fa fa-code"/>
+                </NavLink>
+            </li>
 
             <li className="nav-link">
                 <NavLink to={"/vfk"}>

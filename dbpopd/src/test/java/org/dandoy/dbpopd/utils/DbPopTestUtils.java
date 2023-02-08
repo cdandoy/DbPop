@@ -20,6 +20,7 @@ public class DbPopTestUtils {
      */
     public static void setUp() {
         TestUtils.delete(new File("../files/config/code")); // Just to be sure, it shouldn't be there
+        TestUtils.delete(new File("../files/config/datasets")); // Just to be sure, it shouldn't be there
         TestUtils.delete(new File("../files/temp"));
         try {
             FileUtils.copyDirectory(new File("../files/config"), new File("../files/temp"));

@@ -36,8 +36,6 @@ public class ConfigurationService {
     private DatabaseCache targetDatabaseCache;
     @Getter
     private final VirtualFkCache virtualFkCache;
-    @Getter
-    private final boolean featureFlag_code = false;
 
     @SuppressWarnings("MnInjectionPoints")
     public ConfigurationService(
