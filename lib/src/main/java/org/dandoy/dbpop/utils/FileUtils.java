@@ -15,4 +15,11 @@ public class FileUtils {
             throw new RuntimeException("Failed to delete " + file);
         }
     }
+
+    public static void touch(File file) {
+        if (!file.exists()) throw new RuntimeException("File does not exist:" + file);
+        if (!file.setLastModified(System.currentTimeMillis())) {
+            throw new RuntimeException("Failed to touch " + file);
+        }
+    }
 }

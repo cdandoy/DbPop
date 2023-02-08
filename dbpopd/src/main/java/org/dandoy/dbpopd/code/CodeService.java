@@ -126,11 +126,15 @@ public class CodeService {
                             @Override
                             @SneakyThrows
                             public void module(String catalog, String schema, String type, String name, File sqlFile) {
-                                UploadResult.FileExecution fileExecution = execute(statement, type, sqlFile);
-                                fileExecutions.add(fileExecution);
                                 if (name.endsWith(".sql")) {
                                     String objectName = name.substring(0, name.length() - 4);
-                                    timestampInserter.addTimestamp(type, catalog, schema, objectName, new Timestamp(sqlFile.lastModified()));
+                                    ObjectIdentifier objectIdentifier = new ObjectIdentifier(type, catalog, schema, objectName);
+                                    Timestamp timestamp = timestampInserter.getTimestamp(objectIdentifier);
+                                    if (timestamp == null || timestamp.getTime() < sqlFile.lastModified()) {
+                                        UploadResult.FileExecution fileExecution = execute(statement, type, sqlFile);
+                                        fileExecutions.add(fileExecution);
+                                        timestampInserter.addTimestamp(objectIdentifier, new Timestamp(sqlFile.lastModified()));
+                                    }
                                 }
                             }
                         });

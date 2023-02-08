@@ -26,6 +26,11 @@ public class DatabaseProxy extends Database {
     }
 
     @Override
+    public boolean isSqlServer() {
+        return delegate.isSqlServer();
+    }
+
+    @Override
     public void verifyConnection() {
         delegate.verifyConnection();
     }

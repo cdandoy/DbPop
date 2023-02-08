@@ -19,6 +19,7 @@ public class DbPopTestUtils {
      * Drops the target database. Doesn't create it because we want to eventually handle that with /code/
      */
     public static void setUp() {
+        TestUtils.delete(new File("../files/config/code")); // Just to be sure, it shouldn't be there
         TestUtils.delete(new File("../files/temp"));
         try {
             FileUtils.copyDirectory(new File("../files/config"), new File("../files/temp"));

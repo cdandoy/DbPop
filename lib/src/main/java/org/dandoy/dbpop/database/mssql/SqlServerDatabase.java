@@ -24,6 +24,11 @@ public class SqlServerDatabase extends DefaultDatabase {
     }
 
     @Override
+    public boolean isSqlServer() {
+        return true;
+    }
+
+    @Override
     public String quote(String s) {
         if (QUOTE_WITH_BRACKETS) {
             return "[" + s + "]";

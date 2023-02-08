@@ -58,6 +58,9 @@ class CodeDB {
      * Creates the dbpop_timestamps table
      */
     private static void createTimestampTable(Database database) throws SQLException {
+        // SQL Server's DATETIME rounds the millis up to .007 seconds.
+        // https://learn.microsoft.com/en-us/sql/t-sql/data-types/datetime-transact-sql#:~:text=datetime%20values%20are%20rounded%20to,shown%20in%20the%20following%20table.
+        String dateTimeType = database.isSqlServer() ? "DATETIME2" : "DATETIME";
         try (PreparedStatement preparedStatement = database.getConnection().prepareStatement("""
                 CREATE TABLE master.dbo.dbpop_timestamps
                 (
@@ -65,9 +68,9 @@ class CodeDB {
                     object_catalog VARCHAR(256),
                     object_schema  VARCHAR(256),
                     object_name    VARCHAR(256),
-                    created        DATETIME,
+                    created        %s,
                     CONSTRAINT dbpop_timestamps_pk PRIMARY KEY (object_type, object_catalog, object_schema, object_name)
-                )""")) {
+                )""".formatted(dateTimeType))) {
             preparedStatement.execute();
         }
     }
@@ -102,22 +105,25 @@ class CodeDB {
             updateStatement.executeBatch();
         }
 
-        void addTimestamp(String type, String catalog, String schema, String name, Timestamp created) throws SQLException {
-            ObjectIdentifier objectIdentifier = new ObjectIdentifier(type, catalog, schema, name);
+        public Timestamp getTimestamp(ObjectIdentifier objectIdentifier) {
+            return timestamps.get(objectIdentifier);
+        }
+
+        void addTimestamp(ObjectIdentifier objectIdentifier, Timestamp created) throws SQLException {
             Timestamp timestamp = timestamps.put(objectIdentifier, created);
             if (timestamp == null) {
-                insertStatement.setString(1, type);
-                insertStatement.setString(2, catalog);
-                insertStatement.setString(3, schema);
-                insertStatement.setString(4, name);
+                insertStatement.setString(1, objectIdentifier.getType());
+                insertStatement.setString(2, objectIdentifier.getCatalog());
+                insertStatement.setString(3, objectIdentifier.getSchema());
+                insertStatement.setString(4, objectIdentifier.getName());
                 insertStatement.setTimestamp(5, created);
                 insertStatement.addBatch();
             } else if (!timestamp.equals(created)) {
                 updateStatement.setTimestamp(1, created);
-                updateStatement.setString(2, type);
-                updateStatement.setString(3, catalog);
-                updateStatement.setString(4, schema);
-                updateStatement.setString(5, name);
+                updateStatement.setString(2, objectIdentifier.getType());
+                updateStatement.setString(3, objectIdentifier.getCatalog());
+                updateStatement.setString(4, objectIdentifier.getSchema());
+                updateStatement.setString(5, objectIdentifier.getName());
                 updateStatement.addBatch();
             }
         }

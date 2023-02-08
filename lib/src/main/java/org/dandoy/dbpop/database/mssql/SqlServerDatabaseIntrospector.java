@@ -35,7 +35,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     public void visitModuleMetas(DatabaseVisitor databaseVisitor, String catalog) {
         use(catalog);
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date
+                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AT TIME ZONE 'UTC' as modify_date
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                 WHERE o.is_ms_shipped = 0
@@ -60,7 +60,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     public void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog) {
         use(catalog);
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date, sm.definition
+                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AT TIME ZONE 'UTC' as modify_date, sm.definition
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
@@ -97,7 +97,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
 
         use(catalog);
         String sql = """
-                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date, sm.definition
+                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AT TIME ZONE 'UTC' as modify_date, sm.definition
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id

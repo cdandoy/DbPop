@@ -49,6 +49,8 @@ public abstract class Database implements AutoCloseable {
     @Override
     public abstract void close();
 
+    public boolean isSqlServer() {return false;}
+
     public abstract void verifyConnection();
 
     public abstract Connection getConnection() throws SQLException;
