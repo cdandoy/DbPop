@@ -55,10 +55,10 @@ public class CodeService {
     public DownloadResult downloadTargetToFile() {
         try (Database database = configurationService.createTargetDatabase()) {
             File codeDirectory = configurationService.getCodeDirectory();
-            Map<ObjectIdentifier, Timestamp> timestampMap = CodeDB.getObjectTimestampMap(database.getConnection());
+            Map<ObjectIdentifier, CodeTimestamps> timestampMap = CodeDB.getObjectTimestampMap(database.getConnection());
             DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
-            try (DbToNewerFileVisitor dbToNewerFileVisitor = new DbToNewerFileVisitor(databaseIntrospector, codeDirectory, timestampMap)) {
-                return downloadToFile(database, dbToNewerFileVisitor);
+            try (TargetDbToFileVisitor targetDbToFileVisitor = new TargetDbToFileVisitor(databaseIntrospector, codeDirectory, timestampMap)) {
+                return downloadToFile(database, targetDbToFileVisitor);
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -129,11 +129,15 @@ public class CodeService {
                                 if (name.endsWith(".sql")) {
                                     String objectName = name.substring(0, name.length() - 4);
                                     ObjectIdentifier objectIdentifier = new ObjectIdentifier(type, catalog, schema, objectName);
-                                    Timestamp timestamp = timestampInserter.getTimestamp(objectIdentifier);
-                                    if (timestamp == null || timestamp.getTime() < sqlFile.lastModified()) {
+                                    CodeTimestamps codeTimestamps = timestampInserter.getTimestamp(objectIdentifier);
+                                    // Only load if the source file is newer than the one we have executed
+                                    // TODO: This could overwrite code modified in the target,
+                                    //  unless we auto-save the target to file in which case the user has to deal with merge conflicts
+                                    //  which would be ideal.
+                                    if (codeTimestamps == null || codeTimestamps.fileTimestamp().getTime() < sqlFile.lastModified()) {
                                         UploadResult.FileExecution fileExecution = execute(statement, type, sqlFile);
                                         fileExecutions.add(fileExecution);
-                                        timestampInserter.addTimestamp(objectIdentifier, new Timestamp(sqlFile.lastModified()));
+                                        timestampInserter.addTimestamp(objectIdentifier, new Timestamp(sqlFile.lastModified()), new Timestamp(System.currentTimeMillis()));
                                     }
                                 }
                             }

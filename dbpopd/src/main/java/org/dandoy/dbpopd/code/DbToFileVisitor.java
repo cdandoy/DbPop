@@ -15,6 +15,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
 
+/**
+ * The visitor that downloads the code from the source database and dumps it into files
+ */
 @Slf4j
 public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     final DatabaseIntrospector introspector;

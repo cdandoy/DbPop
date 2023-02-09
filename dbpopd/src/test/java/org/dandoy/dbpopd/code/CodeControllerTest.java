@@ -28,8 +28,9 @@ class CodeControllerTest {
         DbPopTestUtils.setUp();
     }
 
+    @SuppressWarnings("SqlResolve")
     @Test
-    void name() throws SQLException {
+    void name() throws SQLException, InterruptedException {
         {   // Download from the source
             DownloadResult downloadResult = codeController.downloadSourceToFile();
             assertEquals(2, downloadResult.getCodeTypeCount("Stored Procedures"));
@@ -57,7 +58,8 @@ class CodeControllerTest {
             assertEquals(0, downloadResult.getCodeTypeCounts().size());
         }
 
-        if (false) {   // Download from the target after changing code
+        {   // Download from the target after changing code
+            Thread.sleep(1100); // Give time to the developer to change that sproc
             try (Connection targetConnection = configurationService.createTargetConnection()) {
                 try (Statement statement = targetConnection.createStatement()) {
                     statement.execute("USE dbpop");
