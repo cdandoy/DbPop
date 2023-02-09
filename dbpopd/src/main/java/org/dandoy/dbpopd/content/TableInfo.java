@@ -10,15 +10,13 @@ import java.util.List;
 public class TableInfo implements Comparable<TableInfo> {
     private final TableName tableName;
     private final RowCount sourceRowCount;
-    private final RowCount targetRowCount;
     private final RowCount staticRowCount;
     private final RowCount baseRowCount;
     private final List<TableName> dependencies;
 
-    public TableInfo(TableName tableName, RowCount sourceRowCount, RowCount targetRowCount, RowCount staticRowCount, RowCount baseRowCount, List<TableName> dependencies) {
+    public TableInfo(TableName tableName, RowCount sourceRowCount, RowCount staticRowCount, RowCount baseRowCount, List<TableName> dependencies) {
         this.tableName = tableName;
         this.sourceRowCount = sourceRowCount;
-        this.targetRowCount = targetRowCount;
         this.staticRowCount = staticRowCount;
         this.baseRowCount = baseRowCount;
         this.dependencies = dependencies;

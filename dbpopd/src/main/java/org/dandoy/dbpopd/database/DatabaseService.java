@@ -9,8 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpopd.ConfigurationService;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @SuppressWarnings("DuplicatedCode")
 @Singleton
@@ -21,12 +23,9 @@ public class DatabaseService {
     private final DatabaseCache sourceDatabase;
     private final DatabaseCache targetDatabase;
     private final Object sourceRowCountLock = new Object();
-    private final Object targetRowCountLock = new Object();
 
     @Getter
     private Map<TableName, RowCount> sourceRowCounts = new HashMap<>();
-    @Getter
-    private Map<TableName, RowCount> targetRowCounts = new HashMap<>();
 
     public DatabaseService(ConfigurationService configurationService) {
         this.configurationService = configurationService;
@@ -53,18 +52,13 @@ public class DatabaseService {
 
     @PostConstruct
     void postConstruct() {
-        new Thread(this::load).start();
+        new Thread(this::loadSourceTableCount).start();
     }
 
     @PreDestroy
     void preDestroy() {
         if (sourceDatabase != null) sourceDatabase.close();
         if (targetDatabase != null) targetDatabase.close();
-    }
-
-    private void load() {
-        loadSourceTableCount();
-        loadTargetTableCount();
     }
 
     private void loadSourceTableCount() {
@@ -86,28 +80,6 @@ public class DatabaseService {
         }
     }
 
-    private void loadTargetTableCount() {
-        if (configurationService.hasTargetConnection()) {
-            synchronized (targetRowCountLock) {
-                try (Database database = configurationService.createTargetDatabase()) {
-                    Map<TableName, RowCount> rowCounts = new HashMap<>();
-                    for (Table table : database.getTables()) {
-                        TableName tableName = table.getTableName();
-                        RowCount rowCount = database.getRowCount(tableName);
-                        rowCounts.put(tableName, rowCount);
-                    }
-                    targetRowCounts = rowCounts;
-                }
-            }
-        }
-    }
-
-    public Set<TableName> getTargetTableNames() {
-        return targetDatabase.getTables().stream()
-                .map(Table::getTableName)
-                .collect(Collectors.toSet());
-    }
-
     public Collection<Table> getSourceTables() {
         return sourceDatabase.getTables();
     }
@@ -118,10 +90,6 @@ public class DatabaseService {
 
     public RowCount getSourceRowCount(TableName tableName) {
         return sourceRowCounts.get(tableName);
-    }
-
-    public RowCount getTargetRowCount(TableName tableName) {
-        return targetRowCounts.get(tableName);
     }
 
     public List<ForeignKey> getRelatedSourceForeignKeys(TableName pkTableName) {

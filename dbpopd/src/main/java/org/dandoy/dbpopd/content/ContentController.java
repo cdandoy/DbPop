@@ -15,7 +15,6 @@ import org.dandoy.dbpopd.datasets.FileCacheService;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
 @Controller
 public class ContentController {
@@ -34,14 +33,12 @@ public class ContentController {
         List<Dataset> datasets = Datasets.getDatasets(configurationService.getDatasetsDirectory());
 
         Collection<Table> sourceTables = databaseService.getSourceTables();
-        Set<TableName> targetTableNames = databaseService.getTargetTableNames();
         return sourceTables.stream()
                 .map(table -> {
                     TableName tableName = table.getTableName();
                     return new TableInfo(
                             tableName,
                             databaseService.getSourceRowCount(tableName),
-                            targetTableNames.contains(tableName) ? databaseService.getTargetRowCount(tableName) : new RowCount(0, false),
                             countCsvRows(datasets, Datasets.STATIC, tableName),
                             countCsvRows(datasets, Datasets.BASE, tableName),
                             getDependencies(table)
