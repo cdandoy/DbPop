@@ -4,6 +4,12 @@ import java.math.BigDecimal;
 import java.sql.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
 import java.util.Base64;
 import java.util.Date;
 
@@ -48,32 +54,37 @@ public abstract class ColumnType {
     };
 
     public static final ColumnType TIMESTAMP = new ColumnType() {
+        private static final DateTimeFormatter FORMAT_DEFAULT = new DateTimeFormatterBuilder()
+                .parseCaseInsensitive()
+                .append(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                .optionalStart()
+                .appendFraction(ChronoField.MILLI_OF_SECOND, 1, 3, true)
+                .toFormatter();
+        private static final DateTimeFormatter FORMAT_10 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        private static final DateTimeFormatter FORMAT_24 = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
+
         @Override
         public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) throws SQLException {
-            SimpleDateFormat format_10 = new SimpleDateFormat("yyyy-MM-dd");
-            SimpleDateFormat format_19 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            SimpleDateFormat format_21 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
-
             if (input == null) {
                 preparedStatement.setNull(jdbcPos, Types.TIMESTAMP);
-            } else {
-                try {
-                    Date date;
-                    int length = input.length();
-                    if (length == 10) {
-                        date = format_10.parse(input);
-                    } else if (length == 19) {
-                        date = format_19.parse(input);
-                    } else if (length == 21 || length == 22 || length == 23) {
-                        date = format_21.parse(input);
-                    } else {
-                        date = java.sql.Date.valueOf(input);
-                    }
-                    preparedStatement.setTimestamp(jdbcPos, new Timestamp(date.getTime()));
-                } catch (ParseException e) {
-                    throw new RuntimeException(e);
-                }
+                return;
             }
+            int length = input.length();
+            LocalDateTime localDateTime;
+            if (length == 10) {
+                localDateTime = LocalDate.from(FORMAT_10.parse(input)).atStartOfDay();
+            } else {
+                TemporalAccessor temporalAccessor;
+                if (19 <= length && length <= 23) {
+                    temporalAccessor = FORMAT_DEFAULT.parse(input);
+                } else if (length == 24) {
+                    temporalAccessor = FORMAT_24.parse(input);
+                } else {
+                    throw new RuntimeException("Invalid date/time format: " + input);
+                }
+                localDateTime = LocalDateTime.from(temporalAccessor);
+            }
+            preparedStatement.setTimestamp(jdbcPos, Timestamp.valueOf(localDateTime));
         }
 
         @Override

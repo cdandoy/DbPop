@@ -7,6 +7,7 @@ import org.dandoy.dbpop.utils.StopWatch;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.*;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
@@ -18,6 +19,7 @@ import static org.dandoy.dbpop.database.ColumnType.INVALID;
 @Slf4j
 public abstract class DefaultDatabase extends Database {
     private static final ExpressionParser EXPRESSION_PARSER = new ExpressionParser();
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final Base64.Decoder decoder = Base64.getDecoder();
     protected final SafeConnection safeConnection;
     private final String identifierQuoteString;

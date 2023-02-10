@@ -4,10 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
-import org.dandoy.dbpop.database.ColumnType;
-import org.dandoy.dbpop.database.Database;
-import org.dandoy.dbpop.database.Table;
-import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.jetbrains.annotations.Nullable;
 
@@ -145,12 +142,14 @@ public class TableDownloader implements AutoCloseable {
                         csvPrinter.print(null);
                         continue;
                     }
-                    Integer integer = columnType.toSqlType();
+                    Integer sqlType = columnType.toSqlType();
                     String columnName = selectedColumn.name();
                     int jdbcPos = selectedColumn.jdbcPos();
-                    if (integer == Types.CLOB) {
+                    if (sqlType == Types.TIMESTAMP) {
+                        downloadTimestamp(resultSet, csvPrinter, jdbcPos);
+                    } else if (sqlType == Types.CLOB) {
                         downloadClob(resultSet, csvPrinter, columnName, jdbcPos);
-                    } else if (integer == Types.BLOB) {
+                    } else if (sqlType == Types.BLOB) {
                         downloadBlob(resultSet, csvPrinter, columnName, jdbcPos);
                     } else if (selectedColumn.binary()) {
                         downloadBinary(resultSet, csvPrinter, columnName, jdbcPos);
@@ -227,6 +226,16 @@ public class TableDownloader implements AutoCloseable {
         }
     }
 
+    private void downloadTimestamp(ResultSet resultSet, DeferredCsvPrinter csvPrinter, int jdbcPos) throws SQLException, IOException {
+        Timestamp timestamp = resultSet.getTimestamp(jdbcPos);
+        if (timestamp != null) {
+            String s = DefaultDatabase.DATE_TIME_FORMATTER.format(timestamp.toLocalDateTime());
+            csvPrinter.print(s);
+        } else {
+            csvPrinter.print(null);
+        }
+    }
+
     private void downloadString(ResultSet resultSet, DeferredCsvPrinter csvPrinter, String columnName, int jdbcPos) throws SQLException, IOException {
         String s = resultSet.getString(jdbcPos);
         if (s != null) {
@@ -261,8 +270,8 @@ public class TableDownloader implements AutoCloseable {
         private ExecutionMode executionMode = ExecutionMode.SAVE;
         private ExecutionContext executionContext = new ExecutionContext();
         private List<String> filteredColumns = Collections.emptyList();
-        private List<TableJoin> tableJoins=Collections.emptyList();
-        private List<TableQuery> wheres=Collections.emptyList();
+        private List<TableJoin> tableJoins = Collections.emptyList();
+        private List<TableQuery> wheres = Collections.emptyList();
 
         public TableDownloader build() {
             if (database == null) throw new RuntimeException("database not set");
