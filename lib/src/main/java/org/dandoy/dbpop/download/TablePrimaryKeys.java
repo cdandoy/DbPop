@@ -59,16 +59,20 @@ public class TablePrimaryKeys {
         }
     }
 
-    public boolean addPrimaryKey(ResultSet resultSet) {
-        List<String> pkRow = selectedPkColumns.stream().map(selectedColumn -> toPkString(resultSet, selectedColumn)).toList();
-        return pkValues.add(pkRow);
+    public List<String> extractPrimaryKey(ResultSet resultSet) {
+        List<String> ret = new ArrayList<>();
+        for (SelectedColumn selectedPkColumn : selectedPkColumns) {
+            try {
+                String s = resultSet.getString(selectedPkColumn.jdbcPos());
+                ret.add(s);
+            } catch (SQLException e) {
+                throw new RuntimeException("Failed to read " + selectedPkColumn.name(), e);
+            }
+        }
+        return ret;
     }
 
-    private static String toPkString(ResultSet resultSet, SelectedColumn selectedPkColumn) {
-        try {
-            return resultSet.getString(selectedPkColumn.jdbcPos());
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to read " + selectedPkColumn.name(), e);
-        }
+    public boolean addPrimaryKey(List<String> pkRow) {
+        return pkValues.add(pkRow);
     }
 }

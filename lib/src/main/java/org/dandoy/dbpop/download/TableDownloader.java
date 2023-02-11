@@ -23,16 +23,24 @@ public class TableDownloader implements AutoCloseable {
     private final TableFetcher tableFetcher;
     private final DeferredCsvPrinter csvPrinter;
     private final ExecutionContext executionContext;
+    private final TableExpressions tableExpressions;
     private final List<SelectedColumn> selectedColumns;
     private final List<Consumer<ResultSet>> consumers = new ArrayList<>();
 
-    private TableDownloader(TableName tableName, TablePrimaryKeys tablePrimaryKeys, TableFetcher tableFetcher, List<SelectedColumn> selectedColumns, @Nullable DeferredCsvPrinter csvPrinter, ExecutionContext executionContext) {
+    private TableDownloader(TableName tableName,
+                            TablePrimaryKeys tablePrimaryKeys,
+                            TableFetcher tableFetcher,
+                            List<SelectedColumn> selectedColumns,
+                            @Nullable DeferredCsvPrinter csvPrinter,
+                            ExecutionContext executionContext,
+                            TableExpressions tableExpressions) {
         this.tableName = tableName;
         this.tablePrimaryKeys = tablePrimaryKeys;
         this.tableFetcher = tableFetcher;
         this.selectedColumns = selectedColumns;
         this.csvPrinter = csvPrinter;
         this.executionContext = executionContext;
+        this.tableExpressions = tableExpressions;
         this.consumers.add(this::consumeResultSet);
     }
 
@@ -43,7 +51,7 @@ public class TableDownloader implements AutoCloseable {
     private static TableDownloader createTableDownloader(Database database, File datasetsDirectory, String dataset,
                                                          TableName tableName, List<TableJoin> tableJoins, List<TableQuery> where,
                                                          List<String> filteredColumns, boolean forceEmpty,
-                                                         ExecutionMode executionMode, ExecutionContext executionContext) {
+                                                         ExecutionMode executionMode, ExecutionContext executionContext, TableExpressions tableExpressions) {
         Table table = database.getTable(tableName);
         TableFetcher tableFetcher = TableFetcher.createTableFetcher(database, table, tableJoins, where, filteredColumns, executionContext);
         List<SelectedColumn> selectedColumns = tableFetcher.getSelectedColumns();
@@ -61,7 +69,7 @@ public class TableDownloader implements AutoCloseable {
             csvPrinter = outputFile.createCsvPrinter();
         }
 
-        return new TableDownloader(tableName, tablePrimaryKeys, tableFetcher, selectedColumns, csvPrinter, executionContext);
+        return new TableDownloader(tableName, tablePrimaryKeys, tableFetcher, selectedColumns, csvPrinter, executionContext, tableExpressions);
     }
 
     private static List<SelectedColumn> filterSelectedColumns(List<SelectedColumn> selectedColumns, List<String> headers) {
@@ -122,13 +130,19 @@ public class TableDownloader implements AutoCloseable {
     }
 
     private void consumeResultSet(ResultSet resultSet) {
-        if (isExistingPk(resultSet)) {
+        List<String> pkRow = extractPrimaryKey(resultSet);
+        if (isExistingPk(pkRow)) {
             executionContext.rowSkipped(tableName);
             return;
         }
 
         log.debug("{} prints a row", tableName);
         executionContext.rowAdded(tableName);
+
+        TableExpressions.RowExpressions rowExpressions = null;
+        if (tableExpressions != null) {
+            rowExpressions = tableExpressions.getColumnExpressions(pkRow);
+        }
 
         if (csvPrinter != null) {
             try {
@@ -145,7 +159,10 @@ public class TableDownloader implements AutoCloseable {
                     Integer sqlType = columnType.toSqlType();
                     String columnName = selectedColumn.name();
                     int jdbcPos = selectedColumn.jdbcPos();
-                    if (sqlType == Types.TIMESTAMP) {
+                    String expression = rowExpressions == null ? null : rowExpressions.getExpression(columnName);
+                    if (expression != null) {
+                        csvPrinter.print(expression);
+                    } else if (sqlType == Types.TIMESTAMP) {
                         downloadTimestamp(resultSet, csvPrinter, jdbcPos);
                     } else if (sqlType == Types.CLOB) {
                         downloadClob(resultSet, csvPrinter, columnName, jdbcPos);
@@ -164,12 +181,17 @@ public class TableDownloader implements AutoCloseable {
         }
     }
 
+    private List<String> extractPrimaryKey(ResultSet resultSet) {
+        if (tablePrimaryKeys == null) return null;
+        return tablePrimaryKeys.extractPrimaryKey(resultSet);
+    }
+
     /**
      * Checks if the PK in the ResultSet has already been downloaded
      */
-    private boolean isExistingPk(ResultSet resultSet) {
+    private boolean isExistingPk(List<String> pkRow) {
         if (tablePrimaryKeys == null) return false;
-        return !tablePrimaryKeys.addPrimaryKey(resultSet);
+        return !tablePrimaryKeys.addPrimaryKey(pkRow);
     }
 
     private void downloadClob(ResultSet resultSet, DeferredCsvPrinter csvPrinter, String columnName, int jdbcPos) throws SQLException, IOException {
@@ -272,6 +294,7 @@ public class TableDownloader implements AutoCloseable {
         private List<String> filteredColumns = Collections.emptyList();
         private List<TableJoin> tableJoins = Collections.emptyList();
         private List<TableQuery> wheres = Collections.emptyList();
+        private TableExpressions tableExpressions;
 
         public TableDownloader build() {
             if (database == null) throw new RuntimeException("database not set");
@@ -283,7 +306,7 @@ public class TableDownloader implements AutoCloseable {
             // Having an empty CSV file in /static/ or /base/ will make sure the table is deleted
             // However, we do not want to have empty CSV files in other dataset directories
             boolean forceEmpty = dataset.equals(Datasets.STATIC) || dataset.equals(Datasets.BASE);
-            return createTableDownloader(database, datasetsDirectory, dataset, tableName, tableJoins, wheres, filteredColumns, forceEmpty, executionMode, executionContext);
+            return createTableDownloader(database, datasetsDirectory, dataset, tableName, tableJoins, wheres, filteredColumns, forceEmpty, executionMode, executionContext, tableExpressions);
         }
     }
 }

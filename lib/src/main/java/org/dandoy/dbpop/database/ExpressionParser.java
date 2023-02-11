@@ -24,7 +24,7 @@ public class ExpressionParser {
         if (!s.startsWith("{{") || !s.endsWith("}}")) return s;
 
         Matcher matcher = PATTERN.matcher(s);
-        if (!matcher.matches()) throw new RuntimeException("Failed to parse \"" + s + "\"");
+        if (!matcher.matches()) return s;
 
         String reference = matcher.group(1);
         LocalDateTime localDateTime = toLocalDateTime(reference).orElseThrow(() -> new RuntimeException("Failed to parse \"" + s + "\""));

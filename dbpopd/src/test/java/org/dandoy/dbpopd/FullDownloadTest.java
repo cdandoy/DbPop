@@ -2,6 +2,7 @@ package org.dandoy.dbpopd;
 
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
+import org.apache.commons.io.IOUtils;
 import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.tests.SqlExecutor;
@@ -12,15 +13,18 @@ import org.dandoy.dbpopd.populate.PopulateResult;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopTestUtils;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,8 +40,8 @@ public class FullDownloadTest {
     @Inject
     CsvAssertionService csvAssertionService;
 
-    @BeforeAll
-    static void setUp() {
+    @BeforeEach
+    void setUp() {
         DbPopTestUtils.setUp();
     }
 
@@ -179,5 +183,62 @@ public class FullDownloadTest {
                         List.of("id", "txt"),
                         List.of("1", "one")
                 );
+    }
+
+    @Test
+    void downloadTargetTest() throws SQLException, IOException {
+        try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
+            SqlExecutor.execute(
+                    connection,
+                    "/mssql/drop.sql",
+                    "/mssql/create.sql"
+            );
+        }
+
+        downloadController.bulkDownload(
+                new DownloadController.DownloadBulkBody(
+                        "static",
+                        List.of(
+                                new TableName("dbpop", "dbo", "customer_types"),
+                                new TableName("dbpop", "dbo", "product_categories"),
+                                new TableName("dbpop", "dbo", "customers"),
+                                new TableName("dbpop", "dbo", "products")
+                        )
+                )
+        );
+        downloadController.bulkDownload(
+                new DownloadController.DownloadBulkBody(
+                        "base",
+                        List.of(
+                                new TableName("dbpop", "dbo", "customers"),
+                                new TableName("dbpop", "dbo", "invoice_details"),
+                                new TableName("dbpop", "dbo", "invoices")
+                        )
+                )
+        );
+
+        String csv = """
+                invoice_id,customer_id,invoice_date
+                1001,101,{{now}}
+                1002,102,{{today}}
+                1003,101,{{tomorrow}}
+                1004,102,{{yesterday}}
+                """;
+        try (FileOutputStream outputStream = new FileOutputStream("../files/temp/datasets/base/dbpop/dbo/invoices.csv")) {
+            IOUtils.write(csv, outputStream, UTF_8);
+        }
+
+        downloadController.downloadTarget(new DownloadController.DownloadTargetBody("base"));
+
+        csvAssertionService
+                .csvAssertion("base", "dbpop.dbo.invoices")
+                .assertExists(
+                        List.of("invoice_id", "customer_id", "invoice_date"),
+                        List.of("1001", "101", "{{now}}"),
+                        List.of("1002", "102", "{{today}}"),
+                        List.of("1003", "101", "{{tomorrow}}"),
+                        List.of("1004", "102", "{{yesterday}}")
+                );
+
     }
 }

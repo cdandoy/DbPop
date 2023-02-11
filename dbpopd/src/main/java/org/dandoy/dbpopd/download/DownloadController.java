@@ -114,23 +114,28 @@ public class DownloadController {
 
     @Post("/target")
     public DownloadResponse downloadTarget(@Body DownloadTargetBody downloadTargetBody) {
+        ExecutionContext executionContext = new ExecutionContext();
         File datasetsDirectory = configurationService.getDatasetsDirectory();
 
-        Map<TableName, String> tableNamesToDataSet = new HashMap<>();
-        Map<TableName, File> tableNamesToFile = new HashMap<>();
-        for (Dataset dataset : Datasets.getDatasets(datasetsDirectory)) {
-            String datasetName = dataset.getName();
-            if (Datasets.STATIC.equals(datasetName) || Datasets.BASE.equals(datasetName) || downloadTargetBody.dataset.equals(datasetName)) {
-                for (DataFile dataFile : dataset.getDataFiles()) {
-                    TableName tableName = dataFile.getTableName();
-                    tableNamesToDataSet.put(tableName, dataset.getName());
-                    tableNamesToFile.put(tableName, dataFile.getFile());
+        try (Database targetDatabase = configurationService.createTargetDatabase()) {
+            Map<TableName, TableExpressions> tableNamesToTableExpressions = new HashMap<>();
+            Map<TableName, String> tableNamesToDataSet = new HashMap<>();
+            Map<TableName, File> tableNamesToFile = new HashMap<>();
+            for (Dataset dataset : Datasets.getDatasets(datasetsDirectory)) {
+                String datasetName = dataset.getName();
+                if (Datasets.STATIC.equals(datasetName) || Datasets.BASE.equals(datasetName) || downloadTargetBody.dataset.equals(datasetName)) {
+                    for (DataFile dataFile : dataset.getDataFiles()) {
+                        TableName tableName = dataFile.getTableName();
+                        TableExpressions tableExpressions = TableExpressions.createTableExpressions(targetDatabase, dataFile);
+                        if (tableExpressions != null) {
+                            tableNamesToTableExpressions.put(tableName, tableExpressions);
+                        }
+                        tableNamesToDataSet.put(tableName, dataset.getName());
+                        tableNamesToFile.put(tableName, dataFile.getFile());
+                    }
                 }
             }
-        }
 
-        ExecutionContext executionContext = new ExecutionContext();
-        try (Database targetDatabase = configurationService.createTargetDatabase()) {
             for (Table table : targetDatabase.getTables()) {
                 TableName tableName = table.getTableName();
                 File file = tableNamesToFile.get(tableName);
@@ -145,7 +150,9 @@ public class DownloadController {
                         .setTableName(tableName)
                         .setExecutionMode(ExecutionMode.SAVE)
                         .setExecutionContext(executionContext)
+                        .setTableExpressions(tableNamesToTableExpressions.get(tableName))
                         .build()) {
+                    
                     executionContext.tableAdded(tableName);
                     tableDownloader.download();
                 }
