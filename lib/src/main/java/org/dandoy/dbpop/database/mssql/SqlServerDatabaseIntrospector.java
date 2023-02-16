@@ -31,11 +31,38 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     }
 
     @Override
+    public void visitModuleDefinitions(DatabaseVisitor databaseVisitor, Timestamp since) {
+        try {
+            for (String catalog : database.getCatalogs()) {
+                use(catalog);
+                try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT object_id FROM sys.objects WHERE modify_date > ?")) {
+                    if (database.isSqlServer()) { // SQL Server timestamps are approximate
+                        since = new Timestamp(since.getTime() + 1000);
+                    }
+                    preparedStatement.setObject(1, since);
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        List<Integer> objectIds = new ArrayList<>();
+                        while (resultSet.next()) {
+                            int objectId = resultSet.getInt(1);
+                            objectIds.add(objectId);
+                        }
+                        if (!objectIds.isEmpty()) {
+                            visitModuleDefinitions(databaseVisitor, catalog, objectIds);
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     @SneakyThrows
     public void visitModuleMetas(DatabaseVisitor databaseVisitor, String catalog) {
         use(catalog);
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AT TIME ZONE 'UTC' as modify_date
+                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AS modify_date
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                 WHERE o.is_ms_shipped = 0
@@ -60,7 +87,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     public void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog) {
         use(catalog);
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AT TIME ZONE 'UTC' as modify_date, sm.definition
+                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AS modify_date, sm.definition
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
@@ -79,25 +106,29 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     }
 
     private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, Collection<ObjectIdentifier> objectIdentifiers) {
-        List<SqlServerObjectIdentifier> sqlServerObjectIdentifiers = new ArrayList<>();
+        List<Integer> objectIds = new ArrayList<>();
         for (ObjectIdentifier objectIdentifier : objectIdentifiers) {
             if (!(objectIdentifier instanceof SqlServerObjectIdentifier sqlServerObjectIdentifier)) throw new RuntimeException("Expected SqlServerObjectIdentifiers, found " + (objectIdentifier == null ? "null" : objectIdentifier.getClass()));
-            sqlServerObjectIdentifiers.add(sqlServerObjectIdentifier);
+            objectIds.add(sqlServerObjectIdentifier.getObjectId());
         }
+        visitModuleDefinitions(databaseVisitor, catalog, objectIds);
+    }
+
+    private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<Integer> objectIds) {
         int bindCount = 1000;
-        while (!sqlServerObjectIdentifiers.isEmpty()) {
-            int max = Math.min(sqlServerObjectIdentifiers.size(), bindCount);
-            visitModuleDefinitions(databaseVisitor, catalog, sqlServerObjectIdentifiers.subList(0, max), bindCount);
-            sqlServerObjectIdentifiers = sqlServerObjectIdentifiers.subList(max, sqlServerObjectIdentifiers.size());
+        while (!objectIds.isEmpty()) {
+            int max = Math.min(objectIds.size(), bindCount);
+            visitModuleDefinitions(databaseVisitor, catalog, objectIds.subList(0, max), bindCount);
+            objectIds = objectIds.subList(max, objectIds.size());
         }
     }
 
     @SneakyThrows
-    private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<SqlServerObjectIdentifier> sqlServerObjectIdentifiers, int bindCount) {
+    private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<Integer> objectIds, int bindCount) {
 
         use(catalog);
         String sql = """
-                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AT TIME ZONE 'UTC' as modify_date, sm.definition
+                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date as modify_date, sm.definition
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
@@ -106,8 +137,8 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 """.formatted(StringUtils.repeat("?", bindCount, ","));
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             int i;
-            for (i = 0; i < bindCount && i < sqlServerObjectIdentifiers.size(); i++) {
-                preparedStatement.setInt(i + 1, sqlServerObjectIdentifiers.get(i).getObjectId());
+            for (i = 0; i < bindCount && i < objectIds.size(); i++) {
+                preparedStatement.setInt(i + 1, objectIds.get(i));
             }
             for (; i < bindCount; i++) {
                 preparedStatement.setNull(i + 1, Types.INTEGER);

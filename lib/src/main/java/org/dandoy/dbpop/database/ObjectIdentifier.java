@@ -69,4 +69,13 @@ public class ObjectIdentifier implements Comparable<ObjectIdentifier> {
         if (b == null) b = "";
         return a.compareTo(b);
     }
+
+    @Override
+    public String toString() {
+        return type + " " + toQualifiedName();
+    }
+
+    public String toQualifiedName() {
+        return String.join(".", catalog, schema, name);
+    }
 }

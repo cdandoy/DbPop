@@ -4,6 +4,7 @@ import jakarta.inject.Singleton;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.utils.DbPopUtils;
 import org.dandoy.dbpop.utils.FileUtils;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
@@ -55,10 +56,11 @@ public class CodeService {
     public DownloadResult downloadTargetToFile() {
         try (Database database = configurationService.createTargetDatabase()) {
             File codeDirectory = configurationService.getCodeDirectory();
-            Map<ObjectIdentifier, CodeTimestamps> timestampMap = CodeDB.getObjectTimestampMap(database.getConnection());
-            DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
-            try (TargetDbToFileVisitor targetDbToFileVisitor = new TargetDbToFileVisitor(databaseIntrospector, codeDirectory, timestampMap)) {
-                return downloadToFile(database, targetDbToFileVisitor);
+            try (CodeDB.TimestampInserter timestampInserter = CodeDB.createTimestampInserter(database)) {
+                DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
+                try (TargetDbToFileVisitor targetDbToFileVisitor = new TargetDbToFileVisitor(timestampInserter, databaseIntrospector, codeDirectory)) {
+                    return downloadToFile(database, targetDbToFileVisitor);
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -131,13 +133,10 @@ public class CodeService {
                                     ObjectIdentifier objectIdentifier = new ObjectIdentifier(type, catalog, schema, objectName);
                                     CodeTimestamps codeTimestamps = timestampInserter.getTimestamp(objectIdentifier);
                                     // Only load if the source file is newer than the one we have executed
-                                    // TODO: This could overwrite code modified in the target,
-                                    //  unless we auto-save the target to file in which case the user has to deal with merge conflicts
-                                    //  which would be ideal.
-                                    if (codeTimestamps == null || codeTimestamps.fileTimestamp().getTime() < sqlFile.lastModified()) {
+                                    if (codeTimestamps == null || !DbPopUtils.isSameTimestamp(sqlFile.lastModified(), codeTimestamps.fileTimestamp().getTime())) {
                                         UploadResult.FileExecution fileExecution = execute(statement, type, sqlFile);
                                         fileExecutions.add(fileExecution);
-                                        timestampInserter.addTimestamp(objectIdentifier, new Timestamp(sqlFile.lastModified()), new Timestamp(System.currentTimeMillis()));
+                                        timestampInserter.addTimestamp(objectIdentifier, new Timestamp(sqlFile.lastModified()));
                                     }
                                 }
                             }

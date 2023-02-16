@@ -59,9 +59,6 @@ class CodeDB {
      * Creates the dbpop_timestamps table
      */
     private static void createTimestampTable(Database database) throws SQLException {
-        // SQL Server's DATETIME rounds the millis up to .007 seconds.
-        // https://learn.microsoft.com/en-us/sql/t-sql/data-types/datetime-transact-sql#:~:text=datetime%20values%20are%20rounded%20to,shown%20in%20the%20following%20table.
-        String dateTimeType = database.isSqlServer() ? "DATETIME2" : "DATETIME";
         try (PreparedStatement preparedStatement = database.getConnection().prepareStatement("""
                 CREATE TABLE master.dbo.dbpop_timestamps
                 (
@@ -69,10 +66,10 @@ class CodeDB {
                     object_catalog VARCHAR(256),
                     object_schema  VARCHAR(256),
                     object_name    VARCHAR(256),
-                    file_timestamp %s,
-                    code_timestamp %s,
+                    file_timestamp DATETIME,
+                    code_timestamp DATETIME,
                     CONSTRAINT dbpop_timestamps_pk PRIMARY KEY (object_type, object_catalog, object_schema, object_name)
-                )""".formatted(dateTimeType, dateTimeType))) {
+                )""")) {
             preparedStatement.execute();
         }
     }
@@ -84,10 +81,10 @@ class CodeDB {
 
         public TimestampInserter(Map<ObjectIdentifier, CodeTimestamps> timestamps, Connection connection) throws SQLException {
             this.timestamps = timestamps;
-            insertStatement = connection.prepareStatement("INSERT INTO master.dbo.dbpop_timestamps (object_type, object_catalog, object_schema, object_name, file_timestamp, code_timestamp) VALUES (?, ?, ?, ?, ?, ?)");
+            insertStatement = connection.prepareStatement("INSERT INTO master.dbo.dbpop_timestamps (object_type, object_catalog, object_schema, object_name, file_timestamp, code_timestamp) VALUES (?, ?, ?, ?, ?, GETDATE())");
             updateStatement = connection.prepareStatement("""
                     UPDATE master.dbo.dbpop_timestamps
-                    SET file_timestamp = ?, code_timestamp = ?
+                    SET file_timestamp = ?, code_timestamp = GETDATE()
                     WHERE object_type = ?
                       AND object_catalog = ?
                       AND object_schema = ?
@@ -111,8 +108,8 @@ class CodeDB {
             return timestamps.get(objectIdentifier);
         }
 
-        void addTimestamp(ObjectIdentifier objectIdentifier, Timestamp fileTimestamp, Timestamp codeTimestamp) throws SQLException {
-            CodeTimestamps newCodeTimestamps = new CodeTimestamps(fileTimestamp, codeTimestamp);
+        void addTimestamp(ObjectIdentifier objectIdentifier, Timestamp fileTimestamp) throws SQLException {
+            CodeTimestamps newCodeTimestamps = new CodeTimestamps(fileTimestamp, new Timestamp(System.currentTimeMillis()));
             CodeTimestamps oldCodeTimestamps = this.timestamps.put(objectIdentifier, newCodeTimestamps);
             if (oldCodeTimestamps == null) {
                 insertStatement.setString(1, objectIdentifier.getType());
@@ -120,15 +117,13 @@ class CodeDB {
                 insertStatement.setString(3, objectIdentifier.getSchema());
                 insertStatement.setString(4, objectIdentifier.getName());
                 insertStatement.setTimestamp(5, fileTimestamp);
-                insertStatement.setTimestamp(6, codeTimestamp);
                 insertStatement.addBatch();
-            } else if (!oldCodeTimestamps.equals(newCodeTimestamps)) {
+            } else {
                 updateStatement.setTimestamp(1, fileTimestamp);
-                updateStatement.setTimestamp(2, codeTimestamp);
-                updateStatement.setString(3, objectIdentifier.getType());
-                updateStatement.setString(4, objectIdentifier.getCatalog());
-                updateStatement.setString(5, objectIdentifier.getSchema());
-                updateStatement.setString(6, objectIdentifier.getName());
+                updateStatement.setString(2, objectIdentifier.getType());
+                updateStatement.setString(3, objectIdentifier.getCatalog());
+                updateStatement.setString(4, objectIdentifier.getSchema());
+                updateStatement.setString(5, objectIdentifier.getName());
                 updateStatement.addBatch();
             }
         }

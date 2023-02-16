@@ -46,4 +46,12 @@ public class DbPopUtils {
             return null;
         }
     }
+
+    /**
+     * Compare timestamps with a tolerance of 100ms because Microsoft rounds timestamps.
+     * @return true if time1 and time2 are within 100ms.
+     */
+    public static boolean isSameTimestamp(long time1, long time2) {
+        return Math.abs(time1 - time2) <= 100;
+    }
 }

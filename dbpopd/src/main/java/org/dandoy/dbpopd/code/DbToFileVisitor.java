@@ -8,6 +8,7 @@ import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
+import org.dandoy.dbpopd.utils.IOUtils;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -64,19 +65,24 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
 
     @Override
     public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
+        if (definition == null) return;
+
         String catalog = objectIdentifier.getCatalog();
         String schema = objectIdentifier.getSchema();
         String name = objectIdentifier.getName();
         String type = objectIdentifier.getType();
         File sqlFile = DbPopdFileUtils.toFile(directory, catalog, schema, type, name + ".sql");
         try {
-            File dir = sqlFile.getParentFile();
-            if (!dir.isDirectory() && !dir.mkdirs()) throw new RuntimeException("Failed to create " + dir);
+            if (sqlFile.exists()) { // If the file exists, check if the content is different
+                String definitionOnFile = IOUtils.readFully(sqlFile);
+                if (definitionOnFile.equals(definition)) return;
+            } else {                // If the file doesn't exist, create the parent directories
+                File dir = sqlFile.getParentFile();
+                if (!dir.isDirectory() && !dir.mkdirs()) throw new RuntimeException("Failed to create " + dir);
+            }
+
             try (BufferedWriter bufferedWriter = Files.newBufferedWriter(sqlFile.toPath())) {
                 bufferedWriter.write(definition);
-            }
-            if (!sqlFile.setLastModified(modifyDate.getTime())) {
-                log.error("Failed to setLastModified on " + sqlFile);
             }
             int count = typeCounts.getOrDefault(type, 0);
             typeCounts.put(type, count + 1);

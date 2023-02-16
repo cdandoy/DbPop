@@ -36,13 +36,16 @@ public class ConfigurationService {
     private DatabaseCache targetDatabaseCache;
     @Getter
     private final VirtualFkCache virtualFkCache;
+    @Getter
+    private final boolean codeAutoSave;
 
     @SuppressWarnings("MnInjectionPoints")
     public ConfigurationService(
             @Property(name = "dbpopd.configuration.path") String configurationPath,
             @Property(name = "dbpopd.configuration.datasets") @Nullable String datasetsDirectory,
             @Property(name = "dbpopd.configuration.setup") @Nullable String setupDirectory,
-            @Property(name = "dbpopd.configuration.code") @Nullable String codeDirectory
+            @Property(name = "dbpopd.configuration.code") @Nullable String codeDirectory,
+            @Property(name = "dbpopd.configuration.codeAutoSave", defaultValue = "false") boolean codeAutoSave
     ) {
         configurationDir = new File(configurationPath);
         File configurationFile = new File(configurationDir, PROP_FILE_NAME);
@@ -56,6 +59,7 @@ public class ConfigurationService {
         this.datasetsDirectory = datasetsDirectory != null ? new File(datasetsDirectory) : new File(configurationDir, "datasets");
         this.setupDirectory = setupDirectory != null ? new File(setupDirectory) : new File(configurationDir, "setup");
         this.codeDirectory = codeDirectory != null ? new File(codeDirectory) : new File(configurationDir, "code");
+        this.codeAutoSave = codeAutoSave;
     }
 
     private static UrlConnectionBuilder createConnectionBuilder(Properties properties, String jdbcurlProperty, String usernameProperty, String passwordProperty) {

@@ -67,7 +67,6 @@ public class DatabaseService {
                 try (Database database = configurationService.createSourceDatabase()) {
                     Map<TableName, RowCount> rowCounts = new HashMap<>();
                     for (String catalog : sourceDatabase.getCatalogs()) {
-                        if ("tempdb".equals(catalog)) continue;
                         for (Table table : sourceDatabase.getTables(catalog)) {
                             TableName tableName = table.getTableName();
                             RowCount rowCount = database.getRowCount(tableName);
