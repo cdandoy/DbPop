@@ -103,10 +103,10 @@ public class Datasets {
             throw new MissingTablesException(
                     badDataFile,
                     String.format(
-                    "Table %s does not exist for this data file %s",
-                    badDataFile.getTableName().toQualifiedName(),
-                    badDataFile.getFile()
-            ));
+                            "Table %s does not exist for this data file %s",
+                            badDataFile.getTableName().toQualifiedName(),
+                            badDataFile.getFile()
+                    ));
         }
     }
 }

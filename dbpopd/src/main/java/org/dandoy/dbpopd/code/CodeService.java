@@ -4,9 +4,10 @@ import jakarta.inject.Singleton;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
-import org.dandoy.dbpop.utils.DbPopUtils;
 import org.dandoy.dbpop.utils.FileUtils;
 import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.datasets.DatasetsService;
+import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.Pair;
 
@@ -31,9 +32,13 @@ public class CodeService {
     );
 
     private final ConfigurationService configurationService;
+    private final PopulateService populateService;
+    private final DatasetsService datasetsService;
 
-    public CodeService(ConfigurationService configurationService) {
+    public CodeService(ConfigurationService configurationService, PopulateService populateService, DatasetsService datasetsService) {
         this.configurationService = configurationService;
+        this.populateService = populateService;
+        this.datasetsService = datasetsService;
     }
 
     /**
@@ -100,49 +105,73 @@ public class CodeService {
         );
     }
 
+    @SneakyThrows
     public UploadResult uploadFileToTarget() {
+        long t0 = System.currentTimeMillis();
         try (Database targetDatabase = configurationService.createTargetDatabase()) {
             try (Connection connection = targetDatabase.getConnection()) {
                 try (Statement statement = connection.createStatement()) {
                     try (CodeDB.TimestampInserter timestampInserter = CodeDB.createTimestampInserter(targetDatabase)) {
-                        List<UploadResult.FileExecution> fileExecutions = new ArrayList<>();
-                        long t0 = System.currentTimeMillis();
                         File codeDirectory = configurationService.getCodeDirectory();
-                        CodeFileInspector.inspect(codeDirectory, new CodeFileInspector.CodeFileVisitor() {
-                            @Override
-                            @SneakyThrows
-                            public void catalog(String catalog) {
-                                targetDatabase.createCatalog(catalog);
-                                statement.execute("USE " + catalog);
+                        FileToDatabaseComparator comparator = new FileToDatabaseComparator(targetDatabase, statement, timestampInserter);
+                        CodeFileInspector.inspect(codeDirectory, comparator);
+
+                        try {
+                            List<TableName> modifiedTableNames = comparator.getModifiedTableNames();
+                            List<ForeignKey> foreignKeys = modifiedTableNames.stream()
+                                    .map(targetDatabase::getRelatedForeignKeys)
+                                    .flatMap(Collection::stream)
+                                    .collect(Collectors.toList());
+                            // drop the FKs that point to the modified tables
+                            for (ForeignKey foreignKey : foreignKeys) {
+                                targetDatabase.dropForeignKey(foreignKey);
                             }
 
-                            @Override
-                            @SneakyThrows
-                            public void schema(String catalog, String schema) {
-                                statement.getConnection().commit();
-                                if (!"dbo".equals(schema)) {
-                                    targetDatabase.createShema(catalog, schema);
+                            // drop the modified tables
+                            for (TableName modifiedTableName : modifiedTableNames) {
+                                statement.execute("DROP TABLE " + targetDatabase.quote(modifiedTableName));
+                            }
+
+                            // Execute the updates
+                            List<FileToDatabaseComparator.ToDo> toDos = comparator.getToDos();
+                            List<UploadResult.FileExecution> fileExecutions = new ArrayList<>();
+                            for (FileToDatabaseComparator.ToDo toDo : toDos) {
+                                ObjectIdentifier objectIdentifier = toDo.objectIdentifier();
+                                File sqlFile = toDo.sqlFile();
+                                UploadResult.FileExecution fileExecution = execute(statement, objectIdentifier.getType(), sqlFile);
+                                fileExecutions.add(fileExecution);
+                                timestampInserter.addTimestamp(objectIdentifier, new Timestamp(sqlFile.lastModified()));
+
+                                // Don't re-create later the foreign key that we dropped if it is re-created here
+                                if ("FOREIGN_KEY_CONSTRAINT".equals(toDo.objectIdentifier().getType())) {
+                                    foreignKeys.removeIf(foreignKey -> foreignKey.getName().equals(objectIdentifier.getName()) &&
+                                                                       foreignKey.getPkTableName().getSchema().equals(objectIdentifier.getSchema()) &&
+                                                                       foreignKey.getPkTableName().getCatalog().equals(objectIdentifier.getCatalog())
+                                    );
                                 }
                             }
 
-                            @Override
-                            @SneakyThrows
-                            public void module(String catalog, String schema, String type, String name, File sqlFile) {
-                                if (name.endsWith(".sql")) {
-                                    String objectName = name.substring(0, name.length() - 4);
-                                    ObjectIdentifier objectIdentifier = new ObjectIdentifier(type, catalog, schema, objectName);
-                                    CodeTimestamps codeTimestamps = timestampInserter.getTimestamp(objectIdentifier);
-                                    // Only load if the source file is newer than the one we have executed
-                                    if (codeTimestamps == null || !DbPopUtils.isSameTimestamp(sqlFile.lastModified(), codeTimestamps.fileTimestamp().getTime())) {
-                                        UploadResult.FileExecution fileExecution = execute(statement, type, sqlFile);
-                                        fileExecutions.add(fileExecution);
-                                        timestampInserter.addTimestamp(objectIdentifier, new Timestamp(sqlFile.lastModified()));
-                                    }
+                            // Reload the base dataset. If we have dropped customers, we cannot re-enable the invoices_customers_fk without reloading the data
+                            // We must clear the cache first because it may not know about the new objects
+                            if (configurationService.getDatasetsDirectory().isDirectory()) {
+                                List<String> datasets = datasetsService.getDatasets();
+                                String datasetToLoad = datasets.contains("base") ? "base" : datasets.contains("static") ? "static" : !datasets.isEmpty() ? datasets.get(0) : null;
+                                if (datasetToLoad != null) {
+                                    configurationService.clearTargetDatabaseCache();
+                                    populateService.populate(List.of(datasetToLoad), true);
                                 }
                             }
-                        });
-                        long t1 = System.currentTimeMillis();
-                        return new UploadResult(fileExecutions, t1 - t0);
+
+                            // Recreate the dropped FKs that haven't been re-created
+                            for (ForeignKey foreignKey : foreignKeys) {
+                                targetDatabase.createForeignKey(foreignKey);
+                            }
+
+                            long t1 = System.currentTimeMillis();
+                            return new UploadResult(fileExecutions, t1 - t0);
+                        } finally {
+                            configurationService.clearTargetDatabaseCache();
+                        }
                     }
                 }
             }

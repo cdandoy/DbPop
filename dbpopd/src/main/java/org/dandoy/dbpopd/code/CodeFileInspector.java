@@ -1,5 +1,7 @@
 package org.dandoy.dbpopd.code;
 
+import org.dandoy.dbpop.database.ObjectIdentifier;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -50,8 +52,11 @@ public class CodeFileInspector {
                         for (Path filePath : entry.getValue()) {
                             String schema = filePath.getName(directoryCount + 1).toString();
                             String type = filePath.getName(directoryCount + 2).toString();
-                            String name = filePath.getName(directoryCount + 3).toString();
-                            visitor.module(catalog, schema, type, name, filePath.toFile());
+                            String filename = filePath.getName(directoryCount + 3).toString();
+                            if (filename.endsWith(".sql")) {
+                                String name = filename.substring(0, filename.length() - 4);
+                                visitor.module(filePath.toFile(), new ObjectIdentifier(type, catalog, schema, name));
+                            }
                         }
                     }
                 } catch (IOException e) {
@@ -66,6 +71,6 @@ public class CodeFileInspector {
 
         void schema(String catalog, String schema);
 
-        void module(String catalog, String schema, String type, String name, File sqlFile);
+        void module(File sqlFile, ObjectIdentifier objectIdentifier);
     }
 }

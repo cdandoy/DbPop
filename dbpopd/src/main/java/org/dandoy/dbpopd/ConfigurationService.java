@@ -132,6 +132,10 @@ public class ConfigurationService {
         return sourceDatabaseCache;
     }
 
+    public void clearTargetDatabaseCache() {
+        targetDatabaseCache = null;
+    }
+
     public synchronized DatabaseCache getTargetDatabaseCache() {
         if (targetDatabaseCache == null) {
             targetDatabaseCache = new DatabaseCache(
