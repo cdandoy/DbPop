@@ -10,13 +10,16 @@ public class SiteController {
     private final ConfigurationService configurationService;
     private final SetupService setupService;
 
-    public SiteController(ConfigurationService configurationService,SetupService setupService) {
+    public SiteController(ConfigurationService configurationService, SetupService setupService) {
         this.configurationService = configurationService;
         this.setupService = setupService;
     }
 
     @Get
     public SiteResponse site() {
+        // Clear the database cache when the main page is reloaded
+        configurationService.clearTargetDatabaseCache();
+
         return new SiteResponse(
                 configurationService.hasSourceConnection(),
                 configurationService.hasTargetConnection()
