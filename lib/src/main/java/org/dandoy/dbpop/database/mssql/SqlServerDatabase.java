@@ -800,10 +800,12 @@ public class SqlServerDatabase extends DefaultDatabase {
 
         @Override
         public void close() throws SQLException {
-            super.close();
-
-            if (identity) {
-                identityInsert(tableName, false);
+            try {
+                super.close();
+            } finally {
+                if (identity) {
+                    identityInsert(tableName, false);
+                }
             }
         }
     }
