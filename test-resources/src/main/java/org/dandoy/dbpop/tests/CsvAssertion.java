@@ -94,4 +94,9 @@ public class CsvAssertion {
                 .map(column -> row.get(columnNamesToPosition.get(column)))
                 .toList();
     }
+
+    public CsvAssertion assertRowCount(int expected) {
+        Assertions.assertEquals(expected, rows.size());
+        return this;
+    }
 }

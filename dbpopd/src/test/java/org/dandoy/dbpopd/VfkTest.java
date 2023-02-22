@@ -17,7 +17,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @MicronautTest(environments = "temp-test")
-class DbpopdTest {
+class VfkTest {
     @Inject
     PopulateService populateService;
     @Inject

@@ -49,4 +49,17 @@ public class DbPopTestUtils {
             throw new RuntimeException(e);
         }
     }
+
+    public static void createTargetTables(){
+        ConfigurationService configurationService = new ConfigurationService("../files/temp", null, null, null, false);
+        try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
+            SqlExecutor.execute(
+                    connection,
+                    "/mssql/drop.sql",
+                    "/mssql/create.sql"
+            );
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
