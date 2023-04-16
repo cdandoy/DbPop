@@ -1,6 +1,5 @@
 package org.dandoy.dbpopd.database;
 
-import io.micronaut.context.annotation.Context;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
@@ -14,9 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@SuppressWarnings("DuplicatedCode")
 @Singleton
-@Context
 @Slf4j
 public class DatabaseService {
     private final ConfigurationService configurationService;
