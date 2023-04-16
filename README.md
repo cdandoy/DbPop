@@ -20,7 +20,7 @@ application's data model.
 
 # Usage
 
-When the application is ready, open http://localhost:7104/ in your browser. 
+Start DbPop and open http://localhost:7104/ in your browser. 
 The datasets can be loaded from the main Dashboard page. The active dataset is highlighted with a subtle green border.
 
 The recommended way of delivering DbPop to the development team is by using a Docker Compose file and configuration files in your source control repository.
@@ -32,7 +32,7 @@ When DbPop starts up, it waits until the database is fully up and running then r
 
 
 A volume is defined in docker-compose.yml that lets DbPop access the datasets and installation scripts defined in your repository.
-An example is available in the [/doc/demo/](https://github.com/cdandoy/DbPop/tree/master/doc/demo) directory
+An example is available in the [/doc/demo/](https://github.com/cdandoy/DbPop/tree/master/doc/demo) directory.
 
 ```
 version: "3.9"
@@ -58,12 +58,14 @@ services:
       - ACCEPT_EULA="Y"
 ```
 
+To improved security, we recommend defining the database password using a [docker environment variable](https://docs.docker.com/compose/environment-variables/). 
+
 In this example, the tables are created using simple SQL scripts, but if your database is composed of many tables, we recommend creating a Docker image of an empty version of the database,
 the apply the database changes using  [Flyway](https://hub.docker.com/r/flyway/flyway)
 or [Liquibase](https://hub.docker.com/r/liquibase/liquibase).
 Creating an ideal development environment for your team may take time, but it will have a tremendous impact on your team's productivity.
 
-<i>The Code section of DbPop is an alternative, but it is still in development.</i>
+<i>The Code section of DbPop is an alternative to SQL scripts to create tables, but it is still in development.</i>
 
 # Datasets
 
@@ -145,4 +147,4 @@ Resetting a dataset is as simple as hitting the URL: http://localhost:7104/popul
 
 You can specify multiple datasets on the same request: http://localhost:7104/populate?dataset=base&dataset=ADV-7412
 
-You can access the API documentation here: http://localhost:7104/api-docs/
+You can access the API documentation here: http://localhost:7104/swagger-ui/
