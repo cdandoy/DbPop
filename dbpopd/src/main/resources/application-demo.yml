@@ -1,0 +1,6 @@
+micronaut:
+  server:
+    port: 8080
+dbpopd:
+  configuration:
+    path: '../doc/demo'

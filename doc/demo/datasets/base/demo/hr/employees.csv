@@ -1,0 +1,6 @@
+employee_id,employee_name,department_id,hiredate
+1,Blake,3,{{today - 3 years}}
+2,Clark,1,{{today - 2 years}}
+3,Jones,2,{{today - 6 months}}
+4,Scott,1,{{today - 2 days}}
+5,Ford,4,{{today - 3 years}}

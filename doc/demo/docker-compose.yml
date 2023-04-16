@@ -1,0 +1,32 @@
+version: "3.9"
+services:
+  dbpop:
+    image: "cdandoy/dbpop"
+    ports:
+      - "7104:7104"
+    volumes:
+      - .:/var/opt/dbpop
+    environment:
+      - SOURCE_JDBCURL=jdbc:sqlserver://mssql-source;database=tempdb;trustServerCertificate=true
+      - SOURCE_USERNAME=sa
+      - SOURCE_PASSWORD=Passw0rd
+      - TARGET_JDBCURL=jdbc:sqlserver://mssql-target;database=tempdb;trustServerCertificate=true
+      - TARGET_USERNAME=sa
+      - TARGET_PASSWORD=Passw0rd
+    depends_on:
+      - mssql-source
+      - mssql-target
+  mssql-source:
+    image: mcr.microsoft.com/mssql/server
+    ports:
+      - "2433:1433"
+    environment:
+      - SA_PASSWORD=Passw0rd
+      - ACCEPT_EULA="Y"
+  mssql-target:
+    image: mcr.microsoft.com/mssql/server
+    ports:
+      - "1433:1433"
+    environment:
+      - MSSQL_SA_PASSWORD=Passw0rd
+      - ACCEPT_EULA="Y"

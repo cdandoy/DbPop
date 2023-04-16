@@ -1,84 +1,40 @@
-
 # DbPop - The easiest way to populate your development database
 
-This utility allows you to quickly re-populate a development database to an initial state
-which opens the doors of fast and reliable functional tests.
+DbPop is an application to load seed data in a development database. The test data can be sampled from a copy of a production database using the web interface, or it can be crafted manually.
 
-DbPop supports SQL Server, PostgreSQL is supported in major releases, support for other databases will be added.
+DbPop is distributed as a Docker application. It currently only supports SQL Server, but support for other databases is on the roadmap.
 
-DbPop loads CSV files from your pre-defined datasets.<br/>
-All the datasets are under one directory which also contains a configuration file.<br/>
-Each dataset is structured like your databases: `catalog`/`schema`/`table.csv`
+<!--suppress CheckImageSize -->
+<img height="640px" src="./doc/dashboard.png" alt="DbPop web interface"/>
 
-For example:
+# Seed data
+
+The use of seed data is a best practice in application development.
+It provides many benefits, including faster development, more accurate testing, and easier maintenance of the
+application's data model.
+
+1. Faster development: Seed data allows developers to set up a new system or application quickly and efficiently. It eliminates the need to manually create test data, which can be time-consuming and error-prone.
+2. Consistent data: Seed data ensures that the database contains consistent and accurate data. This is important when testing the application's behavior with real-world data, as it provides a consistent starting point for testing.
+3. Easier maintenance: Seed data can be used to update the application's data model or schema over time. This is useful for adding new features or modifying existing ones, as it ensures that the database always contains the necessary data.
+4. Improved testing: Seed data can help developers create more comprehensive and effective tests. By using realistic data, developers can more accurately simulate the behavior of the application in a real-world scenario.
+
+# Usage
+
+When the application is ready, open http://localhost:7104/ in your browser. 
+The datasets can be loaded from the main Dashboard page. The active dataset is highlighted with a subtle green border.
+
+The recommended way of delivering DbPop to the development team is by using a Docker Compose file and configuration files in your source control repository.
+A [Docker Compose](https://docs.docker.com/compose/) file is used to start the development database and the DbPop application.
+The datasets and setup files are also under source control and follow the lifecycle of application development.
+For example, new tests added in a feature branch may be based on new datasets and will eventually be merged into the main branch.
+
+When DbPop starts up, it waits until the database is fully up and running then runs the setup scripts, and loads the static and base datasets.
+
+
+A volume is defined in docker-compose.yml that lets DbPop access the datasets and installation scripts defined in your repository.
+An example is available in the [/doc/demo/](https://github.com/cdandoy/DbPop/tree/master/doc/demo) directory
 
 ```
-+-- testdata
-   +-- setup
-   |   |-- pre-install.sh                       -- Optional shell script executed before install.sql the first time the container runs.
-   |   |-- *.sql                                -- SQL Script(s) executed the first time the container runs.
-   |   |-- post-install.sh                      -- Optional shell script executed after install.sql the first time the container runs.
-   |   +-- startup.sh                           -- Optional shell script to execute after the setup, every time the container runs.
-   |
-   |-- datasets
-   |   |-- static                               - The static dataset is only loaded once per session
-   |   |    +-- AdventureWorks
-   |   |         +-- HumanResources
-   |   |              |-- CreditCardTypes.csv
-   |   |              +-- Offices.csv
-   |   |
-   |   |-- base                                 - The base dataset is always reloaded
-   |   |    +-- AdventureWorks
-   |   |         +-- HumanResources
-   |   |              |-- Department.csv                           
-   |   |              |-- Employee.csv                     
-   |   |              +-- Shift.csv              
-   |   |              
-   |   +-- ADV-7412                             - test data specific to ticket ADV-7412
-   |        +-- AdventureWorks
-   |             +-- HumanResources
-   |                  +-- Employee.csv
-   |    
-   +-- dbpop.properties
-```
-
-There are two special datasets:
-* **static**: This dataset is only loaded once per session.<br/>
-  It should contain the data that is never updated by your application.<br/>
-  This is where you would typically store lookup data. The static dataset cannot be loaded explicitely.
-* **base**: This dataset is always reloaded first when you load another dataset.<br/>
-  It should contain data that you want to always be available and that you want to build upon.<br/>
-  You may want for example to always have one customer, with one order and one invoice and another dataset could complete that data with a
-  return to test the processing of returns.<br/>
-  The base dataset can be loaded explicitely. Smaller applications may only need a base dataset. 
-
-In addition to the two special datasets, this example shows a dataset named ADV-7412, which would be the test data necessary to 
-reproduce a corresponding JIRA ticket.
-
-### pre-install.sh
-All three install files (`pre-install.sh`, `*.sql` and `post-install.sh`) are only executed the very first the container starts.
-### *.sql
-The optional *.sql file(s) can be used to set up your database, creating the tables, indexes, ...</br>
-All files matching the pattern are executed in alphabetical order.
-This would for example allow having the following files:
-* `install_01_create_databases.sql`
-* `install_02_create_tables.sql`
-* `install_03_create_indexes.sql`
-### post-install.sh
-This would typically install and run migration scripts like [FlywayDB](https://flywaydb.org/) or [Liquibase](https://www.liquibase.org/).
-
-### startup.sh
-This shell script is executed every time the container is started.
-
-## Docker Compose
-The easiest way to set up DbPop is by using Docker Compose.
-
-The test data should be stored on your local host, typically under source control.<br/>
-A volume will be used to let the DbPop container access the test data.<br/>
-Your database will also run in a docker image.
-
-Example of docker-compose.yml:
-```dockerfile
 version: "3.9"
 services:
   dbpop:
@@ -86,36 +42,102 @@ services:
     ports:
       - "7104:7104"
     volumes:
-      - c:/git/myapp/dbpop:/var/opt/dbpop
+      - .:/var/opt/dbpop
     environment:
-      - TARGET_JDBCURL=jdbc:sqlserver://mssql;database=tempdb;trustServerCertificate=true
+      - TARGET_JDBCURL=jdbc:sqlserver://mssql-target;database=tempdb;trustServerCertificate=true
       - TARGET_USERNAME=sa
-      - TARGET_PASSWORD=tiger
-#     - SOURCE_JDBCURL=jdbc:sqlserver://qa-db.example.com;database=tempdb;trustServerCertificate=true
-#     - SOURCE_USERNAME=sa
-#     - SOURCE_PASSWORD=tiger
+      - TARGET_PASSWORD=Passw0rd
     depends_on:
-      - mssql
-  mssql:
+      - mssql-target
+  mssql-target:
     image: mcr.microsoft.com/mssql/server
     ports:
       - "1433:1433"
     environment:
-      - SA_PASSWORD=tiger
+      - MSSQL_SA_PASSWORD=Passw0rd
       - ACCEPT_EULA="Y"
 ```
 
-* `volumes`: the directory where the CSV files are stored.
-* `TARGET_JDBCURL`, `TARGET_USERNAME`, `TARGET_PASSWORD`: How to connect to your test database.
-* `SOURCE_JDBCURL`, `SOURCE_USERNAME`, `SOURCE_PASSWORD`: If you have a copy of your production database, DbPop can help 
-you create the CSV files. In this example, we have commented out the SOURCE variables but when a source database is available, 
-the interface shows additional buttons that allow adding data to the datasets.<br/>
-Please, do not connect DbPop to your production database.
+In this example, the tables are created using simple SQL scripts, but if your database is composed of many tables, we recommend creating a Docker image of an empty version of the database,
+the apply the database changes using  [Flyway](https://hub.docker.com/r/flyway/flyway)
+or [Liquibase](https://hub.docker.com/r/liquibase/liquibase).
+Creating an ideal development environment for your team may take time, but it will have a tremendous impact on your team's productivity.
 
-Once DbPop is started, open this link: http://localhost:7104 .<br/>
-You should now see the datasets you have created, and you can load them by clicking the button on the left of the name.
+<i>The Code section of DbPop is an alternative, but it is still in development.</i>
+
+# Datasets
+
+The test data is structured in datasets and stored in CSV files.
+The file structure maps to the database table qualified names: `/dataset/catalog/schema/table.csv`
+
+Before to load a dataset, DbPop deletes the data from all the tables defined in any of the datasets. If a table must be seeded empty, just create an empty CSV file. 
+
+There are two special datasets:
+
+* **static**: This dataset is only loaded once per session.<br/>
+  It should contain the data that is never updated by your application.<br/>
+  This is where you would typically store lookup data. The static dataset cannot be loaded explicitely.
+* **base**: This dataset is always reloaded first when you load another dataset.<br/>
+  It should contain data that you want to always be available and that you want to build upon.<br/>
+  You may want for example to always have one customer, with one order and one invoice and another dataset could complete that data with a
+  return to test the processing of returns.<br/>
+  The base dataset can be loaded explicitely. Smaller applications may only need a base dataset.
+
+In addition to the two special datasets, this example shows two custom datasets:
+The example below shows the file structure with a static and base dataset as well as two custom datasets.
+
+```
++-- datasets
+    |-- static                               - The static dataset is only loaded once per session
+    |    +-- demo
+    |         +-- hr
+    |              +-- offices.csv
+    |
+    |-- base                                 - The base dataset is always reloaded
+    |    +-- demo
+    |         +-- hr
+    |              |-- departments.csv
+    |              +-- employees.csv
+    |              
+    +-- performance                          - Example of a custom dataset
+    |    +-- demo
+    |         +-- hr
+    |              |-- departments.csv
+    |              +-- employees.csv
+    +-- test-extended-ascii                 - Example of a custom dataset
+         +-- demo
+              +-- hr
+                   +-- employees.csv
+```
+
+## Date Expressions
+Date columns can be populated using [ISO 8601](https://www.w3.org/TR/NOTE-datetime) format or using expressions surrounded by double curly braces.<br/>
+Examples of valid expressions: `{{now}}`, `{{today}}`, `{{yesterday}}`, `{{now - 1 hour}}`, `{{today - 3 days}}`, ...
+
+# Installation Scripts
+
+Scripts can be stored in the `/setup/`directory and will be executed when the application starts.
+The scripts are shell scripts ([ash](https://linux.die.net/man/1/ash)) or SQL files.
+When the installation script complete successfully, the file `/setup/install-complete.txt` is created.
+If that file exists, the installtion scripts are no longer executed, except for `startup.sh` which is always executed at startup.
+
+* `pre-install.sh`: Shell script executed before the SQL files.
+* `*.sql`: SQL files are executed in alphabetical order.
+* `post-install.sh`: Shell script executed after the SQL files.
+* `startup.sh`: Shell script executed everytime DbPop starts.
+
+An example of installation scripts is available in the [/doc/demo/](https://github.com/cdandoy/DbPop/tree/master/doc/demo) directory
+
+```
++-- setup
+    |-- pre-install.sh
+    |-- setup_01_create_database.sql
+    |-- setup_02_create_tables.sql
+    +-- post-install.sh
+```
 
 ## REST API
+
 While it is easier for a developer to use the user interface to reload the data during development, you may want to
 automate the test using the REST API.
 

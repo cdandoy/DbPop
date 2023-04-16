@@ -1,0 +1,2 @@
+employee_id,employee_name,department_id,hiredate
+100,Cédric,3,{{today}}

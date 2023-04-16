@@ -1,0 +1,7 @@
+CREATE DATABASE demo
+GO
+USE demo
+GO
+CREATE SCHEMA hr
+GO
+
