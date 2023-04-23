@@ -6,7 +6,7 @@ import {useLocalStorage} from "usehooks-ts";
 import SelectTableDependenciesComponent from "../SelectTableDependenciesComponent";
 import {TableName} from "../../../models/TableName";
 import PageHeader from "../../pageheader/PageHeader";
-import bulk_download from "../bulk_download.png";
+import bulk_download from "./source_bulk.png";
 
 export default function DownloadBulkComponent() {
     const [schema, setSchema] = useLocalStorage("last-schema", "")

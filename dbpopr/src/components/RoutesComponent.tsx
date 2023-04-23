@@ -2,7 +2,7 @@ import {Route, Routes} from "react-router-dom";
 import Datasets from "./datasets/Datasets";
 import DownloadComponent from "./download/DownloadComponent";
 import DownloadBulkComponent from "./download/source_bulk/DownloadBulkComponent";
-import StructuredDownloadComponent from "./download/structured/StructuredDownloadComponent";
+import StructuredDownloadComponent from "./download/source_structured/StructuredDownloadComponent";
 import VirtualFksComponent from "./vfk/VirtualFksComponent";
 import EditVirtualFkComponent from "./vfk/EditVirtualFkComponent";
 import AddVirtualFkComponent from "./vfk/AddVirtualFkComponent";
@@ -26,12 +26,12 @@ export default function RoutesComponent() {
 
             <Route path="/download" element=<DownloadComponent/>/>
             {siteResponse.hasSource && <>
-                <Route path="/download/structured" element=<StructuredDownloadComponent/>/>
-                <Route path="/download/bulk" element=<DownloadBulkComponent/>/>
-                <Route path="/download/full" element=<DownloadSourceFullComponent/>/>
+                <Route path="/download/source/structured" element=<StructuredDownloadComponent/>/>
+                <Route path="/download/source/bulk" element=<DownloadBulkComponent/>/>
+                <Route path="/download/source/full" element=<DownloadSourceFullComponent/>/>
             </>}
             {siteResponse.hasTarget && <>
-                <Route path="/download/target" element=<DownloadTargetFullComponent/>/>
+                <Route path="/download/target/full" element=<DownloadTargetFullComponent/>/>
             </>}
 
             <Route path="/code" element=<CodeComponent/>/>

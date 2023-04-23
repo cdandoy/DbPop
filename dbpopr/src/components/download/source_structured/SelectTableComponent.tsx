@@ -37,11 +37,6 @@ export default function SelectTableComponent({
         <div id={"structured-select-root"}>
             <div className={"mt-3 mb-3 button-bar"}>
                 <div className={"btn-group"}>
-                    <NavLink to={"/download/"} className={"btn btn-primary"}>
-                        <i className={"fa fa-arrow-left"}/>
-                        &nbsp;
-                        Back
-                    </NavLink>
                     <button className={"btn btn-primary"}
                             disabled={tableName == null}
                             onClick={() => setPage("dependencies")}>

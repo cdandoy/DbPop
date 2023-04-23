@@ -3,7 +3,7 @@ import LoadingOverlay from "../../utils/LoadingOverlay";
 import PageHeader from "../../pageheader/PageHeader";
 import {DownloadResponse} from "../../../models/DownloadResponse";
 import useDatasets from "../../utils/useDatasets";
-import target_full from "../target_full.png";
+import target_full from "./target_full.png";
 import axios, {AxiosResponse} from "axios";
 import {Dependency} from "../../../models/Dependency";
 import {Alert} from "react-bootstrap";
@@ -68,8 +68,8 @@ export default function DownloadTargetFullComponent() {
 
     return <div id={"download-target"}>
         <LoadingOverlay active={loading || loadingDatasets}/>
-        <PageHeader title={"Full Download"}
-                    subtitle={"Download a complete database."}
+        <PageHeader title={"Full Target Download"}
+                    subtitle={"Download the target database."}
                     tool={<img src={target_full} style={{width: "20em"}} alt={"full download"}/>}/>
         {!downloadResponse && <DownloadFullInput error={error}/>}
         {downloadResponse && <DownloadResultsComponent downloadResponse={downloadResponse}/>}

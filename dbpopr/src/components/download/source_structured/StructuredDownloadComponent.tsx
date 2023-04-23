@@ -13,7 +13,7 @@ import dependenciesApi from "../../../api/dependenciesApi";
 import {executeDownload} from "../../../api/executeDownload";
 import useDatasets from "../../utils/useDatasets";
 import PageHeader from "../../pageheader/PageHeader";
-import structured_download from "../structured_download.png";
+import structured_download from "./source_structured.png";
 
 export default function StructuredDownloadComponent() {
     const [downloadResponse, setDownloadResponse] = useState<DownloadResponse | undefined>();

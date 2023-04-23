@@ -2,10 +2,10 @@ import React, {useContext} from "react";
 import PageHeader from "../pageheader/PageHeader";
 import {NavLink} from "react-router-dom";
 import './DownloadComponent.scss'
-import structured_download from "./structured_download.png"
-import bulk_download from "./bulk_download.png"
-import target_full from "./target_full.png"
-import source_full from "./source_full.png"
+import structured_download from "./source_structured/source_structured.png"
+import bulk_download from "./source_bulk/source_bulk.png"
+import target_full from "./target_full/target_full.png"
+import source_full from "./source_full/source_full.png"
 import {SiteContext} from "../app/App";
 
 function Section({title, description, to, img}: {
@@ -44,16 +44,16 @@ export default function DownloadComponent() {
             <>
                 <Section title={"Structured Download"}
                          description={"Select multiple tables and the dependencies established based database constraints, and filter the data you want to download."}
-                         to={"/download/structured"}
+                         to={"/download/source/structured"}
                          img={structured_download}/>
 
                 <Section title={"Bulk Download"}
                          description={"Select multiple tables and download the full content."}
-                         to={"/download/bulk"}
+                         to={"/download/source/bulk"}
                          img={bulk_download}/>
                 <Section title={"Full Download"}
                          description={"Download a complete database. Use this option if you already have a seeded test database that you want to convert to DbPop."}
-                         to={"/download/full"}
+                         to={"/download/source/full"}
                          img={source_full}/>
             </>
         )}
@@ -61,10 +61,10 @@ export default function DownloadComponent() {
         {siteResponse?.hasSource && siteResponse?.hasTarget && <hr/>}
 
         {siteResponse?.hasTarget && (
-            <Section title={"Full Download"}
+            <Section title={"Full Target Download"}
                      description={<>Dump the full content of your TARGET database back to CSV files.<br/>
                          This might be useful if you use your application to generate additional data and want to save the result to CSV files.</>}
-                     to={"/download/target"}
+                     to={"/download/target/full"}
                      img={target_full}
             />
         )}
