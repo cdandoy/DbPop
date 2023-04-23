@@ -4,7 +4,6 @@ import {TableInfo} from "../../../api/content";
 import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
 import {Plural} from "../../../utils/DbPopUtils";
 import SelectTableDependenciesComponent from "../SelectTableDependenciesComponent";
-import {NavLink} from "react-router-dom";
 
 export default function SelectTableComponent({
                                                  tableInfos,
