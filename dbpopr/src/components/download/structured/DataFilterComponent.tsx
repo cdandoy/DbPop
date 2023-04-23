@@ -111,7 +111,6 @@ export default function DataFilterComponent({
     }, [dependency, dependencyQueries, previewResponse])
 
     return <div id={"data-filter"}>
-        <PageHeader title={"Structured Download"} subtitle={"Filter the data"} tool={<img src={structured_download} style={{width: "20em"}} alt={"image"}/>}/>
         {editDependencyQuery == null && <>
             <div className={"mt-3 mb-3 button-bar"}>
                 <div className={"btn-group"}>

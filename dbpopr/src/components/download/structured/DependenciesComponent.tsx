@@ -76,7 +76,6 @@ export default function DependenciesComponent({
 
     return <>
         <div id={"structured-select-dependencies"}>
-            <PageHeader title={"Structured Download"} subtitle={"Select related tables"} tool={<img src={structured_download} style={{width: "20em"}} alt={"image"}/>}/>
             <div className={"mt-3 mb-3 button-bar"}>
                 <div className={"btn-group"}>
                     <button className={"btn btn-primary"} onClick={onBack}>

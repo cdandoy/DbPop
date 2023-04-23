@@ -7,11 +7,13 @@ import {Dependency} from "../../../models/Dependency";
 import './StructuredDownloadComponent.scss'
 import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
 import DataFilterComponent, {DependencyQuery} from "./DataFilterComponent";
-import DownloadResultsComponent from "./DownloadResultsComponent";
+import DownloadResultsComponent from "../DownloadResultsComponent";
 import {DownloadResponse} from "../../../models/DownloadResponse";
 import dependenciesApi from "../../../api/dependenciesApi";
 import {executeDownload} from "../../../api/executeDownload";
 import useDatasets from "../../utils/useDatasets";
+import PageHeader from "../../pageheader/PageHeader";
+import structured_download from "../structured_download.png";
 
 export default function StructuredDownloadComponent() {
     const [downloadResponse, setDownloadResponse] = useState<DownloadResponse | undefined>();
@@ -149,6 +151,9 @@ export default function StructuredDownloadComponent() {
 
     return <>
         <LoadingOverlay active={loadingDatasets || loadingContent || loadingDependencies || loadingDataFilter || loadingCsv}/>
+        <PageHeader title={"Structured Download"}
+                    subtitle={"Select the root table"}
+                    tool={<img src={structured_download} style={{width: "20em"}} alt={"structured download"}/>}/>
         {page === "baseTable" && (
             <SelectTableComponent
                 tableInfos={tableInfos}

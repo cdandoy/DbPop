@@ -1,6 +1,5 @@
 import React from "react";
 import {DownloadResponse} from "../../../models/DownloadResponse";
-import PageHeader from "../../pageheader/PageHeader";
 import {tableNameToFqName} from "../../../models/TableName";
 import {Plural} from "../../../utils/DbPopUtils";
 
@@ -9,7 +8,6 @@ export default function DownloadResultComponent({downloadResponse, setDownloadRe
     setDownloadResponse: ((p: DownloadResponse | null) => void);
 }) {
     return <>
-        <PageHeader title={"Bulk Download"} subtitle={"Download Individual Tables"}/>
         <div>
             <table className={"table table-hover"}>
                 <thead>
@@ -27,10 +25,10 @@ export default function DownloadResultComponent({downloadResponse, setDownloadRe
                 ))}
                 </tbody>
                 <tfoot>
-                    <tr>
-                        <th>Total</th>
-                        <th>{Plural(downloadResponse.rowCount, "row")}</th>
-                    </tr>
+                <tr>
+                    <th>Total</th>
+                    <th>{Plural(downloadResponse.rowCount, "row")}</th>
+                </tr>
                 </tfoot>
             </table>
         </div>

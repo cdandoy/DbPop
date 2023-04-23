@@ -4,7 +4,8 @@ import {NavLink} from "react-router-dom";
 import './DownloadComponent.scss'
 import structured_download from "./structured_download.png"
 import bulk_download from "./bulk_download.png"
-import full_download from "./full_download.png"
+import target_full from "./target_full.png"
+import source_full from "./source_full.png"
 import {SiteContext} from "../app/App";
 
 function Section({title, description, to, img}: {
@@ -45,14 +46,16 @@ export default function DownloadComponent() {
                          description={"Select multiple tables and the dependencies established based database constraints, and filter the data you want to download."}
                          to={"/download/structured"}
                          img={structured_download}/>
-            </>
-        )}
 
-        {siteResponse?.hasSource && (
-            <Section title={"Bulk Download"}
-                     description={"Select multiple tables and download the full content."}
-                     to={"/download/bulk"}
-                     img={bulk_download}/>
+                <Section title={"Bulk Download"}
+                         description={"Select multiple tables and download the full content."}
+                         to={"/download/bulk"}
+                         img={bulk_download}/>
+                <Section title={"Full Download"}
+                         description={"Download a complete database. Use this option if you already have a seeded test database that you want to convert to DbPop."}
+                         to={"/download/full"}
+                         img={source_full}/>
+            </>
         )}
 
         {siteResponse?.hasSource && siteResponse?.hasTarget && <hr/>}
@@ -62,7 +65,7 @@ export default function DownloadComponent() {
                      description={<>Dump the full content of your TARGET database back to CSV files.<br/>
                          This might be useful if you use your application to generate additional data and want to save the result to CSV files.</>}
                      to={"/download/target"}
-                     img={full_download}
+                     img={target_full}
             />
         )}
     </div>;

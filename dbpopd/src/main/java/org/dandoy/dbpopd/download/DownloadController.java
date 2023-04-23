@@ -114,6 +114,45 @@ public class DownloadController {
         );
     }
 
+    record FullDownloadRequest(String dataset) {}
+
+    @Post("/source")
+    public DownloadResponse downloadSource(@Body FullDownloadRequest request) {
+        ExecutionContext executionContext = new ExecutionContext();
+        try (Database sourceDatabase = configurationService.createSourceDatabase()) {
+            for (String catalog : sourceDatabase.getCatalogs()) {
+                for (String schema : sourceDatabase.getSchemas(catalog)) {
+                    for (TableName tableName : sourceDatabase.getTableNames(catalog, schema)) {
+                        try (TableDownloader tableDownloader = TableDownloader.builder()
+                                .setDatabase(sourceDatabase)
+                                .setDatasetsDirectory(configurationService.getDatasetsDirectory())
+                                .setDataset(request.dataset())
+                                .setTableName(tableName)
+                                .setExecutionMode(ExecutionMode.SAVE)
+                                .setExecutionContext(executionContext)
+                                .build()) {
+                            executionContext.tableAdded(tableName);
+                            tableDownloader.download();
+                        }
+                    }
+                }
+            }
+        }
+
+        // If the target database contains all the tables we have downloaded
+        if (configurationService.hasTargetConnection()) {
+            if (datasetsService.canPopulate(request.dataset())) {
+                populateService.populate(List.of(request.dataset));
+            }
+        }
+
+        return new DownloadResponse(
+                executionContext.getRowCounts(),
+                executionContext.getRowsSkipped(),
+                !executionContext.keepRunning()
+        );
+    }
+
     @Post("/target")
     public DownloadResponse downloadTarget(@Body DownloadTargetBody downloadTargetBody) {
         ExecutionContext executionContext = new ExecutionContext();

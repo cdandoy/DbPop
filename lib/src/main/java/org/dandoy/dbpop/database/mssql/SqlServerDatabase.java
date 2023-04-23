@@ -47,7 +47,13 @@ public class SqlServerDatabase extends DefaultDatabase {
     public Collection<TableName> getTableNames(String catalog, String schema) {
         try {
             use(catalog);
-            try (PreparedStatement preparedStatement = getConnection().prepareStatement("SELECT s.name AS schema_name, t.name AS table_name FROM sys.schemas s JOIN sys.tables t ON s.schema_id = t.schema_id WHERE s.name = ?")) {
+            try (PreparedStatement preparedStatement = getConnection().prepareStatement("""
+                    SELECT s.name AS schema_name, t.name AS table_name
+                    FROM sys.schemas s
+                             JOIN sys.tables t ON s.schema_id = t.schema_id
+                    WHERE s.name = ?
+                      AND t.is_ms_shipped = 0
+                    """)) {
                 preparedStatement.setString(1, schema);
                 List<TableName> tableNames = new ArrayList<>();
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {

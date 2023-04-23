@@ -1,17 +1,12 @@
 import React from "react";
-import {DownloadResponse} from "../../../models/DownloadResponse";
-import PageHeader from "../../pageheader/PageHeader";
-import {tableNameToFqName} from "../../../models/TableName";
-import {Plural} from "../../../utils/DbPopUtils";
-import {NavLink} from "react-router-dom";
-import structured_download from "../structured_download.png";
+import {DownloadResponse} from "../../models/DownloadResponse";
+import {tableNameToFqName} from "../../models/TableName";
+import {Plural} from "../../utils/DbPopUtils";
 
 export default function DownloadResultsComponent({downloadResponse}: {
     downloadResponse: DownloadResponse
 }) {
     return <>
-        <PageHeader title={"Structured Download"} subtitle={"Your data has been dowbloaded"} tool={<img src={structured_download} style={{width: "20em"}} alt={"image"}/>}/>
-
         <div className={"table-container"}>
             <table className={"table table-hover"}>
                 <thead>
@@ -46,12 +41,6 @@ export default function DownloadResultsComponent({downloadResponse}: {
                 </tr>
                 </tfoot>
             </table>
-        </div>
-
-        <div className={"mt-3 mb-3 button-bar"}>
-            <NavLink to={"/"} className={"btn btn-primary"}>
-                Close
-            </NavLink>
         </div>
     </>
 }

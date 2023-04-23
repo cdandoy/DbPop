@@ -37,7 +37,6 @@ export default function SelectTableComponent({
 
     return <>
         <div id={"structured-select-root"}>
-            <PageHeader title={"Structured Download"} subtitle={"Select the root table"} tool={<img src={structured_download} style={{width: "20em"}} alt={"image"}/>}/>
             <div className={"mt-3 mb-3 button-bar"}>
                 <div className={"btn-group"}>
                     <NavLink to={"/download/"} className={"btn btn-primary"}>

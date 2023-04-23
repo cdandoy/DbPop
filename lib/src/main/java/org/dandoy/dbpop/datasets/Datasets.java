@@ -28,10 +28,13 @@ public class Datasets {
     }
 
     public static List<Dataset> getDatasets(File directory) {
-        return StopWatch.record("DatasetUtils.getDatasets", () -> {
+        List<Dataset> datasetList = StopWatch.record("DatasetUtils.getDatasets", () -> {
             List<Dataset> datasets = new ArrayList<>();
             File[] datasetFiles = directory.listFiles();
-            if (datasetFiles == null) throw new RuntimeException("Invalid path " + directory);
+            if (datasetFiles == null) {
+                if (directory.exists()) throw new RuntimeException("Invalid path " + directory);
+                else return Collections.emptyList();
+            }
             for (File datasetFile : datasetFiles) {
                 Dataset dataset = getDataset(datasetFile);
                 if (dataset != null) {
@@ -40,6 +43,18 @@ public class Datasets {
             }
             return datasets;
         });
+
+        if (getByName(datasetList, BASE).isEmpty()) datasetList.add(0, new Dataset(BASE, Collections.emptyList()));
+        if (getByName(datasetList, STATIC).isEmpty()) datasetList.add(0, new Dataset(STATIC, Collections.emptyList()));
+
+        return datasetList;
+    }
+
+    private static Optional<Dataset> getByName(Collection<Dataset> datasets, String name) {
+        for (Dataset dataset : datasets) {
+            if (name.equals(dataset.getName())) return Optional.of(dataset);
+        }
+        return Optional.empty();
     }
 
     private static Dataset getDataset(File datasetFile) {
