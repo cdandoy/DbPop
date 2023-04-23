@@ -1,9 +1,7 @@
 import React from "react"
-import PageHeader from "../../pageheader/PageHeader";
 import {Dependency, searchDependency} from "../../../models/Dependency";
 import {tableNameToFqName} from "../../../models/TableName";
 import {Plural} from "../../../utils/DbPopUtils";
-import structured_download from "../structured_download.png";
 
 export interface DependenciesFilter {
     required: boolean;

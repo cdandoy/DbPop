@@ -1,10 +1,8 @@
 import React, {useEffect, useState} from "react"
-import PageHeader from "../../pageheader/PageHeader";
 import {Dependency, Query} from "../../../models/Dependency";
 import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
 import EditDependency from "./EditDependency";
 import {DownloadResponse} from "../../../models/DownloadResponse";
-import structured_download from "../structured_download.png";
 
 export interface DependencyQuery {
     tableName: TableName,

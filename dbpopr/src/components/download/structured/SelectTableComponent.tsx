@@ -1,12 +1,10 @@
 import React, {useState} from "react"
-import PageHeader from "../../pageheader/PageHeader";
 import StructuredFilterComponent from "./StructuredFilterComponent";
 import {TableInfo} from "../../../api/content";
 import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
 import {Plural} from "../../../utils/DbPopUtils";
 import SelectTableDependenciesComponent from "../SelectTableDependenciesComponent";
 import {NavLink} from "react-router-dom";
-import structured_download from "../structured_download.png";
 
 export default function SelectTableComponent({
                                                  tableInfos,
