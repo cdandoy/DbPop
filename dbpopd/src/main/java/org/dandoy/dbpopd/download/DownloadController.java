@@ -68,7 +68,7 @@ public class DownloadController {
                     executionMode,
                     downloadRequest.getMaxRows()
             );
-            if (!downloadRequest.isDryRun()) {
+            if (configurationService.hasTargetConnection() && !downloadRequest.isDryRun()) {
                 if (datasetsService.canPopulate(downloadRequest.getDataset())) {
                     populateService.populate(List.of(downloadRequest.getDataset()));
                 }
@@ -101,8 +101,10 @@ public class DownloadController {
         }
 
         // If the target database contains all the tables we have downloaded
-        if (datasetsService.canPopulate(downloadBulkBody.dataset())) {
-            populateService.populate(List.of(downloadBulkBody.dataset));
+        if (configurationService.hasTargetConnection()) {
+            if (datasetsService.canPopulate(downloadBulkBody.dataset())) {
+                populateService.populate(List.of(downloadBulkBody.dataset));
+            }
         }
 
         return new DownloadResponse(
@@ -152,7 +154,7 @@ public class DownloadController {
                         .setExecutionContext(executionContext)
                         .setTableExpressions(tableNamesToTableExpressions.get(tableName))
                         .build()) {
-                    
+
                     executionContext.tableAdded(tableName);
                     tableDownloader.download();
                 }

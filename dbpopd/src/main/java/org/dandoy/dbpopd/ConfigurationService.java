@@ -132,6 +132,10 @@ public class ConfigurationService {
         return sourceDatabaseCache;
     }
 
+    public void clearSourceDatabaseCache() {
+        sourceDatabaseCache = null;
+    }
+
     public void clearTargetDatabaseCache() {
         targetDatabaseCache = null;
     }

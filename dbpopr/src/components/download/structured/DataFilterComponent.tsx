@@ -216,7 +216,7 @@ export default function DataFilterComponent({
                                             queries: dataFilterRow.queries || []
                                         })
                                     }}>
-                                        <i className={"fa fa-edit"}/>
+                                        <i className={"fa fa-filter"}/>
                                     </button>
                                     <span className={"filters"}>
                                     {dataFilterRow.queries && (

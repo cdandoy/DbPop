@@ -1,5 +1,6 @@
-import React, {useState} from "react";
+import React, {useContext, useState} from "react";
 import './Sidebar.scss'
+import {SiteContext} from "../app/App";
 
 // See https://www.codinglabweb.com/2022/01/sidebar-menu-in-html-css-javascript.html
 export default function Sidebar({title1, title2, search, children, menu, bottomMenu}: {
@@ -10,6 +11,7 @@ export default function Sidebar({title1, title2, search, children, menu, bottomM
     menu?: React.ReactNode;
     bottomMenu?: React.ReactNode;
 }) {
+    const siteResponse = useContext(SiteContext);
     const [closed, setClosed] = useState(false);
 
     return <>
@@ -23,6 +25,17 @@ export default function Sidebar({title1, title2, search, children, menu, bottomM
                         <div className="text logo-text">
                             <span className="title1">{title1}</span>
                             <span className="title2">{title2}</span>
+                            <span className="db-status">
+                                <i className={"fa fa-circle fa-xs"}
+                                   style={{color: siteResponse.hasSource ? 'green' : 'default'}}
+                                   title={"Source Database"}
+                                ></i>
+                                &nbsp;
+                                <i className={"fa fa-circle fa-xs"}
+                                   style={{color: siteResponse.hasTarget ? 'green' : 'default'}}
+                                   title={"Target Database"}
+                                ></i>
+                            </span>
                         </div>
                     </div>
 

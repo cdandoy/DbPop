@@ -15,6 +15,7 @@ public class SiteController {
     @Get
     public SiteResponse site() {
         // Clear the database cache when the main page is reloaded
+        configurationService.clearSourceDatabaseCache();
         configurationService.clearTargetDatabaseCache();
 
         return new SiteResponse(

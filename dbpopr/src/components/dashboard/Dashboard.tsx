@@ -1,11 +1,13 @@
-import React, {useEffect, useState} from "react";
+import React, {useContext, useEffect, useState} from "react";
 import {Dataset} from "./Dataset";
 import {datasetContent, DatasetContentResponse} from "../../api/datasetContent";
 import LoadingOverlay from "../utils/LoadingOverlay";
 import './Dashboard.scss'
 import {populate} from "../../api/Populate";
+import {SiteContext} from "../app/App";
 
 export default function Dashboard() {
+    const siteResponse = useContext(SiteContext);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [contentResponse, setContentResponse] = useState<DatasetContentResponse | null>(null);
@@ -40,19 +42,24 @@ export default function Dashboard() {
                 </div>
                 <p className="lead">The easiest way to populate your development database.</p>
             </div>
-            <div className="datasets p-3">
-                {contentResponse.datasetContents
-                    .filter(datasetContent => datasetContent.failureCauses || "static" !== datasetContent.name)
-                    .map(datasetContent => (
-                        <div key={datasetContent.name}>
-                            <Dataset
-                                datasetContent={datasetContent}
-                                loadingDataset={loadingDataset}
-                                loadDataset={loadDataset}
-                            />
-                        </div>
-                    ))}
-            </div>
+            {siteResponse.hasTarget && (
+                <div className="datasets p-3">
+                    {contentResponse.datasetContents
+                        .filter(datasetContent => datasetContent.failureCauses || "static" !== datasetContent.name)
+                        .map(datasetContent => (
+                            <div key={datasetContent.name}>
+                                <Dataset
+                                    datasetContent={datasetContent}
+                                    loadingDataset={loadingDataset}
+                                    loadDataset={loadDataset}
+                                />
+                            </div>
+                        ))}
+                </div>
+            )}
+            {siteResponse.hasTarget || (
+                <h2>No target database defined</h2>
+            )}
         </div>
     )
 }

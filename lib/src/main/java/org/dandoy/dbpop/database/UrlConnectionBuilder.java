@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 
 @Slf4j
 public class UrlConnectionBuilder implements ConnectionBuilder {
-    public static final int WAIT_COUNT = 300;    // Wait N times for a connection
+    public static final int WAIT_COUNT = 30;    // Wait N times for a connection
     public static final int WAIT_TIME = 1000;   // Wait N millis between each retry
     @Getter
     private final String url;
@@ -56,7 +56,8 @@ public class UrlConnectionBuilder implements ConnectionBuilder {
         if (portGroup != null) {
             port = Integer.parseInt(portGroup);
         }
-        log.info("Waiting for the database to respond");
+        log.debug("Waiting for the database to respond");
+        Exception lastException = null;
         for (int i = 0; i < WAIT_COUNT; i++) {
             try {
                 try (Socket socket = new Socket(host, port)) {
@@ -64,7 +65,8 @@ public class UrlConnectionBuilder implements ConnectionBuilder {
                         return;
                     }
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                lastException = e;
             }
             try {
                 Thread.sleep(WAIT_TIME);
@@ -72,7 +74,7 @@ public class UrlConnectionBuilder implements ConnectionBuilder {
                 throw new RuntimeException(e);
             }
         }
-        throw new RuntimeException("Failed to connect to the database socket");
+        throw new RuntimeException("Failed to connect to " + url, lastException);
     }
 
     /**
@@ -84,7 +86,7 @@ public class UrlConnectionBuilder implements ConnectionBuilder {
             logger.setLevel(Level.OFF);
             if (!hasWaited) {
                 DriverManager.setLoginTimeout(5);
-                log.info("Waiting for the database to connect");
+                log.debug("Waiting for the database to connect");
                 // Try several times, wait between each
                 for (int i = 0; i < WAIT_COUNT; i++) {
                     try {

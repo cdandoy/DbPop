@@ -74,13 +74,16 @@ public class SetupService {
     private void doit() {
         try {
             checkDatasetDirectory();
-            try (Connection targetConnection = checkTargetSettings()) {
+            Connection targetConnection = checkTargetConnection();
+            if (targetConnection != null) {
                 executeInstall(targetConnection);
+
+                executeStartup();
+                if (loadDatasets) {
+                    checkPopulate();
+                }
             }
-            executeStartup();
-            if (loadDatasets) {
-                checkPopulate();
-            }
+
             checkSourceConnection();
 
             statusService.setComplete(true);
@@ -205,17 +208,18 @@ public class SetupService {
         });
     }
 
-    private Connection checkTargetSettings() {
-        return statusService.run("Checking to the target database", () -> {
-            if (!configurationService.hasTargetConnection()) {
-                throw new RuntimeException("Target database not configured");
-            }
-            ConnectionBuilder builder = configurationService.getTargetConnectionBuilder();
-            builder.testConnection();
-            return builder.createConnection();
-        });
-    }
 
+    private Connection checkTargetConnection() {
+        if (configurationService.hasTargetConnection()) {
+            return statusService.run("Connecting to the target database", () -> {
+                ConnectionBuilder targetConnectionBuilder = configurationService.getTargetConnectionBuilder();
+                targetConnectionBuilder.testConnection();
+                return targetConnectionBuilder.createConnection();
+            });
+        } else {
+            return null;
+        }
+    }
 
     private void checkSourceConnection() {
         if (configurationService.hasSourceConnection()) {
