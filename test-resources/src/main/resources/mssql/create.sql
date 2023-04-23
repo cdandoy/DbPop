@@ -1,8 +1,3 @@
-IF DB_ID('dbpop') IS NULL
-    BEGIN
-        CREATE DATABASE dbpop;
-    END
-GO
 USE dbpop;
 GO
 CREATE TABLE customer_types

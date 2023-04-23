@@ -8,6 +8,7 @@ import org.dandoy.dbpopd.ConfigurationService;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -31,6 +32,8 @@ public class DbPopTestUtils {
 
         try {
             try (Connection connection = configurationService.getSourceConnectionBuilder().createConnection()) {
+                execute(connection, "DROP DATABASE IF EXISTS dbpop");
+                execute(connection, "CREATE DATABASE dbpop");
                 SqlExecutor.execute(
                         connection,
                         "/mssql/drop.sql",
@@ -40,7 +43,8 @@ public class DbPopTestUtils {
             }
 
             try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
-                SqlExecutor.execute(connection, "/mssql/drop.sql");
+                execute(connection, "DROP DATABASE IF EXISTS dbpop");
+                execute(connection, "CREATE DATABASE dbpop");
                 try (Statement statement = connection.createStatement()) {
                     statement.execute("DROP TABLE IF EXISTS master.dbo.dbpop_timestamps");
                 }
@@ -50,7 +54,15 @@ public class DbPopTestUtils {
         }
     }
 
-    public static void createTargetTables(){
+    private static void execute(Connection connection, String stmt) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(stmt)) {
+            preparedStatement.execute();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to execute " + stmt, e);
+        }
+    }
+
+    public static void createTargetTables() {
         ConfigurationService configurationService = new ConfigurationService("../files/temp", null, null, null, false);
         try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
             SqlExecutor.execute(

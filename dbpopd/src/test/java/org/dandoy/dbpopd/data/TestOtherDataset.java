@@ -14,7 +14,7 @@ import org.dandoy.dbpopd.download.DownloadRequest;
 import org.dandoy.dbpopd.download.DownloadResponse;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopTestUtils;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.FileOutputStream;
@@ -38,8 +38,8 @@ public class TestOtherDataset {
     @Inject
     ConfigurationService configurationService;
 
-    @BeforeAll
-    static void setUp() {
+    @BeforeEach
+    void setUp() {
         DbPopTestUtils.setUp();
         DbPopTestUtils.createTargetTables();
     }
@@ -79,7 +79,7 @@ public class TestOtherDataset {
         }
 
         {   // Check the downloaded rows
-            csvAssertionService.csvAssertion("other", "invoices")
+            csvAssertionService.csvAssertion("other", "dbpop.dbo.invoices")
                     .assertRowCount(3)
                     .assertExists(
                             List.of("invoice_id"),
@@ -118,7 +118,6 @@ public class TestOtherDataset {
                         )
                 )
         );
-
 
         {   // Download invoice 1001 in base
             DownloadResponse structuredDownloadResponse = downloadController.structuredDownload(

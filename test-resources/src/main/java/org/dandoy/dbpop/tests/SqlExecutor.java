@@ -57,7 +57,7 @@ public class SqlExecutor {
                     }
                 }
                 sourceConnection.commit();
-            } catch (IOException | SQLException e) {
+            } catch (Exception e) {
                 throw new RuntimeException("Failed to load " + filename, e);
             }
         }
