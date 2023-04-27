@@ -35,6 +35,7 @@ public class DbPopUtils {
     public static void prepareMssqlSource() {
         LocalCredentials
                 .from("mssql")
+                .createSourceDbPopDatabase()
                 .executeSource(
                         "/mssql/drop.sql",
                         "/mssql/create.sql",
@@ -45,6 +46,7 @@ public class DbPopUtils {
     public static void prepareMssqlTarget() {
         LocalCredentials
                 .from("mssql")
+                .createTargetDbPopDatabase()
                 .executeTarget(
                         "/mssql/drop.sql",
                         "/mssql/create.sql"

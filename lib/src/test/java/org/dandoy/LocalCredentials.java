@@ -1,5 +1,6 @@
 package org.dandoy;
 
+import lombok.SneakyThrows;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
@@ -12,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -92,6 +94,32 @@ public record LocalCredentials(ConnectionBuilder sourceConnectionBuilder, Connec
             SqlExecutor.execute(sourceConnection, filenames);
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @SneakyThrows
+    public LocalCredentials createSourceDbPopDatabase() {
+        try (Connection connection = createSourceConnection()) {
+            createDbPopDatabase(connection);
+        }
+        return this;
+    }
+
+    @SneakyThrows
+    public LocalCredentials createTargetDbPopDatabase() {
+        try (Connection connection = createTargetConnection()) {
+            createDbPopDatabase(connection);
+        }
+        return this;
+    }
+
+    private void createDbPopDatabase(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            try {
+                statement.execute("DROP DATABASE dbpop");
+            } catch (SQLException ignored) {
+            }
+            statement.execute("CREATE DATABASE dbpop");
         }
     }
 }
