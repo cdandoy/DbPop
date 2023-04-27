@@ -2,6 +2,7 @@ package org.dandoy.dbpop.download;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.dandoy.dbpop.FeatureFlags;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -23,17 +24,17 @@ public class DeferredCsvPrinter implements AutoCloseable {
         this.headers = headers;
     }
 
-    public void create() {
+    private CSVPrinter create(boolean writeHeaders) {
         try {
             boolean newFile = !file.exists();
             BufferedWriter bufferedWriter = Files.newBufferedWriter(file.toPath(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 
             CSVFormat.Builder csvFormatBuilder = CSVFormat.DEFAULT.builder()
                     .setNullString("");
-            if (newFile) {
+            if (newFile && writeHeaders) {
                 csvFormatBuilder.setHeader(headers.toArray(String[]::new));
             }
-            csvPrinter = new CSVPrinter(bufferedWriter, csvFormatBuilder.build());
+            return new CSVPrinter(bufferedWriter, csvFormatBuilder.build());
         } catch (IOException e) {
             throw new RuntimeException("Failed to create a DeferredCsvPrinter for " + file, e);
         }
@@ -47,12 +48,23 @@ public class DeferredCsvPrinter implements AutoCloseable {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        } else {
+            if (FeatureFlags.createCsvFilesForEmptyTables) {
+                if (!file.exists()) {
+                    try {
+                        create(FeatureFlags.includeCsvHeadersForEmptyTables)
+                                .close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
         }
     }
 
     private CSVPrinter getCsvPrinter() {
         if (csvPrinter == null) {
-            create();
+            csvPrinter = create(true);
         }
         return csvPrinter;
     }
