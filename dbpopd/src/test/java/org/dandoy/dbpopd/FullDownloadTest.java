@@ -62,16 +62,15 @@ public class FullDownloadTest {
                         List.of(
                                 new TableName("dbpop", "dbo", "customer_types"),
                                 new TableName("dbpop", "dbo", "product_categories"),
-                                new TableName("dbpop", "dbo", "customers"),
                                 new TableName("dbpop", "dbo", "products")
                         )
                 )
         );
-        assertEquals(10, bulkStaticResponse.getRowCount());
+        assertEquals(7, bulkStaticResponse.getRowCount());
         for (DownloadResponse.TableRowCount tableRowCount : bulkStaticResponse.getTableRowCounts()) {
             int expectedRowCount = switch (tableRowCount.getTableName().getTable()) {
                 case "customer_types", "product_categories" -> 2;
-                case "customers", "products" -> 3;
+                case "products" -> 3;
                 default -> throw new RuntimeException();
             };
             assertEquals(expectedRowCount, tableRowCount.getRowCount());
@@ -110,12 +109,12 @@ public class FullDownloadTest {
                         .setQueryValues(emptyMap())
                         .setDryRun(false)
         );
-        assertEquals(11, structuredDownloadResponse.getRowCount()); // 4 invoices, 7 invoice details
-        assertEquals(2, structuredDownloadResponse.getRowsSkipped()); // 2 customers
+        assertEquals(13, structuredDownloadResponse.getRowCount()); // 2 customers, 4 invoices, 7 invoice details
+        assertEquals(0, structuredDownloadResponse.getRowsSkipped());
 
         // Dataset -> target
         PopulateResult populateResult = populateService.populate(List.of("base"), true);
-        assertEquals(21, populateResult.rows());
+        assertEquals(20, populateResult.rows());
 
         // Add some data to target
         Connection connection = configurationService.getTargetDatabaseCache().getConnection();
@@ -151,7 +150,7 @@ public class FullDownloadTest {
 
         // Download back target -> source
         DownloadResponse downloadResponse = downloadController.downloadTarget(new DownloadController.DownloadTargetBody("base"));
-        Assertions.assertEquals(23, downloadResponse.getRowCount());
+        Assertions.assertEquals(22, downloadResponse.getRowCount());
         Assertions.assertEquals(0, downloadResponse.getRowsSkipped());
         csvAssertionService
                 .csvAssertion("dbpop.dbo.products")
@@ -201,7 +200,6 @@ public class FullDownloadTest {
                         List.of(
                                 new TableName("dbpop", "dbo", "customer_types"),
                                 new TableName("dbpop", "dbo", "product_categories"),
-                                new TableName("dbpop", "dbo", "customers"),
                                 new TableName("dbpop", "dbo", "products")
                         )
                 )
