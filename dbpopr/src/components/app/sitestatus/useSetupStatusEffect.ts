@@ -15,14 +15,14 @@ export interface SiteStatus {
 export function useSetupStatusEffect(setSiteStatus: ((setSiteStatus: SiteStatus) => void)) {
     const [changeNumber, setChangeNumber] = useState(0)
 
-    const updateSetupState = (siteStatusResponse: SiteStatus) => {
+    function updateSetupState(siteStatusResponse: SiteStatus) {
         setSiteStatus(siteStatusResponse);
         if (!siteStatusResponse.complete) {
             setTimeout(() => {
                 setChangeNumber(changeNumber + 1);
             }, 2000);
         }
-    };
+    }
 
     useEffect(() => {
         axios.get<SiteStatus>('/status')

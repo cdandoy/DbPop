@@ -21,7 +21,7 @@ export default function CodeSourceDownload() {
     }, [])
 
     return <div id={"code-source-download"}>
-        <PageHeader title={"Download Source"} subtitle={"Download the tables and sprocs from the source database to the local SQL files"} tool={<img src={download_source} style={{width: "20em"}} alt={"image"}/>}/>
+        <PageHeader title={"Download Source"} subtitle={"Download the tables and sprocs from the source database to the local SQL files"} tool={<img src={download_source} style={{width: "20em"}} alt={"Download Source"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}
         {!error && downloadResult && (

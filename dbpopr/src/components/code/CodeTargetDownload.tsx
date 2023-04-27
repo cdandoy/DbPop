@@ -21,7 +21,7 @@ export default function CodeTargetDownload() {
     }, [])
 
     return <div id={"code-target-download"}>
-        <PageHeader title={"Download from Target"} subtitle={"Download the tables and sprocs from the Target database to the SQL files"} tool={<img src={download_target} style={{width: "20em"}} alt={"image"}/>}/>
+        <PageHeader title={"Download from Target"} subtitle={"Download the tables and sprocs from the Target database to the SQL files"} tool={<img src={download_target} style={{width: "20em"}} alt={"Download from Target"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}
         {!error && downloadResult && (

@@ -27,11 +27,11 @@ export default function CodeTargetUload() {
     }, [])
 
     return <div id={"code-source-download"}>
-        <PageHeader title={"Upload to Target"} subtitle={"Upload the tables and sprocs from the SQL files to the Target database"} tool={<img src={upload_target} style={{width: "20em"}} alt={"image"}/>}/>
+        <PageHeader title={"Upload to Target"} subtitle={"Upload the tables and sprocs from the SQL files to the Target database"} tool={<img src={upload_target} style={{width: "20em"}} alt={"Upload to Target"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}
 
-        {uploadResult && errorCount == 0 && (
+        {uploadResult && errorCount === 0 && (
             <Alert variant={"success"} className={"text-center"}>
                 <div>Executed in {uploadResult.fileExecutions.length} files {uploadResult.executionTime}ms</div>
             </Alert>

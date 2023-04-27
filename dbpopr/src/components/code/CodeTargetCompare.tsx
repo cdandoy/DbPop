@@ -51,7 +51,7 @@ export default function CodeTargetCompare() {
     }
 
     return <div id={"code-target-compare"}>
-        <PageHeader title={"Compare Target"} subtitle={"Compare the tables and sprocs in the Target database with the local SQL files"} tool={<img src={compare_target} style={{width: "20em"}} alt={"image"}/>}/>
+        <PageHeader title={"Compare Target"} subtitle={"Compare the tables and sprocs in the Target database with the local SQL files"} tool={<img src={compare_target} style={{width: "20em"}} alt={"Compare Target"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}
         {codeDiff && codeDiff.entries.length > 0 && (

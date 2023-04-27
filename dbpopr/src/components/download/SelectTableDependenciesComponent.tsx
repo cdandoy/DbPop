@@ -35,7 +35,7 @@ export default function SelectTableDependenciesComponent({tableName, close}: {
                                 <div key={tableNameToFqName(foreignKey.pkTableName)} className={"mb-3"} style={{fontFamily: "monospace"}}>
                                     <div>CONSTRAINT {foreignKey.name} FOREIGN KEY</div>
                                     <div className={"ms-3"}>
-                                        {foreignKey.fkColumns.length == 1 && foreignKey.fkColumns.join(', ')}
+                                        {foreignKey.fkColumns.length === 1 && foreignKey.fkColumns.join(', ')}
                                         {foreignKey.fkColumns.length > 1 && '(' + foreignKey.fkColumns.join(', ') + ')'}
                                         &nbsp;
                                         REFERENCES {foreignKey.pkTableName.table}
