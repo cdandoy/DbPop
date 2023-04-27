@@ -233,21 +233,32 @@ public abstract class DefaultDatabase extends Database {
             this.dataFileHeaders = dataFileHeaders;
             preparedStatement = getConnection().prepareStatement(sql);
 
+            addColumnInserters(table, dataFileHeaders);
+        }
+
+        private void addColumnInserters(Table table, List<DataFileHeader> dataFileHeaders) {
             int jdbcPos = 0;
-            for (int i = 0; i < dataFileHeaders.size(); i++) {
-                DataFileHeader dataFileHeader = dataFileHeaders.get(i);
+            for (int csvPos = 0; csvPos < dataFileHeaders.size(); csvPos++) {
+                DataFileHeader dataFileHeader = dataFileHeaders.get(csvPos);
                 if (dataFileHeader.isLoadable()) {
                     jdbcPos++;
                     String columnName = dataFileHeader.getColumnName();
                     Column column = table.getColumn(columnName);
-                    ColumnType columnType = column.getColumnType();
-                    if (dataFileHeader.isBinary()) {
-                        columnInserters.add(new BinaryColumnInserter(i, jdbcPos, columnType));
-                    } else {
-                        columnInserters.add(new RegularColumnInserter(i, jdbcPos, columnType));
-                    }
+                    addColumnInserter(dataFileHeader, csvPos, jdbcPos, column);
                 }
             }
+        }
+
+        protected void addColumnInserter(DataFileHeader dataFileHeader, int csvPos, int jdbcPos, Column column) {
+            ColumnType columnType = column.getColumnType();
+            ColumnInserter columnInserter = dataFileHeader.isBinary() ?
+                    new BinaryColumnInserter(csvPos, jdbcPos, columnType) :
+                    new RegularColumnInserter(csvPos, jdbcPos, columnType);
+            addColumnInserter(columnInserter);
+        }
+
+        protected void addColumnInserter(ColumnInserter columnInserter) {
+            columnInserters.add(columnInserter);
         }
 
         @Override
@@ -269,7 +280,7 @@ public abstract class DefaultDatabase extends Database {
             }
         }
 
-        abstract class ColumnInserter {
+        public abstract class ColumnInserter {
             protected final int csvPos;
             protected final int jdbcPos;
             protected final ColumnType columnType;
@@ -293,7 +304,7 @@ public abstract class DefaultDatabase extends Database {
                 }
             }
 
-            abstract void consume(String s) throws SQLException;
+            protected abstract void consume(String s) throws SQLException;
         }
 
         class RegularColumnInserter extends ColumnInserter {
@@ -302,7 +313,7 @@ public abstract class DefaultDatabase extends Database {
             }
 
             @Override
-            void consume(String s) throws SQLException {
+            protected void consume(String s) throws SQLException {
                 if (s != null && s.startsWith("{{") && s.endsWith("}}")) {
                     Object value = EXPRESSION_PARSER.evaluate(s);
                     columnType.bind(preparedStatement, jdbcPos, value);
@@ -319,7 +330,7 @@ public abstract class DefaultDatabase extends Database {
             }
 
             @Override
-            void consume(String s) throws SQLException {
+            protected   void consume(String s) throws SQLException {
                 byte[] bytes;
                 if (s != null) {
                     bytes = decoder.decode(s);

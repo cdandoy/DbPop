@@ -14,6 +14,7 @@ public class MultiCauseException extends RuntimeException {
     }
 
     public MultiCauseException(String message, Exception e) {
+        super(message, e);
         causes = getCauses(e);
         causes.add(0, message);
     }

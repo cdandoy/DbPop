@@ -723,6 +723,14 @@ public class SqlServerDatabase extends DefaultDatabase {
         );
     }
 
+    private void setNextIdentityValue(TableName tableName, long value) {
+        executeSql(
+                "DBCC CHECKIDENT ('%s', RESEED, %d);\n",
+                quote(tableName),
+                value
+        );
+    }
+
     @Override
     protected SqlServerDatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
         return new SqlServerDatabaseInserter(table, dataFileHeaders, sql);
@@ -793,6 +801,7 @@ public class SqlServerDatabase extends DefaultDatabase {
     class SqlServerDatabaseInserter extends DatabaseInserter {
         private final TableName tableName;
         private final boolean identity;
+        private IdentityColumnInserter identityColumnInserter;
 
         SqlServerDatabaseInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
             super(table, dataFileHeaders, sql);
@@ -805,12 +814,55 @@ public class SqlServerDatabase extends DefaultDatabase {
         }
 
         @Override
+        protected void addColumnInserter(DataFileHeader dataFileHeader, int csvPos, int jdbcPos, Column column) {
+            super.addColumnInserter(dataFileHeader, csvPos, jdbcPos, column);
+
+            if (column.isAutoIncrement()) {
+                ColumnType columnType = column.getColumnType();
+                if (columnType == ColumnType.INTEGER) {
+                    identityColumnInserter = new IdentityColumnInserter(csvPos, jdbcPos, columnType);
+                    addColumnInserter(identityColumnInserter);
+                }
+            }
+        }
+
+        private class IdentityColumnInserter extends ColumnInserter {
+            private Long max;
+
+            public IdentityColumnInserter(int csvPos, int jdbcPos, ColumnType columnType) {
+                super(csvPos, jdbcPos, columnType);
+            }
+
+            @Override
+            public void consume(String s) {
+                if (s == null) return; // An identity column with a null value?
+                long value = toLong(s);
+                if (max == null || value > max) {
+                    max = value;
+                }
+            }
+        }
+
+        private static long toLong(String s) {
+            try {
+                return Long.parseLong(s);
+            } catch (NumberFormatException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
         public void close() throws SQLException {
             try {
                 super.close();
             } finally {
                 if (identity) {
                     identityInsert(tableName, false);
+                    if (identityColumnInserter != null) {
+                        if (identityColumnInserter.max != null) {
+                            setNextIdentityValue(tableName, identityColumnInserter.max);
+                        }
+                    }
                 }
             }
         }

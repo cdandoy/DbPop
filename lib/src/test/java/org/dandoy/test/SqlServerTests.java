@@ -119,6 +119,38 @@ public class SqlServerTests {
         }
     }
 
+    @Test
+    void testIdentity() throws SQLException {
+        LocalCredentials localCredentials = LocalCredentials.from("mssql");
+        try (DatabaseProxy database = Database.createDatabase(localCredentials.targetConnectionBuilder())) {
+            Populator populator = Populator.createPopulator(database, new File("src/test/resources/mssql"));
+            try (Connection connection = localCredentials.createTargetConnection()) {
+
+                populator.load("base");
+
+                // Insert a new customer
+                long customerId;
+                try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO dbpop.dbo.invoices(customer_id, invoice_date) OUTPUT inserted.invoice_id VALUES (101, GETDATE())")) {
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        assertTrue(resultSet.next());
+                        customerId = resultSet.getLong(1);
+                    }
+                }
+
+                // Reset the data
+                populator.load("base");
+
+                // Insert a new customer again, the identity column should have been reset, we should have the same customer_id
+                try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO dbpop.dbo.invoices(customer_id, invoice_date) OUTPUT inserted.invoice_id VALUES (101, GETDATE())")) {
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        assertTrue(resultSet.next());
+                        assertEquals(customerId, resultSet.getLong(1));
+                    }
+                }
+            }
+        }
+    }
+
     public static void assertCount(Connection connection, String table, int expected) throws SQLException {
         try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT COUNT(*) FROM dbpop.dbo." + table)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
