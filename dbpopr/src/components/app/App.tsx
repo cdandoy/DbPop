@@ -21,7 +21,7 @@ export default function App() {
     useEffect(() => {
         siteApi()
             .then(result => setSiteResponse(result.data))
-    }, []);
+    }, [siteStatus]);
 
     useSetupStatusEffect(setSiteStatus);
 
