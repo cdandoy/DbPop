@@ -51,7 +51,7 @@ export default function Datasets() {
                             <td key={datasetContent.name} className={"text-end"}>
                                 {contentElement?.rows && (
                                     <NavLink to={`/data/${datasetContent.name}/${tableName.catalog}/${tableName.schema}/${tableName.table}`}>
-                                        {contentElement.rows} rows
+                                        {contentElement.rows.toLocaleString()} rows
                                     </NavLink>
                                 )}
                             </td>
@@ -60,7 +60,7 @@ export default function Datasets() {
                         return (
                             <td key={datasetContent.name} className={"text-end"}>
                                 {contentElement?.rows && (
-                                    <>{contentElement.rows} rows</>
+                                    <>{contentElement.rows.toLocaleString()} rows</>
                                 )}
                             </td>
                         )
@@ -74,35 +74,63 @@ export default function Datasets() {
         <div id={"datasets-component"}>
             <LoadingOverlay active={loading}/>
             <PageHeader title={"Datasets"} error={error}/>
-            <div className={"table-container"}>
-                {datasetContentResponse && (
-                    <table id={"datasets-component"} className={"table table-hover"}>
-                        <thead>
-                        <tr>
-                            <th style={{width: colWidth}}>Table</th>
-                            {datasetContentResponse.datasetContents.map(datasetContent => (
-                                <th style={{width: colWidth}} key={datasetContent.name} className={"text-end"}>
-                                    {datasetContent.name}
-                                </th>
-                            ))}
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {datasetContentResponse.tableContents.map(tableContent => <Row key={tableNameToFqName(tableContent.tableName)} datasetContents={datasetContentResponse?.datasetContents} tableContent={tableContent}/>)}
-                        </tbody>
-                        <tfoot>
-                        <tr>
-                            <th>Total</th>
-                            {datasetContentResponse.datasetContents.map(datasetContent => (
-                                <th key={datasetContent.name} className={"text-end"}>
-                                    {datasetContent.rows} rows
-                                </th>
-                            ))}
-                        </tr>
-                        </tfoot>
-                    </table>
-                )}
-            </div>
+            {datasetContentResponse && (
+                <>
+                    <h1 className={"row pageheader-component pb-5"}>
+                        <div className={"col-6 text-center"}>
+                            {datasetContentResponse.datasetContents
+                                .map(value => value.fileCount)
+                                .reduce((p, c) => p + c, 0)
+                                .toLocaleString()
+                            } tables
+                        </div>
+                        <div className={"col-6 text-center"}>
+                            {datasetContentResponse.datasetContents
+                                .map(value => value.rows)
+                                .reduce((p, c) => p + c, 0)
+                                .toLocaleString()
+                            } rows
+                        </div>
+                    </h1>
+                    <div className={"table-container"}>
+                        <table id={"datasets-component"} className={"table table-hover"}>
+                            <thead>
+                            <tr>
+                                <th style={{width: colWidth}}>Table</th>
+                                {datasetContentResponse.datasetContents.map(datasetContent => (
+                                    <th style={{width: colWidth}} key={datasetContent.name} className={"text-end"}>
+                                        {datasetContent.name}
+                                    </th>
+                                ))}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {datasetContentResponse.tableContents.map(tableContent => <>
+                                <Row key={tableNameToFqName(tableContent.tableName)} datasetContents={datasetContentResponse?.datasetContents} tableContent={tableContent}/>
+                            </>)}
+                            </tbody>
+                            <tfoot>
+                            <tr>
+                                <th>Total</th>
+                                {datasetContentResponse.datasetContents.map(datasetContent => (
+                                    <th key={datasetContent.name} className={"text-end"}>
+                                        {datasetContent.rows.toLocaleString()} rows
+                                    </th>
+                                ))}
+                            </tr>
+                            <tr>
+                                <th></th>
+                                {datasetContentResponse.datasetContents.map(datasetContent => (
+                                    <th key={datasetContent.name} className={"text-end"}>
+                                        {datasetContent.fileCount.toLocaleString()} tables
+                                    </th>
+                                ))}
+                            </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </>
+            )}
         </div>
-    )
+    );
 }
