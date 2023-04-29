@@ -80,7 +80,12 @@ public class SetupService {
 
                 executeStartup();
                 if (loadDatasets) {
-                    checkPopulate();
+                    try {
+                        checkPopulate();
+                    } catch (Exception e) {
+                        // Do not fail the startup because of a dataset error
+                        log.error("Failed to load the static and base datasets", e);
+                    }
                 }
             }
 
@@ -207,7 +212,6 @@ public class SetupService {
             }
         });
     }
-
 
     private Connection checkTargetConnection() {
         if (configurationService.hasTargetConnection()) {
