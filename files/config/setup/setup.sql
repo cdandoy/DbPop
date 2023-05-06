@@ -137,7 +137,7 @@ CREATE TABLE master.advanced.order_details
     CONSTRAINT order_details_products_fk FOREIGN KEY (product_id) REFERENCES master.advanced.products
 )
 GO
-CREATE PROCEDURE GetInvoices @invoiceId INT
+CREATE OR ALTER PROCEDURE GetInvoices @invoiceId INT
 AS
 BEGIN
     SELECT *

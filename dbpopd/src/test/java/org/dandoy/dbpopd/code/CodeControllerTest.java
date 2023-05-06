@@ -86,7 +86,7 @@ class CodeControllerTest {
                     new File("../files/temp/code/dbpop/dbo/USER_TABLE/customers.sql"),
             };
             for (File file : files) {
-                String definition = IOUtils.readFully(file);
+                String definition = IOUtils.toString(file);
                 try (BufferedWriter bufferedWriter = Files.newBufferedWriter(file.toPath())) {
                     bufferedWriter.write(definition + "\n--minor change\n");
                 }

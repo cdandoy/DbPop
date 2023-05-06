@@ -1,13 +1,11 @@
 package org.dandoy.dbpopd.utils;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class IOUtils {
-    public static String readFully(File file) throws IOException {
+    public static String toString(File file) throws IOException {
         Path path = file.toPath();
         try (BufferedReader bufferedReader = Files.newBufferedReader(path)) {
             StringBuilder sb = new StringBuilder();
@@ -18,6 +16,15 @@ public class IOUtils {
                 sb.append(buffer, 0, read);
             }
             return sb.toString();
+        }
+    }
+
+    public static byte[] toBytes(File file) throws IOException {
+        try (InputStream inputStream = new FileInputStream(file)) {
+            byte[] ret = new byte[(int) file.length()];
+            int read = inputStream.read(ret, 0, ret.length);
+            if (read != ret.length) throw new RuntimeException("I did not expect that: Expected to read %d, but read %d".formatted(ret.length, read));
+            return ret;
         }
     }
 }

@@ -35,7 +35,7 @@ export default function Datasets() {
     }) {
         const tableName = tableContent.tableName;
         return (
-            <tr>
+            <tr key={tableNameToFqName(tableName)}>
                 <td key={"table.name"}>
                     {showLinks && (
                         <NavLink to={`/data/${tableName.catalog}/${tableName.schema}/${tableName.table}`}>
@@ -77,14 +77,14 @@ export default function Datasets() {
             {datasetContentResponse && (
                 <>
                     <h1 className={"row pageheader-component pb-5"}>
-                        <div className={"col-6 text-center"}>
+                        <div key={"head-1"} className={"col-6 text-center"}>
                             {datasetContentResponse.datasetContents
                                 .map(value => value.fileCount)
                                 .reduce((p, c) => p + c, 0)
                                 .toLocaleString()
                             } tables
                         </div>
-                        <div className={"col-6 text-center"}>
+                        <div key={"head-2"} className={"col-6 text-center"}>
                             {datasetContentResponse.datasetContents
                                 .map(value => value.rows)
                                 .reduce((p, c) => p + c, 0)
@@ -95,7 +95,7 @@ export default function Datasets() {
                     <div className={"table-container"}>
                         <table id={"datasets-component"} className={"table table-hover"}>
                             <thead>
-                            <tr>
+                            <tr key={"header"}>
                                 <th style={{width: colWidth}}>Table</th>
                                 {datasetContentResponse.datasetContents.map(datasetContent => (
                                     <th style={{width: colWidth}} key={datasetContent.name} className={"text-end"}>
@@ -105,12 +105,12 @@ export default function Datasets() {
                             </tr>
                             </thead>
                             <tbody>
-                            {datasetContentResponse.tableContents.map(tableContent => <>
+                            {datasetContentResponse.tableContents.map(tableContent =>
                                 <Row key={tableNameToFqName(tableContent.tableName)} datasetContents={datasetContentResponse?.datasetContents} tableContent={tableContent}/>
-                            </>)}
+                            )}
                             </tbody>
                             <tfoot>
-                            <tr>
+                            <tr key={"footer-1"}>
                                 <th>Total</th>
                                 {datasetContentResponse.datasetContents.map(datasetContent => (
                                     <th key={datasetContent.name} className={"text-end"}>
@@ -118,7 +118,7 @@ export default function Datasets() {
                                     </th>
                                 ))}
                             </tr>
-                            <tr>
+                            <tr key={"footer-2"}>
                                 <th></th>
                                 {datasetContentResponse.datasetContents.map(datasetContent => (
                                     <th key={datasetContent.name} className={"text-end"}>

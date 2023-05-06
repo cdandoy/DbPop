@@ -74,7 +74,7 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
         File sqlFile = DbPopdFileUtils.toFile(directory, catalog, schema, type, name + ".sql");
         try {
             if (sqlFile.exists()) { // If the file exists, check if the content is different
-                String definitionOnFile = IOUtils.readFully(sqlFile);
+                String definitionOnFile = IOUtils.toString(sqlFile);
                 if (definitionOnFile.equals(definition)) return;
             } else {                // If the file doesn't exist, create the parent directories
                 File dir = sqlFile.getParentFile();

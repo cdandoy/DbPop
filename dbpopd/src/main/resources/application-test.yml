@@ -4,3 +4,4 @@ micronaut:
 dbpopd:
   configuration:
     path: '../files/config'
+    codeAutoSave: true
