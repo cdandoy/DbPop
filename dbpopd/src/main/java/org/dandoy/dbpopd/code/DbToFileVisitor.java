@@ -67,11 +67,7 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
         if (definition == null) return;
 
-        String catalog = objectIdentifier.getCatalog();
-        String schema = objectIdentifier.getSchema();
-        String name = objectIdentifier.getName();
-        String type = objectIdentifier.getType();
-        File sqlFile = DbPopdFileUtils.toFile(directory, catalog, schema, type, name + ".sql");
+        File sqlFile = DbPopdFileUtils.toFile(directory, objectIdentifier);
         try {
             if (sqlFile.exists()) { // If the file exists, check if the content is different
                 String definitionOnFile = IOUtils.toString(sqlFile);
@@ -85,6 +81,7 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
             try (BufferedWriter bufferedWriter = Files.newBufferedWriter(sqlFile.toPath())) {
                 bufferedWriter.write(definition);
             }
+            String type = objectIdentifier.getType();
             int count = typeCounts.getOrDefault(type, 0);
             typeCounts.put(type, count + 1);
         } catch (Exception e) {

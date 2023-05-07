@@ -49,36 +49,30 @@ public class CodeService {
     }
 
     /**
-     * Walk the codeDirectory and invokes the visitor for each catalog, schema and file
+     * Walk the codeDirectory returns the files and associated ObjectIdentifier, sorted by priority of execution (tables before indexes)
      */
     public static List<Pair<File, ObjectIdentifier>> getCatalogChanges(File codeDirectory, String catalog) {
         List<Pair<File, ObjectIdentifier>> ret = new ArrayList<>();
         File catalogDir = new File(codeDirectory, catalog);
 
         if (catalogDir.isDirectory()) {
-            int directoryCount = codeDirectory.toPath().getNameCount();
+            DbPopdFileUtils.FileToObjectIdentifierResolver resolver = DbPopdFileUtils.createFileToObjectIdentifierResolver(codeDirectory);
             try {
                 Map<Integer, List<Pair<File, ObjectIdentifier>>> filesByPriority = new TreeMap<>();
                 // Collect the files by priority: tables, foreign keys, indexes, stored procedures, ...
                 Files.walkFileTree(catalogDir.toPath(), new SimpleFileVisitor<>() {
                     @Override
                     public FileVisitResult visitFile(Path filePath, BasicFileAttributes attrs) {
-                        if (filePath.getNameCount() - directoryCount == 4) {
-                            String schema = filePath.getName(directoryCount + 1).toString();
-                            String type = filePath.getName(directoryCount + 2).toString();
-                            String filename = filePath.getName(directoryCount + 3).toString();
-                            if (filename.toLowerCase().endsWith(".sql")) {
-                                String name = filename.substring(0, filename.length() - 4);
-                                ObjectIdentifier objectIdentifier = new ObjectIdentifier(type, catalog, schema, name);
-                                filesByPriority
-                                        .computeIfAbsent(CODE_TYPES.indexOf(type), ArrayList::new)
-                                        .add(
-                                                Pair.of(
-                                                        filePath.toFile(),
-                                                        objectIdentifier
-                                                )
-                                        );
-                            }
+                        ObjectIdentifier objectIdentifier = resolver.getObjectIdentifier(filePath);
+                        if (objectIdentifier != null) {
+                            filesByPriority
+                                    .computeIfAbsent(CODE_TYPES.indexOf(objectIdentifier.getType()), ArrayList::new)
+                                    .add(
+                                            Pair.of(
+                                                    filePath.toFile(),
+                                                    objectIdentifier
+                                            )
+                                    );
                         }
                         return FileVisitResult.CONTINUE;
                     }
@@ -237,11 +231,13 @@ public class CodeService {
                 }
             } catch (SQLException | IOException e) {
                 throw new RuntimeException(e);
+            } finally {
+                changeDetector.captureObjectSignatures();
             }
         });
     }
 
-    private static final Pattern CREATE_PATTERN = Pattern.compile("(.*)\\bCREATE\\s+((?:FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b.*)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern CREATE_PATTERN = Pattern.compile("(.*\\b)CREATE(\\s+(?:FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b.*)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     private UploadResult.FileExecution execute(Statement statement, String type, File sqlFile) throws IOException {
         log.info("Executing {}", sqlFile);
@@ -259,7 +255,7 @@ public class CodeService {
                     String pre = matcher.group(1);
                     String post = matcher.group(2);
                     //noinspection SqlResolve
-                    String createOrAlter = pre + "CREATE OR ALTER " + post;
+                    String createOrAlter = pre + "CREATE OR ALTER" + post;
                     statement.execute(createOrAlter);
                 } else {
                     log.warn("Could not identify " + sqlFile);
@@ -302,7 +298,7 @@ public class CodeService {
                 String catalog = objectIdentifier.getCatalog();
                 String schema = objectIdentifier.getSchema();
                 String name = objectIdentifier.getName();
-                File file = DbPopdFileUtils.toFile(codeDirectory, catalog, schema, type, name + ".sql");
+                File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
                 long databaseTime = modifyDate.getTime();
                 if (file.exists()) {
                     codeFiles.remove(file);

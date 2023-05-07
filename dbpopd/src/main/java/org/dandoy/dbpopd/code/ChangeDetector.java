@@ -2,16 +2,28 @@ package org.dandoy.dbpopd.code;
 
 import io.micronaut.scheduling.annotation.Scheduled;
 import jakarta.inject.Singleton;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.DatabaseIntrospector;
+import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.utils.DbPopdFileUtils;
+import org.dandoy.dbpopd.utils.IOUtils;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.security.MessageDigest;
 import java.util.*;
 import java.util.function.Supplier;
+
+import static org.dandoy.dbpopd.utils.DbPopdFileUtils.toFile;
 
 /**
  * ChangeDetector runs every 3 seconds.
@@ -25,13 +37,11 @@ import java.util.function.Supplier;
 @Slf4j
 public class ChangeDetector {
     private final ConfigurationService configurationService;
-    private final ObjectSignatureService objectSignatureService;
     private boolean hasScannedTargetCode = false;
-    private final Map<ObjectIdentifier, ObjectSignatureService.ObjectSignature> targetObjectSignatures = new HashMap<>();
+    private Map<ObjectIdentifier, ObjectSignature> targetObjectSignatures = new HashMap<>();
 
-    public ChangeDetector(ConfigurationService configurationService, ObjectSignatureService objectSignatureService) {
+    public ChangeDetector(ConfigurationService configurationService) {
         this.configurationService = configurationService;
-        this.objectSignatureService = objectSignatureService;
     }
 
     @Scheduled(fixedDelay = "3s", initialDelay = "3s")
@@ -60,23 +70,32 @@ public class ChangeDetector {
 
                 File codeDirectory = configurationService.getCodeDirectory();
                 try (ChangeFile changeFile = new ChangeFile(new File(codeDirectory, "changes.txt"))) {
-                    objectSignatureService.visitObjectDefinitions(targetDatabase, (objectIdentifier, modifyDate, hash, definition) -> {
-                        ObjectSignatureService.ObjectSignature oldSignature = targetObjectSignatures.get(objectIdentifier);
-                        seen.remove(objectIdentifier);
-                        if (oldSignature == null || !Arrays.equals(hash, oldSignature.hash())) {
-                            File file = toFile(codeDirectory, objectIdentifier);
-                            byte[] fileHash = objectSignatureService.getFileHash(file);
-                            if (Arrays.equals(fileHash, hash)) {
-                                // The file already contains that code
-                                targetObjectSignatures.put(objectIdentifier, new ObjectSignatureService.ObjectSignature(modifyDate, fileHash));
-                            } else {
-                                log.info("Downloading {}", objectIdentifier.toQualifiedName());
-                                writeDefinition(file, definition);
-                                targetObjectSignatures.put(objectIdentifier, new ObjectSignatureService.ObjectSignature(modifyDate, hash));
-                                changeFile.objectUpdated(objectIdentifier);
+                    // The file already contains that code
+                    DatabaseIntrospector databaseIntrospector = targetDatabase.createDatabaseIntrospector();
+                    MessageDigest messageDigest = getMessageDigest();
+                    for (String catalog : targetDatabase.getCatalogs()) {
+                        databaseIntrospector.visitModuleDefinitions(new DatabaseVisitor() {
+                            @Override
+                            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
+                                byte[] hash = messageDigest.digest(definition.getBytes(StandardCharsets.UTF_8));
+                                ObjectSignature oldSignature = targetObjectSignatures.get(objectIdentifier);
+                                seen.remove(objectIdentifier);
+                                if (oldSignature == null || !Arrays.equals(hash, oldSignature.hash())) {
+                                    File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
+                                    byte[] fileHash = getFileHash(file);
+                                    if (Arrays.equals(fileHash, hash)) {
+                                        // The file already contains that code
+                                        targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, fileHash));
+                                    } else {
+                                        log.info("Downloading {}", objectIdentifier.toQualifiedName());
+                                        writeDefinition(file, definition);
+                                        targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
+                                        changeFile.objectUpdated(objectIdentifier);
+                                    }
+                                }
                             }
-                        }
-                    });
+                        }, catalog);
+                    }
                     for (ObjectIdentifier removedObjectIdentifier : seen) {
                         File file = toFile(codeDirectory, removedObjectIdentifier);
                         log.info("deleting {}", file);
@@ -94,8 +113,19 @@ public class ChangeDetector {
     synchronized void captureObjectSignatures() {
         try (Database targetDatabase = safeGetTargetDatabase()) {
             if (targetDatabase != null) {
-                Map<ObjectIdentifier, ObjectSignatureService.ObjectSignature> objectDefinitions = objectSignatureService.getObjectDefinitions(targetDatabase);
-                targetObjectSignatures.putAll(objectDefinitions);
+                Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
+                DatabaseIntrospector databaseIntrospector = targetDatabase.createDatabaseIntrospector();
+                MessageDigest messageDigest = getMessageDigest();
+                for (String catalog : targetDatabase.getCatalogs()) {
+                    databaseIntrospector.visitModuleDefinitions(new DatabaseVisitor() {
+                        @Override
+                        public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
+                            byte[] hash = messageDigest.digest(definition.getBytes(StandardCharsets.UTF_8));
+                            ret.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
+                        }
+                    }, catalog);
+                }
+                targetObjectSignatures = ret;
                 hasScannedTargetCode = true;
             }
         }
@@ -121,18 +151,57 @@ public class ChangeDetector {
         }
     }
 
-    private static File toFile(File directory, ObjectIdentifier objectIdentifier) {
-        return directory.toPath()
-                .resolve(
-                        Path.of(
-                                objectIdentifier.getCatalog(),
-                                objectIdentifier.getSchema(),
-                                objectIdentifier.getType(),
-                                objectIdentifier.getName() + ".sql"
-                        )
-                )
-                .toFile();
+    @SneakyThrows
+    private static MessageDigest getMessageDigest() {
+        return MessageDigest.getInstance("SHA-256");
     }
+
+    @SuppressWarnings("unused")
+    @SneakyThrows
+    public Map<ObjectIdentifier, ObjectSignature> getObjectDefinitions(File directory) {
+        Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
+        Path directoryPath = directory.toPath();
+        int directoryPathNameCount = directoryPath.getNameCount();
+        Files.walkFileTree(directoryPath, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
+                if (path.getNameCount() == directoryPathNameCount + 4) {
+                    String catalog = path.getName(directoryPathNameCount).toString();
+                    String schema = path.getName(directoryPathNameCount + 1).toString();
+                    String objectType = path.getName(directoryPathNameCount + 2).toString();
+                    String filename = path.getName(directoryPathNameCount + 3).toString();
+                    if (filename.endsWith(".sql")) {
+                        String objectName = filename.substring(0, filename.length() - 4);
+                        File file = path.toFile();
+                        byte[] hash = getFileHash(file);
+                        ret.put(
+                                new ObjectIdentifier(
+                                        objectType,
+                                        catalog,
+                                        schema,
+                                        objectName
+                                ),
+                                new ObjectSignature(
+                                        new Date(file.lastModified()),
+                                        hash
+                                )
+                        );
+                    }
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        return ret;
+    }
+
+    @SneakyThrows
+    public byte[] getFileHash(File file) {
+        MessageDigest messageDigest = getMessageDigest();
+        byte[] bytes = IOUtils.toBytes(file);
+        return messageDigest.digest(bytes);
+    }
+
+    public record ObjectSignature(Date modifyDate, byte[] hash) {}
 
     private static class ChangeFile implements AutoCloseable {
         private final File file;
