@@ -38,6 +38,7 @@ class SqlServerDatabaseIntrospectorTest {
                             }
                         }
                     }, "master");
+
             System.out.println("------------------------------------");
             List<ObjectIdentifier> defIdentifiers = new ArrayList<>();
             targetDatabase.createDatabaseIntrospector()
@@ -50,9 +51,24 @@ class SqlServerDatabaseIntrospectorTest {
                         }
                     }, "master");
 
+            System.out.println("------------------------------------");
+            List<ObjectIdentifier> defIdentifiers2 = new ArrayList<>();
+            targetDatabase.createDatabaseIntrospector()
+                    .visitModuleDefinitions(new DatabaseVisitor() {
+                        @Override
+                        public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String definition) {
+                            if (!"INDEX".equals(objectIdentifier.getType())) {
+                                defIdentifiers2.add(objectIdentifier);
+                            }
+                        }
+                    }, metaIdentifiers);
+
             Collections.sort(metaIdentifiers);
             Collections.sort(defIdentifiers);
             assertEquals(metaIdentifiers, defIdentifiers);
+
+            Collections.sort(defIdentifiers2);
+            assertEquals(defIdentifiers, defIdentifiers2);
         }
     }
 }

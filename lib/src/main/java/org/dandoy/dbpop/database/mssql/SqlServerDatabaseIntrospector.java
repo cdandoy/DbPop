@@ -1,6 +1,8 @@
 package org.dandoy.dbpop.database.mssql;
 
+import lombok.Setter;
 import lombok.SneakyThrows;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.utils.StringUtils;
@@ -144,8 +146,10 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
 
     @SneakyThrows
     private void visitModuleForeignKeyDefinitions(DatabaseVisitor databaseVisitor, String catalog, PreparedStatement preparedStatement) {
-        try (ResultSet resultSet = preparedStatement.executeQuery()) {
-            Integer lastObjectId = null;
+        @Setter
+        @Accessors(chain = true)
+        class Closer {
+            Integer objectId = null;
             String schema = null;
             String table = null;
             String fkName = null;
@@ -154,46 +158,54 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             Date modifyDate = null;
             List<String> pkColumns = new ArrayList<>();
             List<String> fkColumns = new ArrayList<>();
+
+            Closer setObjectId(Integer objectId) {
+                if (!objectId.equals(this.objectId)) {
+                    flush();
+                }
+                this.objectId = objectId;
+                return this;
+            }
+
+            void addColumns(String pkCol, String fkCol) {
+                pkColumns.add(pkCol);
+                fkColumns.add(fkCol);
+            }
+
+            void flush() {
+                if (objectId != null) {
+                    ForeignKey foreignKey = new ForeignKey(
+                            fkName,
+                            null,
+                            new TableName(catalog, refSchema, refTable),
+                            pkColumns,
+                            new TableName(catalog, schema, fkName),
+                            fkColumns);
+                    String definition = foreignKey.toDDL(database);
+                    ObjectIdentifier tableIdentifier = new ObjectIdentifier("USER_TABLE", catalog, schema, table, null);
+                    ObjectIdentifier fkIdentifier = new SqlServerObjectIdentifier(objectId, "FOREIGN_KEY_CONSTRAINT", catalog, schema, fkName, tableIdentifier);
+                    databaseVisitor.moduleDefinition(fkIdentifier, modifyDate, definition);
+                }
+            }
+        }
+
+        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            Closer closer = new Closer();
             while (resultSet.next()) {
                 Integer objectId = resultSet.getInt("object_id");
-                if (!objectId.equals(lastObjectId)) {
-                    if (lastObjectId != null) {
-                        ForeignKey foreignKey = new ForeignKey(
-                                fkName,
-                                null,
-                                new TableName(catalog, refSchema, refTable),
-                                pkColumns,
-                                new TableName(catalog, schema, fkName),
-                                fkColumns);
-                        String definition = foreignKey.toDDL(database);
-                        ObjectIdentifier tableIdentifier = new ObjectIdentifier("USER_TABLE", catalog, schema, table, null);
-                        ObjectIdentifier fkIdentifier = new SqlServerObjectIdentifier(lastObjectId, "FOREIGN_KEY_CONSTRAINT", catalog, schema, fkName, tableIdentifier);
-                        databaseVisitor.moduleDefinition(fkIdentifier, modifyDate, definition);
-                    }
-                    lastObjectId = objectId;
-                }
-                schema = resultSet.getString("s");
-                table = resultSet.getString("t");
-                fkName = resultSet.getString("fk_name");
-                modifyDate = resultSet.getTimestamp("modify_date");
-                refSchema = resultSet.getString("ref_schema");
-                refTable = resultSet.getString("ref_table");
-                String col = resultSet.getString("col");
-                String refCol = resultSet.getString("ref_col");
-                pkColumns.add(refCol);
-                fkColumns.add(col);
+                closer.setObjectId(objectId)
+                        .setSchema(resultSet.getString("s"))
+                        .setTable(resultSet.getString("t"))
+                        .setFkName(resultSet.getString("fk_name"))
+                        .setModifyDate(resultSet.getTimestamp("modify_date"))
+                        .setRefSchema(resultSet.getString("ref_schema"))
+                        .setRefTable(resultSet.getString("ref_table"))
+                        .addColumns(
+                                resultSet.getString("ref_col"),
+                                resultSet.getString("col")
+                        );
             }
-            ForeignKey foreignKey = new ForeignKey(
-                    fkName,
-                    null,
-                    new TableName(catalog, refSchema, refTable),
-                    pkColumns,
-                    new TableName(catalog, schema, fkName),
-                    fkColumns);
-            String definition = foreignKey.toDDL(database);
-            ObjectIdentifier tableIdentifier = new ObjectIdentifier("USER_TABLE", catalog, schema, table, null);
-            ObjectIdentifier fkIdentifier = new SqlServerObjectIdentifier(lastObjectId, "FOREIGN_KEY_CONSTRAINT", catalog, schema, fkName, tableIdentifier);
-            databaseVisitor.moduleDefinition(fkIdentifier, modifyDate, definition);
+            closer.flush();
         }
     }
 
@@ -231,6 +243,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
                 WHERE o.object_id in (%s)
+                  AND o.type_desc NOT IN ('FOREIGN_KEY_CONSTRAINT')
                 ORDER BY s.name, o.name
                 """.formatted(StringUtils.repeat("?", bindCount, ",")))) {
             int i;
@@ -243,13 +256,15 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             visitModuleDefinitions(databaseVisitor, catalog, preparedStatement);
         }
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT s.name   AS s,
+                SELECT fk.object_id,
+                       fk.modify_date,
+                       s.name   AS s,
                        t.name   AS t,
                        fk.name  AS fk_name,
                        m_c.name AS col,
                        r_s.name AS ref_schema,
                        r_t.name AS ref_table,
-                       o_c.name AS rec_col
+                       o_c.name AS ref_col
                 FROM sys.schemas s
                          JOIN sys.tables t ON t.schema_id = s.schema_id
                          JOIN sys.foreign_keys fk ON fk.parent_object_id = t.object_id
@@ -259,7 +274,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.columns o_c ON o_c.object_id = fkc.referenced_object_id AND o_c.column_id = fkc.referenced_column_id
                          JOIN sys.columns m_c ON m_c.object_id = fkc.parent_object_id AND m_c.column_id = fkc.parent_column_id
                 WHERE t.is_ms_shipped = 0
-                  AND o.object_id in (%s)
+                  AND fk.object_id in (%s)
                 ORDER BY fk.name, s.name, t.name, m_c.column_id
                 """.formatted(StringUtils.repeat("?", bindCount, ",")))) {
             int i;
