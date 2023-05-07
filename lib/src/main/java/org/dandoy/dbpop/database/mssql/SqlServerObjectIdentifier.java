@@ -7,7 +7,7 @@ import org.dandoy.dbpop.database.ObjectIdentifier;
 public class SqlServerObjectIdentifier extends ObjectIdentifier {
     private final Integer objectId;
 
-    public SqlServerObjectIdentifier(Integer objectId, String type, String catalog, String schema, String name, SqlServerObjectIdentifier parent) {
+    public SqlServerObjectIdentifier(Integer objectId, String type, String catalog, String schema, String name, ObjectIdentifier parent) {
         super(type, catalog, schema, name, parent);
         this.objectId = objectId;
     }
@@ -28,5 +28,10 @@ public class SqlServerObjectIdentifier extends ObjectIdentifier {
             }
         }
         return super.equals(o);
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + " - " + objectId;
     }
 }
