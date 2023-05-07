@@ -14,11 +14,14 @@ import org.dandoy.dbpopd.utils.Pair;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,11 +37,57 @@ public class CodeService {
     private final ConfigurationService configurationService;
     private final PopulateService populateService;
     private final DatasetsService datasetsService;
+    private final ChangeDetector changeDetector;
 
-    public CodeService(ConfigurationService configurationService, PopulateService populateService, DatasetsService datasetsService) {
+    public CodeService(ConfigurationService configurationService, PopulateService populateService, DatasetsService datasetsService, ChangeDetector changeDetector) {
         this.configurationService = configurationService;
         this.populateService = populateService;
         this.datasetsService = datasetsService;
+        this.changeDetector = changeDetector;
+    }
+
+    /**
+     * Walk the codeDirectory and invokes the visitor for each catalog, schema and file
+     */
+    public static List<Pair<File, ObjectIdentifier>> getCatalogChanges(File codeDirectory, String catalog) {
+        List<Pair<File, ObjectIdentifier>> ret = new ArrayList<>();
+        File catalogDir = new File(codeDirectory, catalog);
+
+        if (catalogDir.isDirectory()) {
+            int directoryCount = codeDirectory.toPath().getNameCount();
+            try {
+                Map<Integer, List<Pair<File, ObjectIdentifier>>> filesByPriority = new TreeMap<>();
+                // Collect the files by priority: tables, foreign keys, indexes, stored procedures, ...
+                Files.walkFileTree(catalogDir.toPath(), new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult visitFile(Path filePath, BasicFileAttributes attrs) {
+                        if (filePath.getNameCount() - directoryCount == 4) {
+                            String schema = filePath.getName(directoryCount + 1).toString();
+                            String type = filePath.getName(directoryCount + 2).toString();
+                            String filename = filePath.getName(directoryCount + 3).toString();
+                            if (filename.toLowerCase().endsWith(".sql")) {
+                                String name = filename.substring(0, filename.length() - 4);
+                                ObjectIdentifier objectIdentifier = new ObjectIdentifier(type, catalog, schema, name);
+                                filesByPriority
+                                        .computeIfAbsent(CODE_TYPES.indexOf(type), ArrayList::new)
+                                        .add(
+                                                Pair.of(
+                                                        filePath.toFile(),
+                                                        objectIdentifier
+                                                )
+                                        );
+                            }
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+
+                return filesByPriority.entrySet().stream().flatMap(it -> it.getValue().stream()).toList();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return ret;
     }
 
     /**
@@ -46,12 +95,7 @@ public class CodeService {
      */
     public DownloadResult downloadSourceToFile() {
         try (Database database = configurationService.createSourceDatabase()) {
-            File codeDirectory = configurationService.getCodeDirectory();
-            FileUtils.deleteRecursively(codeDirectory);
-            DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
-            try (DbToFileVisitor dbToFileVisitor = new DbToFileVisitor(databaseIntrospector, codeDirectory)) {
-                return downloadToFile(database, dbToFileVisitor);
-            }
+            return downloadToFile(database);
         }
     }
 
@@ -60,15 +104,16 @@ public class CodeService {
      */
     public DownloadResult downloadTargetToFile() {
         try (Database database = configurationService.createTargetDatabase()) {
-            File codeDirectory = configurationService.getCodeDirectory();
-            try (CodeDB.TimestampInserter timestampInserter = CodeDB.createTimestampInserter(database)) {
-                DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
-                try (TargetDbToFileVisitor targetDbToFileVisitor = new TargetDbToFileVisitor(timestampInserter, databaseIntrospector, codeDirectory)) {
-                    return downloadToFile(database, targetDbToFileVisitor);
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+            return downloadToFile(database);
+        }
+    }
+
+    private DownloadResult downloadToFile(Database database) {
+        File codeDirectory = configurationService.getCodeDirectory();
+        FileUtils.deleteRecursively(codeDirectory);
+        DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
+        try (DbToFileVisitor dbToFileVisitor = new DbToFileVisitor(databaseIntrospector, codeDirectory)) {
+            return downloadToFile(database, dbToFileVisitor);
         }
     }
 
@@ -108,79 +153,90 @@ public class CodeService {
     @SneakyThrows
     public UploadResult uploadFileToTarget() {
         long t0 = System.currentTimeMillis();
-        try (Database targetDatabase = configurationService.createTargetDatabase()) {
-            try (Connection connection = targetDatabase.getConnection()) {
-                try (Statement statement = connection.createStatement()) {
-                    try (CodeDB.TimestampInserter timestampInserter = CodeDB.createTimestampInserter(targetDatabase)) {
+        return changeDetector.holdingChanges(() -> {
+            try (Database targetDatabase = configurationService.createTargetDatabase()) {
+                try (Connection connection = targetDatabase.getConnection()) {
+                    try (Statement statement = connection.createStatement()) {
+                        List<UploadResult.FileExecution> fileExecutions = new ArrayList<>();
+
                         File codeDirectory = configurationService.getCodeDirectory();
-                        FileToDatabaseComparator comparator = new FileToDatabaseComparator(targetDatabase, statement, timestampInserter);
-                        CodeFileInspector.inspect(codeDirectory, comparator);
+                        for (String catalog : targetDatabase.getCatalogs()) {
 
-                        try {
-                            List<TableName> modifiedTableNames = comparator.getModifiedTableNames();
-                            List<ForeignKey> foreignKeys = modifiedTableNames.stream()
-                                    .map(targetDatabase::getRelatedForeignKeys)
-                                    .flatMap(Collection::stream)
-                                    .collect(Collectors.toList());
-                            // drop the FKs that point to the modified tables
-                            for (ForeignKey foreignKey : foreignKeys) {
-                                targetDatabase.dropForeignKey(foreignKey);
-                            }
+                            // USE <database>
+                            targetDatabase.createCatalog(catalog);
+                            statement.execute("USE " + catalog);
 
-                            // drop the modified tables
-                            for (TableName modifiedTableName : modifiedTableNames) {
-                                statement.execute("DROP TABLE " + targetDatabase.quote(modifiedTableName));
-                            }
+                            List<Pair<File, ObjectIdentifier>> changes = getCatalogChanges(codeDirectory, catalog);
+                            // Create the schemas
+                            changes.stream()
+                                    .map(it -> it.right().getSchema())
+                                    .distinct()
+                                    .forEach(schema -> {
+                                        try {
+                                            statement.getConnection().commit();
+                                            if (!"dbo".equals(schema)) {
+                                                statement.execute("CREATE SCHEMA " + schema);
+                                            }
+                                        } catch (SQLException e) {
+                                            if (!e.getSQLState().equals("S0001")) {
+                                                throw new RuntimeException(e);
+                                            }
+                                        }
+                                    });
 
-                            // Execute the updates
-                            List<FileToDatabaseComparator.ToDo> toDos = comparator.getToDos();
-                            List<UploadResult.FileExecution> fileExecutions = new ArrayList<>();
-                            for (FileToDatabaseComparator.ToDo toDo : toDos) {
-                                ObjectIdentifier objectIdentifier = toDo.objectIdentifier();
-                                File sqlFile = toDo.sqlFile();
-                                UploadResult.FileExecution fileExecution = execute(statement, objectIdentifier.getType(), sqlFile);
+                            // Drop the tables
+                            changes.stream()
+                                    .filter(it -> "USER_TABLE".equals(it.right().getType()))
+                                    .map(Pair::right)
+                                    .forEach(objectIdentifier -> {
+                                        TableName tableName = new TableName(
+                                                objectIdentifier.getCatalog(),
+                                                objectIdentifier.getSchema(),
+                                                objectIdentifier.getName()
+                                        );
+                                        try {
+                                            List<ForeignKey> relatedForeignKeys = targetDatabase.getRelatedForeignKeys(tableName);
+                                            for (ForeignKey foreignKey : relatedForeignKeys) {
+                                                targetDatabase.dropForeignKey(foreignKey);
+                                            }
+                                            statement.execute("DROP TABLE IF EXISTS " + targetDatabase.quote(tableName));
+                                        } catch (SQLException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                    });
+
+                            for (Pair<File, ObjectIdentifier> change : changes) {
+                                File file = change.left();
+                                ObjectIdentifier objectIdentifier = change.right();
+                                UploadResult.FileExecution fileExecution = execute(statement, objectIdentifier.getType(), file);
                                 fileExecutions.add(fileExecution);
-                                timestampInserter.addTimestamp(objectIdentifier, new Timestamp(sqlFile.lastModified()));
-
-                                // Don't re-create later the foreign key that we dropped if it is re-created here
-                                if ("FOREIGN_KEY_CONSTRAINT".equals(toDo.objectIdentifier().getType())) {
-                                    foreignKeys.removeIf(foreignKey -> foreignKey.getName().equals(objectIdentifier.getName()) &&
-                                                                       foreignKey.getPkTableName().getSchema().equals(objectIdentifier.getSchema()) &&
-                                                                       foreignKey.getPkTableName().getCatalog().equals(objectIdentifier.getCatalog())
-                                    );
-                                }
                             }
-
-                            // Reload the base dataset. If we have dropped customers, we cannot re-enable the invoices_customers_fk without reloading the data
-                            // We must clear the cache first because it may not know about the new objects
-                            if (configurationService.getDatasetsDirectory().isDirectory()) {
-                                List<String> datasets = datasetsService.getDatasets();
-                                String datasetToLoad = datasets.contains("base") ? "base" : datasets.contains("static") ? "static" : !datasets.isEmpty() ? datasets.get(0) : null;
-                                if (datasetToLoad != null) {
-                                    configurationService.clearTargetDatabaseCache();
-                                    populateService.populate(List.of(datasetToLoad), true);
-                                }
-                            }
-
-                            // Recreate the dropped FKs that haven't been re-created
-                            for (ForeignKey foreignKey : foreignKeys) {
-                                targetDatabase.createForeignKey(foreignKey);
-                            }
-
-                            long t1 = System.currentTimeMillis();
-                            return new UploadResult(fileExecutions, t1 - t0);
-                        } finally {
-                            configurationService.clearTargetDatabaseCache();
                         }
+
+                        // Reload the base dataset.
+                        // We must clear the cache first because it may not know about the new objects
+                        if (configurationService.getDatasetsDirectory().isDirectory()) {
+                            List<String> datasets = datasetsService.getDatasets();
+                            String datasetToLoad = datasets.contains("base") ? "base" : datasets.contains("static") ? "static" : !datasets.isEmpty() ? datasets.get(0) : null;
+                            if (datasetToLoad != null) {
+                                configurationService.clearTargetDatabaseCache();
+                                populateService.populate(List.of(datasetToLoad), true);
+                            }
+                        }
+
+                        long t1 = System.currentTimeMillis();
+                        return new UploadResult(fileExecutions, t1 - t0);
+                    } finally {
+                        configurationService.clearTargetDatabaseCache();
                     }
                 }
+            } catch (SQLException | IOException e) {
+                throw new RuntimeException(e);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        });
     }
 
-    private static final Pattern CREATE_PATTERN = Pattern.compile("(.*)\\bCREATE(\\s+(?:FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b.*)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern CREATE_PATTERN = Pattern.compile("(.*)\\bCREATE\\s+((?:FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b.*)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     private UploadResult.FileExecution execute(Statement statement, String type, File sqlFile) throws IOException {
         log.info("Executing {}", sqlFile);
@@ -198,7 +254,7 @@ public class CodeService {
                     String pre = matcher.group(1);
                     String post = matcher.group(2);
                     //noinspection SqlResolve
-                    String createOrAlter = pre + "CREATE OR ALTER" + post;
+                    String createOrAlter = pre + "CREATE OR ALTER " + post;
                     statement.execute(createOrAlter);
                 } else {
                     log.warn("Could not identify " + sqlFile);

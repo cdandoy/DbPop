@@ -6,6 +6,8 @@ import io.micronaut.http.HttpStatus;
 import io.micronaut.http.exceptions.HttpStatusException;
 import jakarta.inject.Singleton;
 import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
 
 import java.io.BufferedReader;
@@ -16,8 +18,11 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import static org.dandoy.dbpopd.utils.IOUtils.toCanonical;
+
 @SuppressWarnings("unused")
 @Singleton
+@Slf4j
 public class ConfigurationService {
     private static final String PROP_FILE_NAME = "dbpop.properties";
     @Getter
@@ -37,7 +42,8 @@ public class ConfigurationService {
     @Getter
     private final VirtualFkCache virtualFkCache;
     @Getter
-    private final boolean codeAutoSave;
+    @Setter
+    private boolean codeAutoSave;
 
     @SuppressWarnings("MnInjectionPoints")
     public ConfigurationService(
@@ -47,7 +53,7 @@ public class ConfigurationService {
             @Property(name = "dbpopd.configuration.code") @Nullable String codeDirectory,
             @Property(name = "dbpopd.configuration.codeAutoSave", defaultValue = "false") boolean codeAutoSave
     ) {
-        configurationDir = new File(configurationPath);
+        configurationDir = toCanonical(new File(configurationPath));
         File configurationFile = new File(configurationDir, PROP_FILE_NAME);
         Properties properties = getConfigurationProperties(configurationFile);
 
@@ -56,10 +62,15 @@ public class ConfigurationService {
 
         File vfkFile = new File(configurationDir, "vfk.json");
         virtualFkCache = VirtualFkCache.createVirtualFkCache(vfkFile);
-        this.datasetsDirectory = datasetsDirectory != null ? new File(datasetsDirectory) : new File(configurationDir, "datasets");
-        this.setupDirectory = setupDirectory != null ? new File(setupDirectory) : new File(configurationDir, "setup");
-        this.codeDirectory = codeDirectory != null ? new File(codeDirectory) : new File(configurationDir, "code");
+        this.datasetsDirectory = datasetsDirectory != null ? toCanonical(new File(datasetsDirectory)) : new File(configurationDir, "datasets");
+        this.setupDirectory = setupDirectory != null ? toCanonical(new File(setupDirectory)) : new File(configurationDir, "setup");
+        this.codeDirectory = codeDirectory != null ? toCanonical(new File(codeDirectory)) : new File(configurationDir, "code");
         this.codeAutoSave = codeAutoSave;
+
+        log.info("Configuration directory: {}", toCanonical(this.configurationDir));
+        if (datasetsDirectory != null) log.info("Datasets directory: {}", toCanonical(this.datasetsDirectory));
+        if (setupDirectory != null) log.info("Setup directory: {}", toCanonical(this.setupDirectory));
+        if (codeDirectory != null) log.info("Code directory: {}", toCanonical(this.codeDirectory));
     }
 
     private static UrlConnectionBuilder createConnectionBuilder(Properties properties, String jdbcurlProperty, String usernameProperty, String passwordProperty) {

@@ -10,7 +10,6 @@ import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpopd.utils.IOUtils;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -56,15 +55,15 @@ public class ObjectSignatureService {
         return MessageDigest.getInstance("SHA-256");
     }
 
+    @SuppressWarnings("unused")
     @SneakyThrows
     public Map<ObjectIdentifier, ObjectSignature> getObjectDefinitions(File directory) {
         Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
-        MessageDigest messageDigest = getMessageDigest();
         Path directoryPath = directory.toPath();
         int directoryPathNameCount = directoryPath.getNameCount();
         Files.walkFileTree(directoryPath, new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
+            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
                 if (path.getNameCount() == directoryPathNameCount + 4) {
                     String catalog = path.getName(directoryPathNameCount).toString();
                     String schema = path.getName(directoryPathNameCount + 1).toString();
@@ -73,8 +72,7 @@ public class ObjectSignatureService {
                     if (filename.endsWith(".sql")) {
                         String objectName = filename.substring(0, filename.length() - 4);
                         File file = path.toFile();
-                        byte[] bytes = IOUtils.toBytes(file);
-                        byte[] hash = messageDigest.digest(bytes);
+                        byte[] hash = getFileHash(file);
                         ret.put(
                                 new ObjectIdentifier(
                                         objectType,
@@ -95,17 +93,11 @@ public class ObjectSignatureService {
         return ret;
     }
 
-    private static File toFile(File directory, ObjectIdentifier objectIdentifier) {
-        return directory.toPath()
-                .resolve(
-                        Path.of(
-                                objectIdentifier.getCatalog(),
-                                objectIdentifier.getSchema(),
-                                objectIdentifier.getType(),
-                                objectIdentifier.getName() + ".sql"
-                        )
-                )
-                .toFile();
+    @SneakyThrows
+    public byte[] getFileHash(File file) {
+        MessageDigest messageDigest = getMessageDigest();
+        byte[] bytes = IOUtils.toBytes(file);
+        return messageDigest.digest(bytes);
     }
 
     public record ObjectSignature(Date modifyDate, byte[] hash) {}

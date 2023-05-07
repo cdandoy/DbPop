@@ -45,5 +45,10 @@ public final class DownloadResponse {
             this.rowCount = rowCount;
             this.rowsSkipped = rowsSkipped;
         }
+
+        @Override
+        public String toString() {
+            return "%s{rowCount=%d, rowsSkipped=%d}".formatted(displayName, rowCount, rowsSkipped);
+        }
     }
 }

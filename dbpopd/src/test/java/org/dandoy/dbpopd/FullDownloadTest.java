@@ -46,6 +46,7 @@ public class FullDownloadTest {
     }
 
     @Test
+    @SuppressWarnings("SqlResolve")
     void test() throws SQLException {
         try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
             SqlExecutor.execute(
@@ -150,7 +151,7 @@ public class FullDownloadTest {
 
         // Download back target -> source
         DownloadResponse downloadResponse = downloadController.downloadTarget(new DownloadController.DownloadTargetBody("base"));
-        Assertions.assertEquals(22, downloadResponse.getRowCount());
+        Assertions.assertEquals(22, downloadResponse.getRowCount()); // I have seen it fail here because I had tables both in master and in dbpop databases.
         Assertions.assertEquals(0, downloadResponse.getRowsSkipped());
         csvAssertionService
                 .csvAssertion("dbpop.dbo.products")

@@ -21,7 +21,11 @@ public class SqlServerObjectIdentifier extends ObjectIdentifier {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o instanceof SqlServerObjectIdentifier that) {
-            if (objectId != null) return this.objectId.equals(that.objectId);
+            if (this.objectId != null) {
+                if (this.objectId.equals(that.objectId)) {
+                    return true;
+                }
+            }
         }
         return super.equals(o);
     }

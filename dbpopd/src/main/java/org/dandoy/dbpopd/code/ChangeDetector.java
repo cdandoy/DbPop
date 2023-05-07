@@ -11,6 +11,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * ChangeDetector runs every 3 seconds.
@@ -36,42 +37,78 @@ public class ChangeDetector {
     @Scheduled(fixedDelay = "3s", initialDelay = "3s")
     void checkCodeChanges() {
         if (configurationService.isCodeAutoSave()) {
-            try (Database targetDatabase = configurationService.createTargetDatabase()) {
-                if (!hasScannedTargetCode) {
-                    captureObjectSignatures(targetDatabase);
-                } else {
-                    compareObjectSignatures(targetDatabase);
+            if (!hasScannedTargetCode) {
+                captureObjectSignatures();
+            } else {
+                compareObjectSignatures();
+            }
+        }
+    }
+
+    private Database safeGetTargetDatabase() {
+        try {
+            return configurationService.createTargetDatabase();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    synchronized void compareObjectSignatures() {
+        try (Database targetDatabase = safeGetTargetDatabase()) {
+            if (targetDatabase != null) {
+                Set<ObjectIdentifier> seen = new HashSet<>(targetObjectSignatures.keySet());
+
+                File codeDirectory = configurationService.getCodeDirectory();
+                try (ChangeFile changeFile = new ChangeFile(new File(codeDirectory, "changes.txt"))) {
+                    objectSignatureService.visitObjectDefinitions(targetDatabase, (objectIdentifier, modifyDate, hash, definition) -> {
+                        ObjectSignatureService.ObjectSignature oldSignature = targetObjectSignatures.get(objectIdentifier);
+                        seen.remove(objectIdentifier);
+                        if (oldSignature == null || !Arrays.equals(hash, oldSignature.hash())) {
+                            File file = toFile(codeDirectory, objectIdentifier);
+                            byte[] fileHash = objectSignatureService.getFileHash(file);
+                            if (Arrays.equals(fileHash, hash)) {
+                                // The file already contains that code
+                                targetObjectSignatures.put(objectIdentifier, new ObjectSignatureService.ObjectSignature(modifyDate, fileHash));
+                            } else {
+                                log.info("Downloading {}", objectIdentifier.toQualifiedName());
+                                writeDefinition(file, definition);
+                                targetObjectSignatures.put(objectIdentifier, new ObjectSignatureService.ObjectSignature(modifyDate, hash));
+                                changeFile.objectUpdated(objectIdentifier);
+                            }
+                        }
+                    });
+                    for (ObjectIdentifier removedObjectIdentifier : seen) {
+                        File file = toFile(codeDirectory, removedObjectIdentifier);
+                        log.info("deleting {}", file);
+                        targetObjectSignatures.remove(removedObjectIdentifier);
+                        changeFile.objectDeleted(removedObjectIdentifier);
+                        if (!file.delete() && file.exists()) {
+                            log.error("Failed to delete " + file);
+                        }
+                    }
                 }
             }
         }
     }
 
-    private void compareObjectSignatures(Database targetDatabase) {
-        Set<ObjectIdentifier> seen = new HashSet<>(targetObjectSignatures.keySet());
-        File codeDirectory = configurationService.getCodeDirectory();
-        try (ChangeFile changeFile = new ChangeFile(new File(codeDirectory, "changes.txt"))) {
-            objectSignatureService.visitObjectDefinitions(targetDatabase, (objectIdentifier, modifyDate, hash, definition) -> {
-                ObjectSignatureService.ObjectSignature oldSignature = targetObjectSignatures.get(objectIdentifier);
-                seen.remove(objectIdentifier);
-                if (oldSignature == null || !Arrays.equals(hash, oldSignature.hash())) {
-                    writeDefinition(objectIdentifier, definition);
-                    targetObjectSignatures.put(objectIdentifier, new ObjectSignatureService.ObjectSignature(modifyDate, hash));
-                    changeFile.objectUpdated(objectIdentifier);
-                }
-            });
-            for (ObjectIdentifier removedObjectIdentifier : seen) {
-                changeFile.objectDeleted(removedObjectIdentifier);
-                File file = toFile(codeDirectory, removedObjectIdentifier);
-                if (!file.delete() && file.exists()) {
-                    log.error("Failed to delete " + file);
-                }
+    synchronized void captureObjectSignatures() {
+        try (Database targetDatabase = safeGetTargetDatabase()) {
+            if (targetDatabase != null) {
+                Map<ObjectIdentifier, ObjectSignatureService.ObjectSignature> objectDefinitions = objectSignatureService.getObjectDefinitions(targetDatabase);
+                targetObjectSignatures.putAll(objectDefinitions);
+                hasScannedTargetCode = true;
             }
         }
     }
 
-    private void writeDefinition(ObjectIdentifier objectIdentifier, String definition) {
-        File codeDirectory = configurationService.getCodeDirectory();
-        File file = toFile(codeDirectory, objectIdentifier);
+    /**
+     * Safely executes the supplier without checking for code changes
+     */
+    synchronized <T> T holdingChanges(Supplier<T> supplier) {
+        return supplier.get();
+    }
+
+    private void writeDefinition(File file, String definition) {
         File directory = file.getParentFile();
         if (!directory.mkdirs() && !directory.isDirectory()) {
             log.error("Failed to create the directory " + directory, new Exception());
@@ -95,12 +132,6 @@ public class ChangeDetector {
                         )
                 )
                 .toFile();
-    }
-
-    private synchronized void captureObjectSignatures(Database targetDatabase) {
-        Map<ObjectIdentifier, ObjectSignatureService.ObjectSignature> objectDefinitions = objectSignatureService.getObjectDefinitions(targetDatabase);
-        targetObjectSignatures.putAll(objectDefinitions);
-        hasScannedTargetCode = true;
     }
 
     private static class ChangeFile implements AutoCloseable {

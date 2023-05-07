@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 public class DbPopTestUtils {
 
@@ -45,9 +44,6 @@ public class DbPopTestUtils {
             try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
                 execute(connection, "DROP DATABASE IF EXISTS dbpop");
                 execute(connection, "CREATE DATABASE dbpop");
-                try (Statement statement = connection.createStatement()) {
-                    statement.execute("DROP TABLE IF EXISTS master.dbo.dbpop_timestamps");
-                }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);

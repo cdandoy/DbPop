@@ -100,13 +100,8 @@ public class UrlConnectionBuilder implements ConnectionBuilder {
                 }
             }
 
-            // Try one more time, log the error
-            try {
-                return DriverManager.getConnection(url, username, password);
-            } catch (SQLException e) {
-                log.error("Failed to connect to " + url, e);
-                throw e;
-            }
+            // Try one more time
+            return DriverManager.getConnection(url, username, password);
         } finally {
             logger.setLevel(Level.INFO);
             hasWaited = true;

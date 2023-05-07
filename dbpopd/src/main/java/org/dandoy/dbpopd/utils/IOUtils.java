@@ -27,4 +27,13 @@ public class IOUtils {
             return ret;
         }
     }
+
+    public static File toCanonical(File file) {
+        File absoluteFile = file.getAbsoluteFile();
+        try {
+            return absoluteFile.getCanonicalFile();
+        } catch (IOException e) {
+            return absoluteFile;
+        }
+    }
 }
