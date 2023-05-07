@@ -33,7 +33,7 @@ export default function CodeTargetDownload() {
                         downloadResult.codeTypeCounts.map(pair => (
                             <tr key={pair.left}>
                                 <td>{pair.left}:</td>
-                                <td>{pair.right}</td>
+                                <td className={"text-end"}>{pair.right?.toLocaleString()}</td>
                             </tr>
                         ))
                     }

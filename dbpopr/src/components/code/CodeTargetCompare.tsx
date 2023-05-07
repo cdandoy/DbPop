@@ -60,9 +60,9 @@ export default function CodeTargetCompare() {
                     <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Database</th>
-                        <th></th>
                         <th>File</th>
+                        <th></th>
+                        <th>Database</th>
                     </tr>
                     </thead>
                     <tbody>

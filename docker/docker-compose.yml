@@ -31,12 +31,12 @@ services:
     environment:
       - SA_PASSWORD=${TARGET_DB_PASS}
       - ACCEPT_EULA="Y"
-  pgsql:
-    image: postgres:latest
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_PASSWORD=${TARGET_DB_PASS}
+#  pgsql:
+#    image: postgres:latest
+#    ports:
+#      - "5432:5432"
+#    environment:
+#      - POSTGRES_PASSWORD=${TARGET_DB_PASS}
 #  oracle-express:
 #    image: container-registry.oracle.com/database/express:21.3.0-xe
 #    ports:

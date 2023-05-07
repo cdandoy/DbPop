@@ -1,5 +1,6 @@
 package org.dandoy.dbpopd.code;
 
+import jakarta.annotation.Nullable;
 import jakarta.inject.Singleton;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +10,7 @@ import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.datasets.DatasetsService;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
+import org.dandoy.dbpopd.utils.IOUtils;
 import org.dandoy.dbpopd.utils.Pair;
 
 import java.io.BufferedReader;
@@ -125,22 +127,25 @@ public class CodeService {
         database.createDatabaseIntrospector().visit(visitor);
 
         // Translate USER_TABLE -> Tables
-        List<Pair<String, Integer>> typeCounts = visitor
-                .getTypeCounts()
-                .entrySet().stream()
-                .map(it -> {
-                    String codeType = it.getKey();
-                    return Pair.of(
-                            switch (codeType) {
-                                case "FOREIGN_KEY_CONSTRAINT" -> "Foreign Keys";
-                                case "INDEX" -> "Indexes";
-                                case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER" -> "Stored Procedures";
-                                case "USER_TABLE" -> "Tables";
-                                case "VIEW" -> "Views";
-                                default -> codeType;
-                            },
-                            it.getValue());
-                })
+        Map<String, Integer> typeCounts1 = visitor.getTypeCounts();
+        Map<String, Integer> typeCounts2 = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : typeCounts1.entrySet()) {
+            String codeType = entry.getKey();
+            String text = switch (codeType) {
+                case "FOREIGN_KEY_CONSTRAINT" -> "Foreign Keys";
+                case "INDEX" -> "Indexes";
+                case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER" -> "Stored Procedures";
+                case "USER_TABLE" -> "Tables";
+                case "VIEW" -> "Views";
+                default -> codeType;
+            };
+            Integer i = typeCounts2.computeIfAbsent(text, s -> 0);
+            typeCounts2.put(text, i + entry.getValue());
+        }
+        List<Pair<String, Integer>> typeCounts = typeCounts2
+                .entrySet()
+                .stream()
+                .map(it -> Pair.of(it.getKey(), it.getValue()))
                 .sorted(Comparator.comparing(Pair::left))
                 .toList();
         long t1 = System.currentTimeMillis();
@@ -288,21 +293,22 @@ public class CodeService {
             @Override
             public void catalog(String catalog) {
                 if (catalog.equals("tempdb")) return;
-                introspector.visitModuleMetas(this, catalog);
+                introspector.visitModuleDefinitions(this, catalog);
             }
 
             @Override
-            public void moduleMeta(ObjectIdentifier objectIdentifier, Date modifyDate) {
+            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String definition) {
                 String type = objectIdentifier.getType();
                 String catalog = objectIdentifier.getCatalog();
                 String schema = objectIdentifier.getSchema();
                 String name = objectIdentifier.getName();
                 File file = DbPopdFileUtils.toFile(codeDirectory, catalog, schema, type, name + ".sql");
-                boolean exists = file.exists();
                 long databaseTime = modifyDate.getTime();
-                if (exists) {
-                    long fileTime = file.lastModified();
-                    if (databaseTime != fileTime) {
+                if (file.exists()) {
+                    codeFiles.remove(file);
+                    String fileContent = IOUtils.toString(file);
+                    if (!fileContent.equals(definition)) {
+                        long fileTime = file.lastModified();
                         entries.add(new CodeDiff.Entry(
                                 new TableName(catalog, schema, name),
                                 type,
@@ -310,7 +316,6 @@ public class CodeService {
                                 fileTime
                         ));
                     }
-                    codeFiles.remove(file);
                 } else {
                     entries.add(new CodeDiff.Entry(
                             new TableName(catalog, schema, name),
