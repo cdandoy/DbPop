@@ -79,7 +79,9 @@ public abstract class Database implements AutoCloseable {
 
     public abstract DefaultDatabase.DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders) throws SQLException;
 
-    public abstract String quote(Collection<String> strings);
+    public abstract String quote(String delimiter, String... strings);
+
+    public abstract String quote(String delimiter, Collection<String> strings);
 
     public abstract String quote(TableName tableName);
 

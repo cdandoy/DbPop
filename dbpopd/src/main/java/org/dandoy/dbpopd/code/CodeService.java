@@ -117,38 +117,42 @@ public class CodeService {
      * Dumps the content of the database to the file system
      */
     private DownloadResult downloadToFile(Database database, DbToFileVisitor visitor) {
-        long t0 = System.currentTimeMillis();
-        database.createDatabaseIntrospector().visit(visitor);
+        return changeDetector.holdingChanges(() -> {
 
-        // Translate USER_TABLE -> Tables
-        Map<String, Integer> typeCounts1 = visitor.getTypeCounts();
-        Map<String, Integer> typeCounts2 = new HashMap<>();
-        for (Map.Entry<String, Integer> entry : typeCounts1.entrySet()) {
-            String codeType = entry.getKey();
-            String text = switch (codeType) {
-                case "FOREIGN_KEY_CONSTRAINT" -> "Foreign Keys";
-                case "INDEX" -> "Indexes";
-                case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER" -> "Stored Procedures";
-                case "USER_TABLE" -> "Tables";
-                case "VIEW" -> "Views";
-                default -> codeType;
-            };
-            Integer i = typeCounts2.computeIfAbsent(text, s -> 0);
-            typeCounts2.put(text, i + entry.getValue());
-        }
-        List<Pair<String, Integer>> typeCounts = typeCounts2
-                .entrySet()
-                .stream()
-                .map(it -> Pair.of(it.getKey(), it.getValue()))
-                .sorted(Comparator.comparing(Pair::left))
-                .toList();
-        long t1 = System.currentTimeMillis();
-        return new DownloadResult(
-                typeCounts,
-                t1 - t0
-        );
+            long t0 = System.currentTimeMillis();
+            database.createDatabaseIntrospector().visit(visitor);
+
+            // Translate USER_TABLE -> Tables
+            Map<String, Integer> typeCounts1 = visitor.getTypeCounts();
+            Map<String, Integer> typeCounts2 = new HashMap<>();
+            for (Map.Entry<String, Integer> entry : typeCounts1.entrySet()) {
+                String codeType = entry.getKey();
+                String text = switch (codeType) {
+                    case "FOREIGN_KEY_CONSTRAINT" -> "Foreign Keys";
+                    case "INDEX" -> "Indexes";
+                    case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER" -> "Stored Procedures";
+                    case "USER_TABLE" -> "Tables";
+                    case "VIEW" -> "Views";
+                    default -> codeType;
+                };
+                Integer i = typeCounts2.computeIfAbsent(text, s -> 0);
+                typeCounts2.put(text, i + entry.getValue());
+            }
+            List<Pair<String, Integer>> typeCounts = typeCounts2
+                    .entrySet()
+                    .stream()
+                    .map(it -> Pair.of(it.getKey(), it.getValue()))
+                    .sorted(Comparator.comparing(Pair::left))
+                    .toList();
+            long t1 = System.currentTimeMillis();
+            return new DownloadResult(
+                    typeCounts,
+                    t1 - t0
+            );
+        });
     }
 
+    @SuppressWarnings("SqlResolve")
     @SneakyThrows
     public UploadResult uploadFileToTarget() {
         long t0 = System.currentTimeMillis();
@@ -166,6 +170,32 @@ public class CodeService {
                             statement.execute("USE " + catalog);
 
                             List<Pair<File, ObjectIdentifier>> changes = getCatalogChanges(codeDirectory, catalog);
+                            for (int i = changes.size() - 1; i >= 0; i--) {
+                                Pair<File, ObjectIdentifier> pair = changes.get(i);
+                                ObjectIdentifier objectIdentifier = pair.right();
+                                try {
+                                    String sql = switch (objectIdentifier.getType()) {
+                                        case "USER_TABLE" -> "DROP TABLE IF EXISTS " + targetDatabase.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
+                                        case "FOREIGN_KEY_CONSTRAINT" -> "ALTER TABLE %s DROP CONSTRAINT %s".formatted(
+                                                targetDatabase.quote(".", objectIdentifier.getParent().getSchema(), objectIdentifier.getParent().getName()),
+                                                targetDatabase.quote(objectIdentifier.getName())
+                                        );
+                                        case "SQL_STORED_PROCEDURE" -> "DROP PROCEDURE IF EXISTS " + targetDatabase.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
+                                        case "SQL_INLINE_TABLE_VALUED_FUNCTION" -> "DROP FUNCTION IF EXISTS " + targetDatabase.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
+                                        default -> null;
+                                    };
+                                    if (sql != null) {
+                                        log.info("Executing {}", sql);
+                                        statement.execute(sql);
+                                    }
+
+                                } catch (SQLException e) {
+                                    if (!e.getSQLState().equals("S0001")) {
+                                        log.error("Failed to delete " + objectIdentifier, e);
+                                    }
+                                }
+                            }
+
                             // Create the schemas
                             changes.stream()
                                     .map(it -> it.right().getSchema())
@@ -180,27 +210,6 @@ public class CodeService {
                                             if (!e.getSQLState().equals("S0001")) {
                                                 throw new RuntimeException(e);
                                             }
-                                        }
-                                    });
-
-                            // Drop the tables
-                            changes.stream()
-                                    .filter(it -> "USER_TABLE".equals(it.right().getType()))
-                                    .map(Pair::right)
-                                    .forEach(objectIdentifier -> {
-                                        TableName tableName = new TableName(
-                                                objectIdentifier.getCatalog(),
-                                                objectIdentifier.getSchema(),
-                                                objectIdentifier.getName()
-                                        );
-                                        try {
-                                            List<ForeignKey> relatedForeignKeys = targetDatabase.getRelatedForeignKeys(tableName);
-                                            for (ForeignKey foreignKey : relatedForeignKeys) {
-                                                targetDatabase.dropForeignKey(foreignKey);
-                                            }
-                                            statement.execute("DROP TABLE IF EXISTS " + targetDatabase.quote(tableName));
-                                        } catch (SQLException e) {
-                                            throw new RuntimeException(e);
                                         }
                                     });
 
@@ -231,8 +240,6 @@ public class CodeService {
                 }
             } catch (SQLException | IOException e) {
                 throw new RuntimeException(e);
-            } finally {
-                changeDetector.captureObjectSignatures();
             }
         });
     }

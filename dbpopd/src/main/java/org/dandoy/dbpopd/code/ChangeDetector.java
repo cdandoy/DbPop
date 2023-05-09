@@ -76,28 +76,41 @@ public class ChangeDetector {
                     // The file already contains that code
                     DatabaseIntrospector databaseIntrospector = targetDatabase.createDatabaseIntrospector();
                     MessageDigest messageDigest = getMessageDigest();
+                    List<ObjectIdentifier> changedIdentifiers = new ArrayList<>();
                     for (String catalog : targetDatabase.getCatalogs()) {
-                        databaseIntrospector.visitModuleDefinitions(catalog, new DatabaseVisitor() {
+                        databaseIntrospector.visitModuleMetas(catalog, new DatabaseVisitor() {
                             @Override
-                            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
-                                byte[] hash = messageDigest.digest(definition.getBytes(StandardCharsets.UTF_8));
+                            public void moduleMeta(ObjectIdentifier objectIdentifier, Date modifyDate) {
                                 ObjectSignature oldSignature = targetObjectSignatures.get(objectIdentifier);
                                 seen.remove(objectIdentifier);
-                                if (oldSignature == null || !Arrays.equals(hash, oldSignature.hash())) {
-                                    File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
-                                    if (file.exists() && Arrays.equals(getFileHash(file), hash)) {
-                                        // The file already contains that code
-                                        targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, getFileHash(file)));
-                                    } else {
-                                        log.info("Downloading {}", objectIdentifier.toQualifiedName());
-                                        writeDefinition(file, definition);
-                                        targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
-                                        changeFile.objectUpdated(objectIdentifier);
-                                    }
+                                if (oldSignature == null || (modifyDate != null && !modifyDate.equals(oldSignature.modifyDate))) {
+                                    changedIdentifiers.add(objectIdentifier);
                                 }
                             }
                         });
                     }
+
+                    databaseIntrospector.visitModuleDefinitions(changedIdentifiers, new DatabaseVisitor() {
+                        @Override
+                        public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
+                            byte[] hash = messageDigest.digest(definition.getBytes(StandardCharsets.UTF_8));
+                            ObjectSignature oldSignature = targetObjectSignatures.get(objectIdentifier);
+                            seen.remove(objectIdentifier);
+                            if (oldSignature == null || !Arrays.equals(hash, oldSignature.hash())) {
+                                File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
+                                if (file.exists() && Arrays.equals(getFileHash(file), hash)) {
+                                    // The file already contains that code
+                                    targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, getFileHash(file)));
+                                } else {
+                                    log.info("Downloading {}", file);
+                                    writeDefinition(file, definition);
+                                    targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
+                                    changeFile.objectUpdated(objectIdentifier);
+                                }
+                            }
+                        }
+                    });
+
                     for (ObjectIdentifier removedObjectIdentifier : seen) {
                         File file = toFile(codeDirectory, removedObjectIdentifier);
                         log.info("deleting {}", file);
@@ -137,7 +150,11 @@ public class ChangeDetector {
      * Safely executes the supplier without checking for code changes
      */
     synchronized <T> T holdingChanges(Supplier<T> supplier) {
-        return supplier.get();
+        try {
+            return supplier.get();
+        } finally {
+            captureObjectSignatures();
+        }
     }
 
     private void writeDefinition(File file, String definition) {

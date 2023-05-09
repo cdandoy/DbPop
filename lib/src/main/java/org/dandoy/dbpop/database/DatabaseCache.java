@@ -157,8 +157,13 @@ public class DatabaseCache extends Database {
     }
 
     @Override
-    public String quote(Collection<String> strings) {
-        return delegate.quote(strings);
+    public String quote(String delimiter, String... strings) {
+        return delegate.quote(delimiter, strings);
+    }
+
+    @Override
+    public String quote(String delimiter, Collection<String> strings) {
+        return delegate.quote(delimiter, strings);
     }
 
     @Override

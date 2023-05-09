@@ -38,7 +38,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
 
     @Override
     @SneakyThrows
-    public void visitModuleMetas(DatabaseVisitor databaseVisitor, String catalog) {
+    public void visitModuleMetas(String catalog, DatabaseVisitor databaseVisitor) {
         use(catalog);
 
         // Everything but Foreign Keys and indexes for which we need to fetch the parent table
@@ -136,6 +136,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     @SneakyThrows
     public void visitModuleDefinitions(String catalog, DatabaseVisitor databaseVisitor) {
         use(catalog);
+        // Mostly sprocs
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AS modify_date, sm.definition
                 FROM sys.schemas s
@@ -148,6 +149,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             visitModuleDefinitions(databaseVisitor, catalog, preparedStatement);
         }
 
+        // Tables
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT t.object_id        AS table_id,
                        s.name             AS schema_name,
@@ -175,6 +177,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             visitTableDefinitions(databaseVisitor, catalog, preparedStatement);
         }
 
+        // Foreign Keys
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT t.object_id    AS table_id,
                        fk.object_id   AS fk_id,
@@ -199,16 +202,19 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                                 """)) {
             visitModuleForeignKeyDefinitions(databaseVisitor, catalog, preparedStatement);
         }
+
+        // Indexes
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT t.object_id AS table_id,
-                       i.index_id  AS index_id,
-                       s.name      AS schema_name,
-                       t.name      AS table_name,
-                       i.name      AS index_name,
+                SELECT t.object_id   AS table_id,
+                       i.index_id    AS index_id,
+                       s.name        AS schema_name,
+                       t.name        AS table_name,
+                       t.modify_date AS modify_date,
+                       i.name        AS index_name,
                        i.is_unique,
                        i.is_primary_key,
                        i.type_desc,
-                       c.name      AS column_name,
+                       c.name        AS column_name,
                        ic.is_included_column
                 FROM sys.schemas s
                          JOIN sys.tables t ON t.schema_id = s.schema_id
@@ -302,6 +308,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             Integer indexId;
             String schemaName;
             String tableName;
+            Date modifyDate;
             String indexName;
             boolean isUnique;
             boolean isPrimaryKey;
@@ -332,7 +339,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                             null, "INDEX", catalog, schemaName, indexName,
                             new SqlServerObjectIdentifier(tableId, "USER_TABLE", catalog, schemaName, tableName, null)
                     );
-                    databaseVisitor.moduleDefinition(indexIdentifier, null, definition);
+                    databaseVisitor.moduleDefinition(indexIdentifier, modifyDate, definition);
                     columns.clear();
                 }
             }
@@ -347,6 +354,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                         )
                         .setSchemaName(resultSet.getString("schema_name"))
                         .setTableName(resultSet.getString("table_name"))
+                        .setModifyDate(resultSet.getTimestamp("modify_date"))
                         .setIndexName(resultSet.getString("index_name"))
                         .setUnique(resultSet.getInt("is_unique") > 0)
                         .setPrimaryKey(resultSet.getInt("is_primary_key") > 0)
@@ -574,15 +582,16 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     @SneakyThrows
     private void visitIndexDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<SqlServerObjectIdentifier> identifiers, int bindCount) {
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT t.object_id AS table_id,
-                       i.index_id  AS index_id,
-                       s.name      AS schema_name,
-                       t.name      AS table_name,
-                       i.name      AS index_name,
+                SELECT t.object_id   AS table_id,
+                       i.index_id    AS index_id,
+                       s.name        AS schema_name,
+                       t.name        AS table_name,
+                       t.modify_date AS modify_date,
+                       i.name        AS index_name,
                        i.is_unique,
                        i.is_primary_key,
                        i.type_desc,
-                       c.name      AS column_name,
+                       c.name        AS column_name,
                        ic.is_included_column
                 FROM sys.schemas s
                          JOIN sys.tables t ON t.schema_id = s.schema_id

@@ -8,10 +8,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.sql.*;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.dandoy.dbpop.database.ColumnType.INVALID;
@@ -102,9 +99,9 @@ public abstract class DefaultDatabase extends Database {
                         "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)",
                         quote(foreignKey.getFkTableName()),
                         quote(foreignKey.getName()),
-                        quote(foreignKey.getFkColumns()),
+                        quote(",", foreignKey.getFkColumns()),
                         quote(foreignKey.getPkTableName()),
-                        quote(foreignKey.getPkColumns())
+                        quote(",", foreignKey.getPkColumns())
                 );
             } else {
                 executeSql(
@@ -155,10 +152,17 @@ public abstract class DefaultDatabase extends Database {
     }
 
     @Override
-    public String quote(Collection<String> strings) {
+    public String quote(String delimiter, String... strings) {
+        return Arrays.stream(strings)
+                .map(this::quote)
+                .collect(Collectors.joining(delimiter));
+    }
+
+    @Override
+    public String quote(String delimiter, Collection<String> strings) {
         return strings.stream()
                 .map(this::quote)
-                .collect(Collectors.joining(","));
+                .collect(Collectors.joining(delimiter));
     }
 
     @Override
@@ -330,7 +334,7 @@ public abstract class DefaultDatabase extends Database {
             }
 
             @Override
-            protected   void consume(String s) throws SQLException {
+            protected void consume(String s) throws SQLException {
                 byte[] bytes;
                 if (s != null) {
                     bytes = decoder.decode(s);

@@ -33,12 +33,12 @@ class SqlServerDatabaseIntrospectorTest {
         try (Database targetDatabase = Database.createDatabase(localCredentials.targetConnectionBuilder())) {
             List<ObjectIdentifier> metaIdentifiers = new ArrayList<>();
             targetDatabase.createDatabaseIntrospector()
-                    .visitModuleMetas(new DatabaseVisitor() {
+                    .visitModuleMetas("master", new DatabaseVisitor() {
                         @Override
                         public void moduleMeta(ObjectIdentifier objectIdentifier, Date modifyDate) {
                             metaIdentifiers.add(objectIdentifier);
                         }
-                    }, "master");
+                    });
 
             List<ObjectIdentifier> defIdentifiers = new ArrayList<>();
             targetDatabase.createDatabaseIntrospector()

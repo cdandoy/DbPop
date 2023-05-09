@@ -5,7 +5,7 @@ import java.util.Collection;
 public interface DatabaseIntrospector {
     void visit(DatabaseVisitor databaseVisitor);
 
-    void visitModuleMetas(DatabaseVisitor databaseVisitor, String catalog);
+    void visitModuleMetas(String catalog, DatabaseVisitor databaseVisitor);
 
     void visitModuleDefinitions(String catalog, DatabaseVisitor databaseVisitor);
 
