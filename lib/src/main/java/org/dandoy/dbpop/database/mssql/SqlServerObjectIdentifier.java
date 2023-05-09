@@ -21,6 +21,11 @@ public class SqlServerObjectIdentifier extends ObjectIdentifier {
     }
 
     @Override
+    public SqlServerObjectIdentifier getParent() {
+        return (SqlServerObjectIdentifier) super.getParent();
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o instanceof SqlServerObjectIdentifier that) {

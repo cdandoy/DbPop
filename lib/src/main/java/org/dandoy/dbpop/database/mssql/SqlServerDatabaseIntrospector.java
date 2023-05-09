@@ -603,7 +603,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 """.formatted(StringUtils.repeat("(?, ?)", bindCount, ",")))) {
             int jdbcPos = 1;
             for (SqlServerObjectIdentifier indexIdentifier : identifiers) {
-                SqlServerObjectIdentifier tableIdentifier = (SqlServerObjectIdentifier) indexIdentifier.getParent(); // FIXME: can we force the parent to be SqlServerObjectIdentifier?
+                SqlServerObjectIdentifier tableIdentifier = indexIdentifier.getParent();
                 preparedStatement.setInt(jdbcPos++, tableIdentifier.getObjectId());
                 preparedStatement.setString(jdbcPos++, indexIdentifier.getName());
             }
