@@ -55,11 +55,15 @@ public class Table {
 
     public List<String> foreignKeyDDLs(Database database) {
         return getForeignKeys().stream()
-                .map(foreignKey -> "ALTER TABLE %s ADD %s".formatted(
-                        database.quote(getTableName()),
-                        foreignKey.toDDL(database)
-                ))
+                .map(foreignKey -> getForeignKeyDefinition(database, getTableName(), foreignKey))
                 .toList();
+    }
+
+    public static String getForeignKeyDefinition(Database database, TableName tableName, ForeignKey foreignKey) {
+        return "ALTER TABLE %s ADD %s".formatted(
+                database.quote(tableName),
+                foreignKey.toDDL(database)
+        );
     }
 
     public List<String> indexesDDLs(Database database) {

@@ -5,6 +5,7 @@ import lombok.SneakyThrows;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.utils.CollectionUtils;
 import org.dandoy.dbpop.utils.StringUtils;
 
 import java.sql.*;
@@ -33,42 +34,17 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     }
 
     @Override
-    public void visitModuleDefinitions(DatabaseVisitor databaseVisitor, Timestamp since) {
-        try {
-            for (String catalog : database.getCatalogs()) {
-                use(catalog);
-                try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT object_id FROM sys.objects WHERE modify_date > ?")) {
-                    if (database.isSqlServer()) { // SQL Server timestamps are approximate
-                        since = new Timestamp(since.getTime() + 1000);
-                    }
-                    preparedStatement.setObject(1, since);
-                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                        List<Integer> objectIds = new ArrayList<>();
-                        while (resultSet.next()) {
-                            int objectId = resultSet.getInt(1);
-                            objectIds.add(objectId);
-                        }
-                        if (!objectIds.isEmpty()) {
-                            visitModuleDefinitions(databaseVisitor, catalog, objectIds);
-                        }
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
     @SneakyThrows
     public void visitModuleMetas(DatabaseVisitor databaseVisitor, String catalog) {
         use(catalog);
+
+        // Everything but Foreign Keys and indexes for which we need to fetch the parent table
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AS modify_date
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                 WHERE o.is_ms_shipped = 0
-                  AND o.type_desc IN ('USER_TABLE', 'FOREIGN_KEY_CONSTRAINT', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE', 'SQL_TABLE_VALUED_FUNCTION', 'SQL_TRIGGER', 'VIEW')
+                  AND o.type_desc IN ('USER_TABLE', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE', 'SQL_TABLE_VALUED_FUNCTION', 'SQL_TRIGGER', 'VIEW')
                 ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -82,6 +58,50 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 }
             }
         }
+
+        // Foreign Keys
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                SELECT o.object_id   AS fk_id,
+                       s.name        AS fk_schema,
+                       o.name        AS fk_name,
+                       o.type_desc   AS fk_type,
+                       o.modify_date AS modify_date,
+                       t_o.object_id AS table_id,
+                       s_o.name      AS table_schema,
+                       t_o.name      AS table_name,
+                       t_o.type_desc AS table_type
+                FROM sys.schemas s
+                         JOIN sys.objects o ON o.schema_id = s.schema_id
+                         JOIN sys.foreign_keys fk ON fk.object_id = o.object_id
+                         JOIN sys.objects t_o ON t_o.object_id = fk.parent_object_id
+                         JOIN sys.schemas s_o ON s_o.schema_id = t_o.schema_id
+                WHERE o.is_ms_shipped = 0
+                  AND o.type_desc = 'FOREIGN_KEY_CONSTRAINT'
+                ORDER BY s.name, o.name
+                """)) {
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    int fkId = resultSet.getInt("fk_id");
+                    String fkSchema = resultSet.getString("fk_schema");
+                    String fkName = resultSet.getString("fk_name");
+                    String fkType = resultSet.getString("fk_type");
+                    Timestamp modifyDate = resultSet.getTimestamp("modify_date");
+                    int tableId = resultSet.getInt("table_id");
+                    String tableSchema = resultSet.getString("table_schema");
+                    String tableName = resultSet.getString("table_name");
+                    String tableType = resultSet.getString("table_type");
+                    databaseVisitor.moduleMeta(
+                            new SqlServerObjectIdentifier(
+                                    fkId, fkType, catalog, fkSchema, fkName,
+                                    new SqlServerObjectIdentifier(tableId, tableType, catalog, tableSchema, tableName)
+                            ),
+                            modifyDate
+                    );
+                }
+            }
+        }
+
+        // Indexes
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT o.object_id, s.name AS "schema", o.name AS "table", i.name AS "index", o.modify_date AS modify_date
                 FROM sys.schemas s
@@ -97,8 +117,13 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String tableName = resultSet.getString("table");
                     String indexName = resultSet.getString("index");
                     Timestamp modifyDate = resultSet.getTimestamp("modify_date");
-                    SqlServerObjectIdentifier tableIdentifier = new SqlServerObjectIdentifier(objectId, "USER_TABLE", catalog, schema, tableName);
-                    databaseVisitor.moduleMeta(new SqlServerObjectIdentifier(objectId, "INDEX", catalog, schema, indexName, tableIdentifier), modifyDate);
+                    databaseVisitor.moduleMeta(
+                            new SqlServerObjectIdentifier(
+                                    null, "INDEX", catalog, schema, indexName,
+                                    new SqlServerObjectIdentifier(objectId, "USER_TABLE", catalog, schema, tableName)
+                            ),
+                            modifyDate
+                    );
                 }
             }
         }
@@ -106,7 +131,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
 
     @Override
     @SneakyThrows
-    public void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog) {
+    public void visitModuleDefinitions(String catalog, DatabaseVisitor databaseVisitor) {
         use(catalog);
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AS modify_date, sm.definition
@@ -120,14 +145,15 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             visitModuleDefinitions(databaseVisitor, catalog, preparedStatement);
         }
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT fk.object_id,
-                       s.name   AS s,
-                       t.name   AS t,
-                       fk.name  AS fk_name,
-                       m_c.name AS col,
-                       r_s.name AS ref_schema,
-                       r_t.name AS ref_table,
-                       o_c.name AS ref_col,
+                SELECT t.object_id    AS table_id,
+                       fk.object_id   AS fk_id,
+                       s.name         AS s,
+                       t.name         AS t,
+                       fk.name        AS fk_name,
+                       m_c.name       AS col,
+                       r_s.name       AS ref_schema,
+                       r_t.name       AS ref_table,
+                       o_c.name       AS ref_col,
                        fk.modify_date AS modify_date
                 FROM sys.schemas s
                          JOIN sys.tables t ON t.schema_id = s.schema_id
@@ -139,8 +165,29 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.columns m_c ON m_c.object_id = fkc.parent_object_id AND m_c.column_id = fkc.parent_column_id
                 WHERE t.is_ms_shipped = 0
                 ORDER BY fk.name, s.name, t.name, m_c.column_id
-                """)) {
+                                """)) {
             visitModuleForeignKeyDefinitions(databaseVisitor, catalog, preparedStatement);
+        }
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                SELECT t.object_id AS table_id,
+                       i.index_id  AS index_id,
+                       s.name      AS schema_name,
+                       t.name      AS table_name,
+                       i.name      AS index_name,
+                       i.is_unique,
+                       i.is_primary_key,
+                       i.type_desc,
+                       c.name      AS column_name,
+                       ic.is_included_column
+                FROM sys.schemas s
+                         JOIN sys.tables t ON t.schema_id = s.schema_id
+                         JOIN sys.indexes i ON i.object_id = t.object_id
+                         JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
+                         JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
+                WHERE t.is_ms_shipped = 0
+                ORDER BY s.name, t.name, i.index_id, ic.key_ordinal
+                """)) {
+            visitModuleIndexDefinitions(databaseVisitor, catalog, preparedStatement);
         }
     }
 
@@ -149,7 +196,8 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         @Setter
         @Accessors(chain = true)
         class Closer {
-            Integer objectId = null;
+            Integer tableId = null;
+            Integer fkId = null;
             String schema = null;
             String table = null;
             String fkName = null;
@@ -159,11 +207,11 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             List<String> pkColumns = new ArrayList<>();
             List<String> fkColumns = new ArrayList<>();
 
-            Closer setObjectId(Integer objectId) {
-                if (!objectId.equals(this.objectId)) {
+            Closer setFkId(Integer fkId) {
+                if (!fkId.equals(this.fkId)) {
                     flush();
                 }
-                this.objectId = objectId;
+                this.fkId = fkId;
                 return this;
             }
 
@@ -173,18 +221,23 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             }
 
             void flush() {
-                if (objectId != null) {
+                if (fkId != null) {
+                    TableName pkTableName = new TableName(catalog, refSchema, refTable);
+                    TableName fkTableName = new TableName(catalog, schema, table);
                     ForeignKey foreignKey = new ForeignKey(
                             fkName,
                             null,
-                            new TableName(catalog, refSchema, refTable),
-                            pkColumns,
-                            new TableName(catalog, schema, fkName),
-                            fkColumns);
-                    String definition = foreignKey.toDDL(database);
-                    ObjectIdentifier tableIdentifier = new ObjectIdentifier("USER_TABLE", catalog, schema, table, null);
-                    ObjectIdentifier fkIdentifier = new SqlServerObjectIdentifier(objectId, "FOREIGN_KEY_CONSTRAINT", catalog, schema, fkName, tableIdentifier);
+                            pkTableName,
+                            new ArrayList<>(pkColumns),
+                            fkTableName,
+                            new ArrayList<>(fkColumns));
+
+                    String definition = Table.getForeignKeyDefinition(database, fkTableName, foreignKey);
+                    SqlServerObjectIdentifier tableIdentifier = new SqlServerObjectIdentifier(tableId, "USER_TABLE", catalog, schema, table, null);
+                    ObjectIdentifier fkIdentifier = new SqlServerObjectIdentifier(fkId, "FOREIGN_KEY_CONSTRAINT", catalog, schema, fkName, tableIdentifier);
                     databaseVisitor.moduleDefinition(fkIdentifier, modifyDate, definition);
+                    pkColumns.clear();
+                    fkColumns.clear();
                 }
             }
         }
@@ -192,8 +245,8 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         try (ResultSet resultSet = preparedStatement.executeQuery()) {
             Closer closer = new Closer();
             while (resultSet.next()) {
-                Integer objectId = resultSet.getInt("object_id");
-                closer.setObjectId(objectId)
+                closer.setFkId(resultSet.getInt("fk_id"))
+                        .setTableId(resultSet.getInt("table_id"))
                         .setSchema(resultSet.getString("s"))
                         .setTable(resultSet.getString("t"))
                         .setFkName(resultSet.getString("fk_name"))
@@ -209,62 +262,144 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         }
     }
 
-    public void visitModuleDefinitions(DatabaseVisitor databaseVisitor, Collection<ObjectIdentifier> objectIdentifiers) {
+    @SneakyThrows
+    private void visitModuleIndexDefinitions(DatabaseVisitor databaseVisitor, String catalog, PreparedStatement preparedStatement) {
+        @Setter
+        @Accessors(chain = true)
+        class Closer {
+            Integer tableId;
+            Integer indexId;
+            String schemaName;
+            String tableName;
+            String indexName;
+            boolean isUnique;
+            boolean isPrimaryKey;
+            String typeDesc = null;
+            List<SqlServerIndex.SqlServerIndexColumn> columns = new ArrayList<>();
+
+            public Closer setIds(int tableId, int indexId) {
+                if (this.tableId != null && this.indexId != null && (tableId != this.tableId || indexId != this.indexId)) {
+                    flush();
+                }
+                this.tableId = tableId;
+                this.indexId = indexId;
+                return this;
+            }
+
+            void addColumn(SqlServerIndex.SqlServerIndexColumn column) {
+                columns.add(column);
+            }
+
+            void flush() {
+                if (this.tableId != null && this.indexId != null) {
+                    SqlServerIndex sqlServerIndex = new SqlServerIndex(
+                            indexName, new TableName(catalog, schemaName, tableName), isUnique, isPrimaryKey, typeDesc, new ArrayList<>(columns)
+                    );
+
+                    String definition = sqlServerIndex.toDDL(database);
+                    ObjectIdentifier indexIdentifier = new SqlServerObjectIdentifier(
+                            null, "INDEX", catalog, schemaName, indexName,
+                            new SqlServerObjectIdentifier(tableId, "USER_TABLE", catalog, schemaName, tableName, null)
+                    );
+                    databaseVisitor.moduleDefinition(indexIdentifier, null, definition);
+                    columns.clear();
+                }
+            }
+        }
+
+        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            Closer closer = new Closer();
+            while (resultSet.next()) {
+                closer.setIds(
+                                resultSet.getInt("table_id"),
+                                resultSet.getInt("index_id")
+                        )
+                        .setSchemaName(resultSet.getString("schema_name"))
+                        .setTableName(resultSet.getString("table_name"))
+                        .setIndexName(resultSet.getString("index_name"))
+                        .setUnique(resultSet.getInt("is_unique") > 0)
+                        .setPrimaryKey(resultSet.getInt("is_primary_key") > 0)
+                        .setTypeDesc(resultSet.getString("type_desc"))
+                        .addColumn(new SqlServerIndex.SqlServerIndexColumn(
+                                resultSet.getString("column_name"),
+                                resultSet.getInt("is_included_column") > 0
+                        ));
+            }
+            closer.flush();
+        }
+    }
+
+    public void visitModuleDefinitions(Collection<ObjectIdentifier> objectIdentifiers, DatabaseVisitor databaseVisitor) {
         objectIdentifiers.stream()
                 .collect(Collectors.groupingBy(ObjectIdentifier::getCatalog))
-                .forEach((catalog, catalogObjectIdentifier) -> visitModuleDefinitions(databaseVisitor, catalog, catalogObjectIdentifier));
+                .forEach((catalog, catalogObjectIdentifier) -> {
+                    use(catalog);
+                    visitModuleDefinitions(databaseVisitor, catalog, catalogObjectIdentifier);
+                });
     }
 
     private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, Collection<ObjectIdentifier> objectIdentifiers) {
-        List<Integer> objectIds = new ArrayList<>();
+        List<SqlServerObjectIdentifier> regularIdentifiers = new ArrayList<>();
+        List<SqlServerObjectIdentifier> fkIdentifiers = new ArrayList<>();
+        List<SqlServerObjectIdentifier> indexIdentifiers = new ArrayList<>();
         for (ObjectIdentifier objectIdentifier : objectIdentifiers) {
-            if (!(objectIdentifier instanceof SqlServerObjectIdentifier sqlServerObjectIdentifier)) throw new RuntimeException("Expected SqlServerObjectIdentifiers, found " + (objectIdentifier == null ? "null" : objectIdentifier.getClass()));
-            objectIds.add(sqlServerObjectIdentifier.getObjectId());
+            if (!(objectIdentifier instanceof SqlServerObjectIdentifier sqlServerObjectIdentifier)) {
+                throw new RuntimeException("Expected SqlServerObjectIdentifier, got " + (objectIdentifier == null ? "null" : objectIdentifier.getClass()));
+            }
+            switch (sqlServerObjectIdentifier.getType()) {
+                case "FOREIGN_KEY_CONSTRAINT" -> fkIdentifiers.add(sqlServerObjectIdentifier);
+                case "INDEX" -> indexIdentifiers.add(sqlServerObjectIdentifier);
+                default -> regularIdentifiers.add(sqlServerObjectIdentifier);
+            }
         }
-        visitModuleDefinitions(databaseVisitor, catalog, objectIds);
-    }
 
-    private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<Integer> objectIds) {
         int bindCount = 1000;
-        while (!objectIds.isEmpty()) {
-            int max = Math.min(objectIds.size(), bindCount);
-            visitModuleDefinitions(databaseVisitor, catalog, objectIds.subList(0, max), bindCount);
-            objectIds = objectIds.subList(max, objectIds.size());
-        }
+        int indexBindCount = 500;
+        CollectionUtils.partition(regularIdentifiers, bindCount, identifiers -> visitModuleDefinitions(databaseVisitor, catalog, identifiers, bindCount));
+        CollectionUtils.partition(fkIdentifiers, bindCount, identifiers -> visitForeignKeyDefinitions(databaseVisitor, catalog, identifiers, bindCount));
+        CollectionUtils.partition(indexIdentifiers, indexBindCount, identifiers -> visitIndexDefinitions(databaseVisitor, catalog, identifiers, indexBindCount));
     }
 
+    /**
+     * visitModuleDefinitions for everything but foreign keys and indexes
+     */
     @SneakyThrows
-    private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<Integer> objectIds, int bindCount) {
-
-        use(catalog);
+    private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<SqlServerObjectIdentifier> identifiers, int bindCount) {
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date as modify_date, sm.definition
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
                 WHERE o.object_id in (%s)
-                  AND o.type_desc NOT IN ('FOREIGN_KEY_CONSTRAINT')
                 ORDER BY s.name, o.name
                 """.formatted(StringUtils.repeat("?", bindCount, ",")))) {
             int i;
-            for (i = 0; i < bindCount && i < objectIds.size(); i++) {
-                preparedStatement.setInt(i + 1, objectIds.get(i));
+            for (i = 0; i < bindCount && i < identifiers.size(); i++) {
+                preparedStatement.setInt(i + 1, identifiers.get(i).getObjectId());
             }
             for (; i < bindCount; i++) {
                 preparedStatement.setNull(i + 1, Types.INTEGER);
             }
             visitModuleDefinitions(databaseVisitor, catalog, preparedStatement);
         }
+    }
+
+    /**
+     * visitModuleDefinitions for foreign keys
+     */
+    @SneakyThrows
+    private void visitForeignKeyDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<SqlServerObjectIdentifier> identifiers, int bindCount) {
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT fk.object_id,
+                SELECT t.object_id  AS table_id,
+                       fk.object_id AS fk_id,
                        fk.modify_date,
-                       s.name   AS s,
-                       t.name   AS t,
-                       fk.name  AS fk_name,
-                       m_c.name AS col,
-                       r_s.name AS ref_schema,
-                       r_t.name AS ref_table,
-                       o_c.name AS ref_col
+                       s.name       AS s,
+                       t.name       AS t,
+                       fk.name      AS fk_name,
+                       m_c.name     AS col,
+                       r_s.name     AS ref_schema,
+                       r_t.name     AS ref_table,
+                       o_c.name     AS ref_col
                 FROM sys.schemas s
                          JOIN sys.tables t ON t.schema_id = s.schema_id
                          JOIN sys.foreign_keys fk ON fk.parent_object_id = t.object_id
@@ -278,13 +413,51 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 ORDER BY fk.name, s.name, t.name, m_c.column_id
                 """.formatted(StringUtils.repeat("?", bindCount, ",")))) {
             int i;
-            for (i = 0; i < bindCount && i < objectIds.size(); i++) {
-                preparedStatement.setInt(i + 1, objectIds.get(i));
+            for (i = 0; i < bindCount && i < identifiers.size(); i++) {
+                preparedStatement.setInt(i + 1, identifiers.get(i).getObjectId());
             }
             for (; i < bindCount; i++) {
                 preparedStatement.setNull(i + 1, Types.INTEGER);
             }
             visitModuleForeignKeyDefinitions(databaseVisitor, catalog, preparedStatement);
+        }
+    }
+
+    /**
+     * visitModuleDefinitions for indexes
+     */
+    @SneakyThrows
+    private void visitIndexDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<SqlServerObjectIdentifier> identifiers, int bindCount) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                SELECT t.object_id AS table_id,
+                       i.index_id  AS index_id,
+                       s.name      AS schema_name,
+                       t.name      AS table_name,
+                       i.name      AS index_name,
+                       i.is_unique,
+                       i.is_primary_key,
+                       i.type_desc,
+                       c.name      AS column_name,
+                       ic.is_included_column
+                FROM sys.schemas s
+                         JOIN sys.tables t ON t.schema_id = s.schema_id
+                         JOIN sys.indexes i ON i.object_id = t.object_id
+                         JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
+                         JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
+                         JOIN (VALUES %s) AS x(t, i) ON x.t = i.object_id AND x.i = i.name
+                ORDER BY s.name, t.name, i.index_id, ic.key_ordinal
+                """.formatted(StringUtils.repeat("(?, ?)", bindCount, ",")))) {
+            int jdbcPos = 1;
+            for (SqlServerObjectIdentifier indexIdentifier : identifiers) {
+                SqlServerObjectIdentifier tableIdentifier = (SqlServerObjectIdentifier) indexIdentifier.getParent(); // FIXME: can we force the parent to be SqlServerObjectIdentifier?
+                preparedStatement.setInt(jdbcPos++, tableIdentifier.getObjectId());
+                preparedStatement.setString(jdbcPos++, indexIdentifier.getName());
+            }
+            while (jdbcPos < bindCount * 2) {
+                preparedStatement.setNull(jdbcPos++, Types.INTEGER);
+                preparedStatement.setNull(jdbcPos++, Types.VARCHAR);
+            }
+            visitModuleIndexDefinitions(databaseVisitor, catalog, preparedStatement);
         }
     }
 
@@ -305,23 +478,19 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     }
                     Table table = tablesByName.get(new TableName(catalog, schema, name));
                     databaseVisitor.moduleDefinition(objectIdentifier, modifyDate, table.tableDDL(database));
-                    for (Index index : table.getIndexes()) {
-                        if (!index.isPrimaryKey()) {
-                            databaseVisitor.moduleDefinition(new SqlServerObjectIdentifier(objectId, "INDEX", catalog, schema, index.getName(), objectIdentifier), modifyDate, index.toDDL(database));
-                        }
-                    }
                 } else {
                     String definition = resultSet.getString("definition");
                     databaseVisitor.moduleDefinition(objectIdentifier, modifyDate, definition);
                 }
             }
         }
-
     }
 
-    private void use(String catalog) throws SQLException {
+    private void use(String catalog) {
         try (Statement statement = connection.createStatement()) {
             statement.execute("USE " + catalog);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 

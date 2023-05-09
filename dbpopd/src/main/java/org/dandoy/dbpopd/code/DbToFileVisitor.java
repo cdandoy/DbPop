@@ -60,7 +60,7 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
     }
 
     protected void visitCode(String catalog) {
-        introspector.visitModuleDefinitions(this, catalog);
+        introspector.visitModuleDefinitions(catalog, this);
     }
 
     @Override

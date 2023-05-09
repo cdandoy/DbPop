@@ -24,6 +24,9 @@ class SqlServerDatabaseIntrospectorTest {
         DbPopUtils.prepareMssqlTarget();
     }
 
+    /**
+     * Verify that DatabaseIntrospector.visitModuleMetas() returns the same objects as the two versions of DatabaseIntrospector.visitModuleDefinitions()
+     */
     @Test
     void name() {
         LocalCredentials localCredentials = LocalCredentials.from("mssql");
@@ -33,35 +36,27 @@ class SqlServerDatabaseIntrospectorTest {
                     .visitModuleMetas(new DatabaseVisitor() {
                         @Override
                         public void moduleMeta(ObjectIdentifier objectIdentifier, Date modifyDate) {
-                            if (!"INDEX".equals(objectIdentifier.getType())) {
-                                metaIdentifiers.add(objectIdentifier);
-                            }
+                            metaIdentifiers.add(objectIdentifier);
                         }
                     }, "master");
 
-            System.out.println("------------------------------------");
             List<ObjectIdentifier> defIdentifiers = new ArrayList<>();
             targetDatabase.createDatabaseIntrospector()
-                    .visitModuleDefinitions(new DatabaseVisitor() {
+                    .visitModuleDefinitions("master", new DatabaseVisitor() {
                         @Override
                         public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String definition) {
-                            if (!"INDEX".equals(objectIdentifier.getType())) {
-                                defIdentifiers.add(objectIdentifier);
-                            }
+                            defIdentifiers.add(objectIdentifier);
                         }
-                    }, "master");
+                    });
 
-            System.out.println("------------------------------------");
             List<ObjectIdentifier> defIdentifiers2 = new ArrayList<>();
             targetDatabase.createDatabaseIntrospector()
-                    .visitModuleDefinitions(new DatabaseVisitor() {
+                    .visitModuleDefinitions(metaIdentifiers, new DatabaseVisitor() {
                         @Override
                         public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String definition) {
-                            if (!"INDEX".equals(objectIdentifier.getType())) {
-                                defIdentifiers2.add(objectIdentifier);
-                            }
+                            defIdentifiers2.add(objectIdentifier);
                         }
-                    }, metaIdentifiers);
+                    });
 
             Collections.sort(metaIdentifiers);
             Collections.sort(defIdentifiers);

@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class CodeService {
     static final List<String> CODE_TYPES = List.of(
-            "USER_TABLE", "FOREIGN_KEY_CONSTRAINT", "INDEX", "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER", "VIEW"
+            "USER_TABLE", "INDEX", "FOREIGN_KEY_CONSTRAINT", "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER", "VIEW"
     );
 
     private final ConfigurationService configurationService;
@@ -289,7 +289,7 @@ public class CodeService {
             @Override
             public void catalog(String catalog) {
                 if (catalog.equals("tempdb")) return;
-                introspector.visitModuleDefinitions(this, catalog);
+                introspector.visitModuleDefinitions(catalog, this);
             }
 
             @Override
@@ -299,7 +299,7 @@ public class CodeService {
                 String schema = objectIdentifier.getSchema();
                 String name = objectIdentifier.getName();
                 File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
-                long databaseTime = modifyDate.getTime();
+                Long databaseTime = modifyDate == null ? null : modifyDate.getTime();
                 if (file.exists()) {
                     codeFiles.remove(file);
                     String fileContent = IOUtils.toString(file);

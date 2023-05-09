@@ -74,7 +74,7 @@ public class ChangeDetector {
                     DatabaseIntrospector databaseIntrospector = targetDatabase.createDatabaseIntrospector();
                     MessageDigest messageDigest = getMessageDigest();
                     for (String catalog : targetDatabase.getCatalogs()) {
-                        databaseIntrospector.visitModuleDefinitions(new DatabaseVisitor() {
+                        databaseIntrospector.visitModuleDefinitions(catalog, new DatabaseVisitor() {
                             @Override
                             public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
                                 byte[] hash = messageDigest.digest(definition.getBytes(StandardCharsets.UTF_8));
@@ -94,7 +94,7 @@ public class ChangeDetector {
                                     }
                                 }
                             }
-                        }, catalog);
+                        });
                     }
                     for (ObjectIdentifier removedObjectIdentifier : seen) {
                         File file = toFile(codeDirectory, removedObjectIdentifier);
@@ -117,13 +117,13 @@ public class ChangeDetector {
                 DatabaseIntrospector databaseIntrospector = targetDatabase.createDatabaseIntrospector();
                 MessageDigest messageDigest = getMessageDigest();
                 for (String catalog : targetDatabase.getCatalogs()) {
-                    databaseIntrospector.visitModuleDefinitions(new DatabaseVisitor() {
+                    databaseIntrospector.visitModuleDefinitions(catalog, new DatabaseVisitor() {
                         @Override
                         public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
                             byte[] hash = messageDigest.digest(definition.getBytes(StandardCharsets.UTF_8));
                             ret.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
                         }
-                    }, catalog);
+                    });
                 }
                 targetObjectSignatures = ret;
                 hasScannedTargetCode = true;
