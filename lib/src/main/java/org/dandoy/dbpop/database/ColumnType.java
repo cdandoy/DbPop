@@ -210,6 +210,7 @@ public abstract class ColumnType {
         if ("hierarchyid".equals(typeName)) return INVALID;
         if ("uniqueidentifier".equals(typeName)) return VARCHAR;
         if ("ntext".equals(typeName)) return VARCHAR;
+        if ("datetimeoffset".equals(typeName)) return VARCHAR;
         throw new RuntimeException("Unexpected type: " + typeName);
     }
 

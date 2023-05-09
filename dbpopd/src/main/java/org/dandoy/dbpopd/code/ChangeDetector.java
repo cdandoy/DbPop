@@ -47,11 +47,14 @@ public class ChangeDetector {
     @Scheduled(fixedDelay = "3s", initialDelay = "3s")
     void checkCodeChanges() {
         if (configurationService.isCodeAutoSave()) {
+            long t0 = System.currentTimeMillis();
             if (!hasScannedTargetCode) {
                 captureObjectSignatures();
             } else {
                 compareObjectSignatures();
             }
+            long t1 = System.currentTimeMillis();
+            log.info("checkCodeChanges - {}ms", t1 - t0);
         }
     }
 
@@ -82,10 +85,9 @@ public class ChangeDetector {
                                 seen.remove(objectIdentifier);
                                 if (oldSignature == null || !Arrays.equals(hash, oldSignature.hash())) {
                                     File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
-                                    byte[] fileHash = getFileHash(file);
-                                    if (Arrays.equals(fileHash, hash)) {
+                                    if (file.exists() && Arrays.equals(getFileHash(file), hash)) {
                                         // The file already contains that code
-                                        targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, fileHash));
+                                        targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, getFileHash(file)));
                                     } else {
                                         log.info("Downloading {}", objectIdentifier.toQualifiedName());
                                         writeDefinition(file, definition);
