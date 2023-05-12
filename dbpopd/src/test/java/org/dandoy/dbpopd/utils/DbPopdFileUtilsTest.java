@@ -1,13 +1,37 @@
 package org.dandoy.dbpopd.utils;
 
+import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.io.File;
+
+import static org.dandoy.dbpopd.utils.DbPopdFileUtils.toFileName;
+import static org.dandoy.dbpopd.utils.DbPopdFileUtils.toObjectIdentifier;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class DbPopdFileUtilsTest {
     @Test
-    void name() {
-        assertEquals("a_b_c_d", DbPopdFileUtils.toFileName("a_b_c_d"));
-        assertEquals("a_b_c_d", DbPopdFileUtils.toFileName("a_b@c:d"));
+    void testToFileName() {
+        assertEquals("a_b_c_d", toFileName("a_b_c_d"));
+        assertEquals("a_b_c_d", toFileName("a_b@c:d"));
+    }
+
+    @Test
+    void testObjectIdentifier() {
+        File codeDirectory = new File("/a/b/c");
+        assertEquals(
+                new ObjectIdentifier("USER_TABLE", "master", "advanced", "customer_types"),
+                toObjectIdentifier(codeDirectory, new File(codeDirectory, "master/advanced/USER_TABLE/customer_types.sql"))
+        );
+        assertEquals(
+                new ObjectIdentifier(
+                        "FOREIGN_KEY_CONSTRAINT", "master", "advanced", "customers_customer_types_fk",
+                        new ObjectIdentifier("USER_TABLE", "master", "advanced", "customer_types")
+                ), toObjectIdentifier(codeDirectory, new File(codeDirectory, "master/advanced/FOREIGN_KEY_CONSTRAINT/customers/customers_customer_types_fk.sql")));
+
+        assertNull(toObjectIdentifier(codeDirectory, new File(codeDirectory, "master/advanced/USER_TABLE/customer_types.txt")));
+        assertNull(toObjectIdentifier(codeDirectory, new File(codeDirectory, "master/advanced/customer_types.sql")));
+        assertNull(toObjectIdentifier(codeDirectory, new File(codeDirectory, "master/advanced/USER_TABLE/x/y/customer_types.sql")));
     }
 }

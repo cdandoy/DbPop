@@ -9,8 +9,10 @@ import org.dandoy.dbpop.database.DatabaseIntrospector;
 import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.site.SiteWebSocket;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.IOUtils;
+import org.dandoy.dbpopd.utils.Pair;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -37,11 +39,15 @@ import static org.dandoy.dbpopd.utils.DbPopdFileUtils.toFile;
 @Slf4j
 public class ChangeDetector {
     private final ConfigurationService configurationService;
+    private final SiteWebSocket siteWebSocket;
     private boolean hasScannedTargetCode = false;
+    private boolean applyChanges = false;
     private Map<ObjectIdentifier, ObjectSignature> targetObjectSignatures = new HashMap<>();
+    private Set<Pair<File, ObjectIdentifier>> pendingChanges = new HashSet<>();
 
-    public ChangeDetector(ConfigurationService configurationService) {
+    public ChangeDetector(ConfigurationService configurationService, SiteWebSocket siteWebSocket) {
         this.configurationService = configurationService;
+        this.siteWebSocket = siteWebSocket;
     }
 
     @Scheduled(fixedDelay = "3s", initialDelay = "3s")
@@ -54,7 +60,8 @@ public class ChangeDetector {
                 compareObjectSignatures();
             }
             long t1 = System.currentTimeMillis();
-            log.info("checkCodeChanges - {}ms", t1 - t0);
+            log.trace("checkCodeChanges - {}ms", t1 - t0);
+            siteWebSocket.sendMessage("checkCodeChanges - %dms".formatted(t1 - t0));
         }
     }
 
@@ -98,14 +105,22 @@ public class ChangeDetector {
                             seen.remove(objectIdentifier);
                             if (oldSignature == null || !Arrays.equals(hash, oldSignature.hash())) {
                                 File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
-                                if (file.exists() && Arrays.equals(getFileHash(file), hash)) {
+                                boolean fileExists = file.exists();
+                                if (fileExists && Arrays.equals(getFileHash(file), hash)) {
                                     // The file already contains that code
                                     targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, getFileHash(file)));
                                 } else {
-                                    log.info("Downloading {}", file);
-                                    writeDefinition(file, definition);
-                                    targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
-                                    changeFile.objectUpdated(objectIdentifier);
+                                    if (applyChanges) {
+                                        log.info("Downloading {}", file);
+                                        writeDefinition(file, definition);
+                                        targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
+                                        changeFile.objectUpdated(objectIdentifier);
+                                    } else {
+                                        addPendingChange(
+                                                fileExists ? file : null,
+                                                objectIdentifier
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -113,16 +128,25 @@ public class ChangeDetector {
 
                     for (ObjectIdentifier removedObjectIdentifier : seen) {
                         File file = toFile(codeDirectory, removedObjectIdentifier);
-                        log.info("deleting {}", file);
-                        targetObjectSignatures.remove(removedObjectIdentifier);
-                        changeFile.objectDeleted(removedObjectIdentifier);
-                        if (!file.delete() && file.exists()) {
-                            log.error("Failed to delete " + file);
+                        if (applyChanges) {
+                            log.info("deleting {}", file);
+                            targetObjectSignatures.remove(removedObjectIdentifier);
+                            changeFile.objectDeleted(removedObjectIdentifier);
+                            if (!file.delete() && file.exists()) {
+                                log.error("Failed to delete " + file);
+                            }
+                        } else {
+                            addPendingChange(file, null);
                         }
                     }
                 }
             }
         }
+    }
+
+    private void addPendingChange(File file, ObjectIdentifier objectIdentifier) {
+        log.debug("Pending change: {} - {}", file, objectIdentifier);
+        pendingChanges.add(Pair.of(file, objectIdentifier));
     }
 
     synchronized void captureObjectSignatures() {

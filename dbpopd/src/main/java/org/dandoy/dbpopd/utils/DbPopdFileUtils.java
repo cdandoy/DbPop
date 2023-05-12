@@ -85,6 +85,29 @@ public class DbPopdFileUtils {
         };
     }
 
+    public static ObjectIdentifier toObjectIdentifier(File directory, File file) {
+        Path directoryPath = directory.toPath();
+        Path path = file.toPath();
+        Path relativePath = directoryPath.relativize(path);
+        if (relativePath.getNameCount() == 4 || relativePath.getNameCount() == 5) {
+            String catalog = relativePath.getName(0).toString();
+            String schema = relativePath.getName(1).toString();
+            String type = relativePath.getName(2).toString();
+            String filename = relativePath.getName(relativePath.getNameCount() - 1).toString();
+            if (filename.endsWith(".sql")) {
+                String name = filename.substring(0, filename.length() - 4);
+                if (relativePath.getNameCount() == 4) {
+                    return new ObjectIdentifier(type, catalog, schema, name);
+                } else {
+                    String parentName = relativePath.getName(3).toString();
+                    ObjectIdentifier parent = new ObjectIdentifier("USER_TABLE", catalog, schema, parentName);
+                    return new ObjectIdentifier(type, catalog, schema, name, parent);
+                }
+            }
+        }
+        return null;
+    }
+
     /**
      * Creates an object that can convert a file path to an ObjectIdentifier.
      */

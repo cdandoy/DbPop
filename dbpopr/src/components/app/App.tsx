@@ -11,8 +11,11 @@ import RoutesComponent from "../RoutesComponent";
 import {DefaultSiteResponse, siteApi, SiteResponse} from "../../api/siteApi";
 import {SiteStatus, useSetupStatusEffect} from "./sitestatus/useSetupStatusEffect";
 import SiteStatusComponent from "./sitestatus/SiteStatusComponent";
+import useWebSocket from 'react-use-websocket';
 
 export const SiteContext = React.createContext<SiteResponse>(DefaultSiteResponse);
+
+const WS_URL = 'ws://localhost:8080/ws/site';
 
 export default function App() {
     const [siteStatus, setSiteStatus] = useState<SiteStatus>({statuses: [], complete: false});
@@ -24,6 +27,28 @@ export default function App() {
     }, [siteStatus]);
 
     useSetupStatusEffect(setSiteStatus);
+
+    useWebSocket(WS_URL, {
+        onOpen: () => {
+            console.log('onOpen');
+        },
+        onMessage: (a) => {
+            console.log("onMessage: " + a.data);
+            setSiteResponse(prevState => {
+                const ret = {...prevState, message: a.data};
+                return ret
+            })
+        },
+        onClose: () => {
+            console.log("onClose")
+        },
+        onError: () => {
+            console.log("onError")
+        },
+        onReconnectStop: () => {
+            console.log("onReconnectStop")
+        }
+    });
 
     if (siteStatus.complete) {
         return (

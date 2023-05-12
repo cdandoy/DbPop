@@ -3,6 +3,7 @@ import axios, {AxiosResponse} from "axios";
 export interface SiteResponse {
     hasSource: boolean;
     hasTarget: boolean;
+    message?: string;
 }
 
 export const DefaultSiteResponse = {hasSource: false, hasTarget: false};
