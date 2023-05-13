@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dandoy.dbpopd.ConfigurationService;
 
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.stream.Stream;
 
 @Controller("/code")
@@ -60,7 +61,8 @@ public class CodeController {
                                     change.isDatabaseChanged()
                             );
                         }
-                );
+                )
+                .sorted(Comparator.comparing(ChangeResponse::path));
     }
 
     record ChangeResponse(String path, String dbname, boolean fileChanged, boolean databaseChanged) {}

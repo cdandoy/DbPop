@@ -1,7 +1,7 @@
 import React from "react";
-import {DownloadResponse} from "../../models/DownloadResponse";
-import {tableNameToFqName} from "../../models/TableName";
-import {Plural} from "../../utils/DbPopUtils";
+import {DownloadResponse} from "../../../models/DownloadResponse";
+import {tableNameToFqName} from "../../../models/TableName";
+import {Plural} from "../../../utils/DbPopUtils";
 
 export default function DownloadResultsComponent({downloadResponse}: {
     downloadResponse: DownloadResponse

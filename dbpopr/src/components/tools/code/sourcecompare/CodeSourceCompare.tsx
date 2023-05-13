@@ -1,10 +1,10 @@
 import React, {useEffect, useState} from "react";
-import PageHeader from "../pageheader/PageHeader";
-import LoadingOverlay from "../utils/LoadingOverlay";
-import {CodeDiff, CodeDiffEntry, compareSourceToFile} from "../../api/codeApi";
+import PageHeader from "../../../pageheader/PageHeader";
+import LoadingOverlay from "../../../utils/LoadingOverlay";
+import {CodeDiff, CodeDiffEntry, compareSourceToFile} from "../../../../api/codeApi";
 import {Alert} from "react-bootstrap";
-import {tableNameToFqName} from "../../models/TableName";
-import "./CodeSourceCompare.scss"
+import {tableNameToFqName} from "../../../../models/TableName";
+import "../CodeCompare.scss"
 import compare_source from "./compare_source.png"
 
 export default function CodeSourceCompare() {

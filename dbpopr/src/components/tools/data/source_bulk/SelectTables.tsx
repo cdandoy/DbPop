@@ -1,13 +1,13 @@
 import React, {useEffect, useState} from "react";
-import {TableName, tableNameToFqName} from "../../../models/TableName";
-import {Plural} from "../../../utils/DbPopUtils";
-import {content, RowCount, TableInfo} from "../../../api/content";
+import {TableName, tableNameToFqName} from "../../../../models/TableName";
+import {Plural} from "../../../../utils/DbPopUtils";
+import {content, RowCount, TableInfo} from "../../../../api/content";
 import './DownloadBulkComponent.scss'
-import {bulkDownload} from "../../../api/bulkDownload";
-import {DownloadResponse} from "../../../models/DownloadResponse";
+import {bulkDownload} from "../../../../api/bulkDownload";
+import {DownloadResponse} from "../../../../models/DownloadResponse";
 import {FilterComponent} from "./FilterComponent";
-import LoadingOverlay from "../../utils/LoadingOverlay";
-import useDatasets from "../../utils/useDatasets";
+import LoadingOverlay from "../../../utils/LoadingOverlay";
+import useDatasets from "../../../utils/useDatasets";
 
 export default function SelectTables({
                                          schema, setSchema,

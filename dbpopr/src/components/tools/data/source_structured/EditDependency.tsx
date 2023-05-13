@@ -1,8 +1,8 @@
-import {Query} from "../../../models/Dependency";
+import {Query} from "../../../../models/Dependency";
 import React, {useEffect, useState} from "react";
 import './StructuredDownloadComponent.scss'
 import {DependencyQuery} from "./DataFilterComponent";
-import {getTable} from "../../../api/Table";
+import {getTable} from "../../../../api/Table";
 
 interface QueryColumn {
     column: string;

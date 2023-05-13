@@ -1,8 +1,8 @@
 import React, {useEffect, useState} from "react"
-import {Dependency, Query} from "../../../models/Dependency";
-import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
+import {Dependency, Query} from "../../../../models/Dependency";
+import {TableName, tableNameEquals, tableNameToFqName} from "../../../../models/TableName";
 import EditDependency from "./EditDependency";
-import {DownloadResponse} from "../../../models/DownloadResponse";
+import {DownloadResponse} from "../../../../models/DownloadResponse";
 
 export interface DependencyQuery {
     tableName: TableName,

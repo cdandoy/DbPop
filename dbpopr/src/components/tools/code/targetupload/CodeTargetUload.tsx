@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
-import PageHeader from "../pageheader/PageHeader";
-import LoadingOverlay from "../utils/LoadingOverlay";
-import {uploadFileToTarget, UploadResult} from "../../api/codeApi";
+import PageHeader from "../../../pageheader/PageHeader";
+import LoadingOverlay from "../../../utils/LoadingOverlay";
+import {uploadFileToTarget, UploadResult} from "../../../../api/codeApi";
 import {Alert} from "react-bootstrap";
 import "./CodeTargetUload.scss"
 import upload_target from "./upload_target.png"

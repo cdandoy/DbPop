@@ -1,18 +1,18 @@
 import React, {useEffect, useState} from "react";
 import SelectTableComponent from "./SelectTableComponent";
-import {content, TableInfo} from "../../../api/content";
-import LoadingOverlay from "../../utils/LoadingOverlay";
+import {content, TableInfo} from "../../../../api/content";
+import LoadingOverlay from "../../../utils/LoadingOverlay";
 import DependenciesComponent, {DependenciesFilter} from "./DependenciesComponent";
-import {Dependency} from "../../../models/Dependency";
+import {Dependency} from "../../../../models/Dependency";
 import './StructuredDownloadComponent.scss'
-import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
+import {TableName, tableNameEquals, tableNameToFqName} from "../../../../models/TableName";
 import DataFilterComponent, {DependencyQuery} from "./DataFilterComponent";
 import DownloadResultsComponent from "../DownloadResultsComponent";
-import {DownloadResponse} from "../../../models/DownloadResponse";
-import dependenciesApi from "../../../api/dependenciesApi";
-import {executeDownload} from "../../../api/executeDownload";
-import useDatasets from "../../utils/useDatasets";
-import PageHeader from "../../pageheader/PageHeader";
+import {DownloadResponse} from "../../../../models/DownloadResponse";
+import dependenciesApi from "../../../../api/dependenciesApi";
+import {executeDownload} from "../../../../api/executeDownload";
+import useDatasets from "../../../utils/useDatasets";
+import PageHeader from "../../../pageheader/PageHeader";
 import structured_download from "./source_structured.png";
 
 export default function StructuredDownloadComponent() {

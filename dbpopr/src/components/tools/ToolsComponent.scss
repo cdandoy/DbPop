@@ -1,6 +1,9 @@
-#code-component {
+#tools-component {
   .code-component-section {
-    padding: 1rem;
+    padding-top: 1rem;
+    padding-right: 1rem;
+    padding-left: 3rem;
+    padding-bottom: 1rem;
 
     .col-4 {
       text-align: end;
@@ -16,13 +19,5 @@
   .code-component-section:hover img {
     opacity: 100%;
     transition: opacity .5s;
-  }
-}
-
-
-#code-source-compare, #code-target-compare {
-  .table-container {
-    height: 30em;
-    overflow-y: auto;
   }
 }

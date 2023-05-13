@@ -1,8 +1,8 @@
 import React, {useState} from "react"
 import StructuredFilterComponent from "./StructuredFilterComponent";
-import {TableInfo} from "../../../api/content";
-import {TableName, tableNameEquals, tableNameToFqName} from "../../../models/TableName";
-import {Plural} from "../../../utils/DbPopUtils";
+import {TableInfo} from "../../../../api/content";
+import {TableName, tableNameEquals, tableNameToFqName} from "../../../../models/TableName";
+import {Plural} from "../../../../utils/DbPopUtils";
 import SelectTableDependenciesComponent from "../SelectTableDependenciesComponent";
 
 export default function SelectTableComponent({

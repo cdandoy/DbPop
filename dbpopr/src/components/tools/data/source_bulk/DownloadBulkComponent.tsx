@@ -1,11 +1,11 @@
 import React, {useState} from "react";
-import {DownloadResponse} from "../../../models/DownloadResponse";
+import {DownloadResponse} from "../../../../models/DownloadResponse";
 import SelectTables from "./SelectTables";
 import DownloadResultComponent from "./DownloadResultComponent";
 import {useLocalStorage} from "usehooks-ts";
 import SelectTableDependenciesComponent from "../SelectTableDependenciesComponent";
-import {TableName} from "../../../models/TableName";
-import PageHeader from "../../pageheader/PageHeader";
+import {TableName} from "../../../../models/TableName";
+import PageHeader from "../../../pageheader/PageHeader";
 import bulk_download from "./source_bulk.png";
 
 export default function DownloadBulkComponent() {

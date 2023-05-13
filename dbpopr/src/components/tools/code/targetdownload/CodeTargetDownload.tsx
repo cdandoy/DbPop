@@ -1,11 +1,11 @@
 import React, {useEffect, useState} from "react";
-import PageHeader from "../pageheader/PageHeader";
-import LoadingOverlay from "../utils/LoadingOverlay";
-import {DownloadResult, downloadSourceToFile} from "../../api/codeApi";
+import PageHeader from "../../../pageheader/PageHeader";
+import LoadingOverlay from "../../../utils/LoadingOverlay";
+import {DownloadResult, downloadTargetToFile} from "../../../../api/codeApi";
 import {Alert} from "react-bootstrap";
-import download_source from "./download_source.png"
+import download_target from "./download_target.png"
 
-export default function CodeSourceDownload() {
+export default function CodeTargetDownload() {
     const [loading, setLoading] = useState(false);
     const [downloadResult, setDownloadResult] = useState<DownloadResult | undefined>();
     const [error, setError] = useState<string | undefined>();
@@ -14,14 +14,14 @@ export default function CodeSourceDownload() {
         setLoading(true);
         setError(undefined);
         setDownloadResult(undefined);
-        downloadSourceToFile()
+        downloadTargetToFile()
             .then((result) => setDownloadResult(result.data))
             .catch((error) => setError(error.response.statusText))
             .finally(() => setLoading(false));
     }, [])
 
-    return <div id={"code-source-download"}>
-        <PageHeader title={"Download Source"} subtitle={"Download the tables and sprocs from the source database to the local SQL files"} tool={<img src={download_source} style={{width: "20em"}} alt={"Download Source"}/>}/>
+    return <div id={"code-target-download"}>
+        <PageHeader title={"Download from Target"} subtitle={"Download the tables and sprocs from the Target database to the SQL files"} tool={<img src={download_target} style={{width: "20em"}} alt={"Download from Target"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}
         {!error && downloadResult && (
@@ -33,7 +33,7 @@ export default function CodeSourceDownload() {
                         downloadResult.codeTypeCounts.map(pair => (
                             <tr key={pair.left}>
                                 <td>{pair.left}:</td>
-                                <td>{pair.right}</td>
+                                <td className={"text-end"}>{pair.right?.toLocaleString()}</td>
                             </tr>
                         ))
                     }

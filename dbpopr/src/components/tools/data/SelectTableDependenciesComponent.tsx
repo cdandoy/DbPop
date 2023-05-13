@@ -1,8 +1,8 @@
 import React, {useEffect, useState} from "react";
 import {Button, Modal} from "react-bootstrap";
-import {TableName, tableNameToFqName} from "../../models/TableName";
-import {ForeignKey} from "../../models/ForeignKey";
-import {getTable} from "../../api/Table";
+import {TableName, tableNameToFqName} from "../../../models/TableName";
+import {ForeignKey} from "../../../models/ForeignKey";
+import {getTable} from "../../../api/Table";
 
 export default function SelectTableDependenciesComponent({tableName, close}: {
     tableName: TableName | undefined,

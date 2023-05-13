@@ -104,7 +104,7 @@ public class DatabaseChangeDetector {
                                     changeDetector.whenDatabaseChanged(file, objectIdentifier, definition);
                                 }
                             } else {
-                                changeDetector.  whenDatabaseChanged(null, objectIdentifier, definition);
+                                changeDetector.whenDatabaseChanged(null, objectIdentifier, definition);
                             }
                         }
                     }
@@ -114,12 +114,13 @@ public class DatabaseChangeDetector {
                     targetObjectSignatures.remove(removedObjectIdentifier);
                     File file = toFile(codeDirectory, removedObjectIdentifier);
                     if (file != null) {
-                        changeDetector.  whenDatabaseChanged(file, removedObjectIdentifier, null);
+                        changeDetector.whenDatabaseChanged(file, removedObjectIdentifier, null);
                     }
                 }
             }
         }
     }
+
     synchronized void captureObjectSignatures() {
         try (Database targetDatabase = safeGetTargetDatabase()) {
             if (targetDatabase != null) {
@@ -151,6 +152,7 @@ public class DatabaseChangeDetector {
             captureObjectSignatures();
         }
     }
+
     @SneakyThrows
     private static MessageDigest getMessageDigest() {
         return MessageDigest.getInstance("SHA-256");

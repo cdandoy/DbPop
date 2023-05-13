@@ -1,7 +1,7 @@
 import React from "react"
-import {Dependency, searchDependency} from "../../../models/Dependency";
-import {tableNameToFqName} from "../../../models/TableName";
-import {Plural} from "../../../utils/DbPopUtils";
+import {Dependency, searchDependency} from "../../../../models/Dependency";
+import {tableNameToFqName} from "../../../../models/TableName";
+import {Plural} from "../../../../utils/DbPopUtils";
 
 export interface DependenciesFilter {
     required: boolean;

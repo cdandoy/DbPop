@@ -13,4 +13,10 @@
       margin: 0 3px;
     }
   }
+
+  .changes {
+    max-height: 30em;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
 }

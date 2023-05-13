@@ -1,22 +1,22 @@
 import {Route, Routes} from "react-router-dom";
 import Datasets from "./datasets/Datasets";
-import DownloadComponent from "./download/DownloadComponent";
-import DownloadBulkComponent from "./download/source_bulk/DownloadBulkComponent";
-import StructuredDownloadComponent from "./download/source_structured/StructuredDownloadComponent";
 import VirtualFksComponent from "./vfk/VirtualFksComponent";
 import EditVirtualFkComponent from "./vfk/EditVirtualFkComponent";
 import AddVirtualFkComponent from "./vfk/AddVirtualFkComponent";
 import Dashboard from "./dashboard/Dashboard";
 import React, {useContext} from "react";
-import DownloadTargetFullComponent from "./download/target_full/DownloadTargetFullComponent";
-import CodeComponent from "./code/CodeComponent";
-import CodeSourceDownload from "./code/CodeSourceDownload";
-import CodeSourceCompare from "./code/CodeSourceCompare";
-import CodeTargetUload from "./code/CodeTargetUload";
-import CodeTargetDownload from "./code/CodeTargetDownload";
-import CodeTargetCompare from "./code/CodeTargetCompare";
-import DownloadSourceFullComponent from "./download/source_full/DownloadSourceFullComponent";
 import {SiteContext} from "./app/App";
+import ToolsComponent from "./tools/ToolsComponent";
+import CodeSourceDownload from "./tools/code/sourcedownload/CodeSourceDownload";
+import CodeSourceCompare from "./tools/code/sourcecompare/CodeSourceCompare";
+import CodeTargetCompare from "./tools/code/targetcompare/CodeTargetCompare";
+import CodeTargetDownload from "./tools/code/targetdownload/CodeTargetDownload";
+import CodeTargetUload from "./tools/code/targetupload/CodeTargetUload";
+import DownloadBulkComponent from "./tools/data/source_bulk/DownloadBulkComponent";
+import DownloadSourceFullComponent from "./tools/data/source_full/DownloadSourceFullComponent";
+import StructuredDownloadComponent from "./tools/data/source_structured/StructuredDownloadComponent";
+import DownloadTargetFullComponent from "./tools/data/target_full/DownloadTargetFullComponent";
+import CodeChanges from "./codechanges/CodeChanges";
 
 export default function RoutesComponent() {
     const siteResponse = useContext(SiteContext);
@@ -24,22 +24,22 @@ export default function RoutesComponent() {
         <Routes>
             <Route path="/datasets" element=<Datasets/>/>
 
-            <Route path="/download" element=<DownloadComponent/>/>
+            <Route path="/codechanges" element=<CodeChanges/>/>
+
+            <Route path="/tools" element=<ToolsComponent/>/>
             {siteResponse.hasSource && <>
-                <Route path="/download/source/structured" element=<StructuredDownloadComponent/>/>
-                <Route path="/download/source/bulk" element=<DownloadBulkComponent/>/>
-                <Route path="/download/source/full" element=<DownloadSourceFullComponent/>/>
+                <Route path="/tools/source/structured" element=<StructuredDownloadComponent/>/>
+                <Route path="/tools/source/bulk" element=<DownloadBulkComponent/>/>
+                <Route path="/tools/source/full" element=<DownloadSourceFullComponent/>/>
+                <Route path="/tools/source/compare" element=<CodeSourceCompare/>/>
+                <Route path="/tools/source/download" element=<CodeSourceDownload/>/>
             </>}
             {siteResponse.hasTarget && <>
-                <Route path="/download/target/full" element=<DownloadTargetFullComponent/>/>
+                <Route path="/tools/target/full" element=<DownloadTargetFullComponent/>/>
+                <Route path="/tools/target/compare" element=<CodeTargetCompare/>/>
+                <Route path="/tools/target/upload" element=<CodeTargetUload/>/>
+                <Route path="/tools/target/download" element=<CodeTargetDownload/>/>
             </>}
-
-            <Route path="/code" element=<CodeComponent/>/>
-            <Route path="/code/source/compare" element=<CodeSourceCompare/>/>
-            <Route path="/code/source/download" element=<CodeSourceDownload/>/>
-            <Route path="/code/target/compare" element=<CodeTargetCompare/>/>
-            <Route path="/code/target/upload" element=<CodeTargetUload/>/>
-            <Route path="/code/target/download" element=<CodeTargetDownload/>/>
 
             <Route path="/vfk" element=<VirtualFksComponent/>/>
             <Route path="/vfk/add" element=<AddVirtualFkComponent/>/>
