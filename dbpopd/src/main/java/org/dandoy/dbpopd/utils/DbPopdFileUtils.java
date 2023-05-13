@@ -7,7 +7,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,14 +25,6 @@ public class DbPopdFileUtils {
         } else {
             for (File file : files) {
                 getFiles(file, ret);
-            }
-        }
-    }
-
-    public static void deleteFiles(Collection<File> files) {
-        for (File file : files) {
-            if (!file.delete() && file.exists()) {
-                log.error("Failed to delete " + file);
             }
         }
     }

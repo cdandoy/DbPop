@@ -19,5 +19,5 @@
         <appender-ref ref="STDOUT"/>
     </root>
     <!--    <logger name="io.micronaut.runtime.Micronaut" level="WARN"/>-->
-        <logger name="org.dandoy.dbpopd.code" level="DEBUG"/>
+    <!--        <logger name="org.dandoy.dbpopd.code" level="DEBUG"/>-->
 </configuration>

@@ -1,9 +1,5 @@
 package org.dandoy.dbpopd.site;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import io.micronaut.jackson.ObjectMapperFactory;
 import io.micronaut.websocket.WebSocketBroadcaster;
 import io.micronaut.websocket.WebSocketSession;
 import io.micronaut.websocket.annotation.OnClose;
@@ -24,17 +20,17 @@ public class SiteWebSocket {
     }
 
     @OnOpen
-    public void onOpen(WebSocketSession session) {
-        log.info("SiteWebSocket.onOpen");
+    public void onOpen(WebSocketSession ignore) {
+        log.debug("SiteWebSocket.onOpen");
     }
 
     @OnMessage
-    public void onMessage(String message, WebSocketSession session) {
-        log.debug("SiteWebSocket.onMessage");
+    public void onMessage(String message, WebSocketSession ignore2) {
+        log.debug("SiteWebSocket.onMessage - {}", message);
     }
 
     @OnClose
-    public void onClose(WebSocketSession session) {
+    public void onClose(WebSocketSession ignore) {
         log.debug("SiteWebSocket.onClose");
     }
 
