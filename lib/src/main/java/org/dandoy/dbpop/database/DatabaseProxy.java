@@ -137,6 +137,11 @@ public class DatabaseProxy extends Database {
     }
 
     @Override
+    public String quote(ObjectIdentifier objectIdentifier) {
+        return delegate.quote(objectIdentifier);
+    }
+
+    @Override
     public String quote(String s) {
         return delegate.quote(s);
     }
@@ -190,5 +195,10 @@ public class DatabaseProxy extends Database {
     @Override
     public void createShema(String catalog, String schema) {
         delegate.createShema(catalog, schema);
+    }
+
+    @Override
+    public void dropObject(ObjectIdentifier objectIdentifier) {
+        delegate.dropObject(objectIdentifier);
     }
 }

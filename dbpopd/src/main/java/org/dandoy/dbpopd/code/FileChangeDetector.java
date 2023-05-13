@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
-import org.dandoy.dbpopd.utils.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,10 +25,12 @@ public class FileChangeDetector {
     private WatchService watchService;
     private Thread thread;
     private final Path codePath;
+    private final ChangeDetector changeDetector;
 
-    public FileChangeDetector(ConfigurationService configurationService) {
+    public FileChangeDetector(ConfigurationService configurationService, ChangeDetector changeDetector) {
         codeDirectory = configurationService.getCodeDirectory();
         codePath = configurationService.getCodeDirectory().toPath();
+        this.changeDetector = changeDetector;
     }
 
     @PostConstruct
@@ -149,7 +150,7 @@ public class FileChangeDetector {
             File file = path.toFile();
             ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(codeDirectory, file);
             if (objectIdentifier != null) {
-                whenFileChanged(null, objectIdentifier);
+                changeDetector.whenFileChanged(null, objectIdentifier);
             }
         }
     }
@@ -164,16 +165,11 @@ public class FileChangeDetector {
                 File file = path.toFile();
                 ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(codeDirectory, file);
                 if (objectIdentifier != null) {
-                    whenFileChanged(file, objectIdentifier);
+                    changeDetector.whenFileChanged(file, objectIdentifier);
                 }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private void whenFileChanged(File file, ObjectIdentifier objectIdentifier) {
-        log.info("Changed - {} - {}", objectIdentifier, file);
-        log.info(file == null ? "-empty-" : IOUtils.toString(file));
     }
 }

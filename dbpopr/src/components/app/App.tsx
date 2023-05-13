@@ -12,14 +12,22 @@ import {DefaultSiteResponse, siteApi, SiteResponse} from "../../api/siteApi";
 import {SiteStatus, useSetupStatusEffect} from "./sitestatus/useSetupStatusEffect";
 import SiteStatusComponent from "./sitestatus/SiteStatusComponent";
 import useWebSocket from 'react-use-websocket';
+import {Change, DefaultChanges, targetChanges} from "../../api/changeApi";
 
 export const SiteContext = React.createContext<SiteResponse>(DefaultSiteResponse);
+export const ChangeContext = React.createContext<Change[]>([]);
 
 const WS_URL = 'ws://localhost:8080/ws/site';
+
+interface Message {
+    messageType: string
+}
 
 export default function App() {
     const [siteStatus, setSiteStatus] = useState<SiteStatus>({statuses: [], complete: false});
     const [siteResponse, setSiteResponse] = useState<SiteResponse>(DefaultSiteResponse);
+    const [changes, setChanges] = useState<Change[]>(DefaultChanges);
+    const { lastJsonMessage } = useWebSocket(WS_URL);
 
     useEffect(() => {
         siteApi()
@@ -28,39 +36,39 @@ export default function App() {
 
     useSetupStatusEffect(setSiteStatus);
 
-    useWebSocket(WS_URL, {
-        onOpen: () => {
-            console.log('onOpen');
-        },
-        onMessage: (a) => {
-            console.log("onMessage: " + a.data);
-            setSiteResponse(prevState => {
-                const ret = {...prevState, message: a.data};
-                return ret
+    useEffect(() => {
+        targetChanges()
+            .then(result => {
+                setChanges(result.data);
             })
-        },
-        onClose: () => {
-            console.log("onClose")
-        },
-        onError: () => {
-            console.log("onError")
-        },
-        onReconnectStop: () => {
-            console.log("onReconnectStop")
+    }, []);
+
+    useEffect(() => {
+        if (lastJsonMessage) {
+            const message = lastJsonMessage as any as Message;
+            if (message.messageType === 'CODE_CHANGE') {
+                targetChanges()
+                    .then(result => {
+                        setChanges(result.data);
+                    })
+            }
         }
-    });
+    }, [lastJsonMessage]);
+
 
     if (siteStatus.complete) {
         return (
             <>
                 <HashRouter>
                     <SiteContext.Provider value={siteResponse}>
-                        <Sidebar title1={"DbPop"} title2={`v${process.env.REACT_APP_VERSION}`} menu=<Menu/> bottomMenu=<BottomMenu/> >
-                            <Header/>
-                            <div className="container">
-                                <RoutesComponent/>
-                            </div>
-                        </Sidebar>
+                        <ChangeContext.Provider value={changes}>
+                            <Sidebar title1={"DbPop"} title2={`v${process.env.REACT_APP_VERSION}`} menu=<Menu/> bottomMenu=<BottomMenu/> >
+                                <Header/>
+                                <div className="container">
+                                    <RoutesComponent/>
+                                </div>
+                            </Sidebar>
+                        </ChangeContext.Provider>
                     </SiteContext.Provider>
                 </HashRouter>
             </>

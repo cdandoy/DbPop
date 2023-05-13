@@ -175,6 +175,16 @@ public abstract class DefaultDatabase extends Database {
         );
     }
 
+    @Override
+    public String quote(ObjectIdentifier objectIdentifier) {
+        return String.format(
+                "%s.%s.%s",
+                quote(objectIdentifier.getCatalog()),
+                quote(objectIdentifier.getSchema()),
+                quote(objectIdentifier.getName())
+        );
+    }
+
     protected DatabaseInserter createInserter(Table table, List<DataFileHeader> dataFileHeaders, String sql) throws SQLException {
         return new DatabaseInserter(table, dataFileHeaders, sql);
     }
@@ -204,6 +214,11 @@ public abstract class DefaultDatabase extends Database {
                columnType == Types.VARBINARY ||
                columnType == Types.LONGVARBINARY ||
                columnType == Types.BLOB;
+    }
+
+    @Override
+    public void dropObject(ObjectIdentifier objectIdentifier) {
+        throw new RuntimeException("Not implemented");
     }
 
     @NotNull

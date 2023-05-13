@@ -789,6 +789,29 @@ public class SqlServerDatabase extends DefaultDatabase {
     }
 
     @Override
+    public void dropObject(ObjectIdentifier objectIdentifier) {
+        String sql = switch (objectIdentifier.getType()) {
+            case "USER_TABLE" -> "DROP TABLE %s".formatted(quote(objectIdentifier));
+            case "INDEX" -> "DROP INDEX %s on %s".formatted(
+                    quote(objectIdentifier),
+                    quote(objectIdentifier.getParent())
+            );
+            case "FOREIGN_KEY_CONSTRAINT" -> "ALTER TABLE %s DROP CONSTRAINT %s".formatted(
+                    quote(objectIdentifier.getParent()),
+                    objectIdentifier.getName()
+            );
+            case "SQL_STORED_PROCEDURE" -> "DROP PROCEDURE %s".formatted(
+                    quote(objectIdentifier)
+            );
+            case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_TABLE_VALUED_FUNCTION" -> "DROP FUNCTION %s".formatted(
+                    quote(objectIdentifier)
+            );
+            default -> throw new RuntimeException("Unexpected type: " + objectIdentifier.getType());
+        };
+        executeSql(sql);
+    }
+
+    @Override
     public void enableForeignKey(ForeignKey foreignKey) {
         StopWatch.record("enableForeignKey", () -> executeSql(
                 "ALTER TABLE %s WITH %s CHECK CONSTRAINT %s",

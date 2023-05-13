@@ -85,6 +85,8 @@ public abstract class Database implements AutoCloseable {
 
     public abstract String quote(TableName tableName);
 
+    public abstract String quote(ObjectIdentifier objectIdentifier);
+
     public abstract String quote(String s);
 
     public abstract void deleteTable(TableName tableName);
@@ -108,4 +110,6 @@ public abstract class Database implements AutoCloseable {
     public void createShema(String catalog, String schema) {
         throw new NotImplementedException();
     }
+
+    public abstract void dropObject(ObjectIdentifier objectIdentifier);
 }

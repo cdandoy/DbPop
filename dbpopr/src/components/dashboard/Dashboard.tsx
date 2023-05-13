@@ -5,6 +5,7 @@ import LoadingOverlay from "../utils/LoadingOverlay";
 import './Dashboard.scss'
 import {populate} from "../../api/Populate";
 import {SiteContext} from "../app/App";
+import CodeChanges from "../codechanges/CodeChanges";
 
 export default function Dashboard() {
     const siteResponse = useContext(SiteContext);
@@ -60,6 +61,7 @@ export default function Dashboard() {
             {siteResponse.hasTarget || (
                 <h2>No target database defined</h2>
             )}
+            <CodeChanges/>
         </div>
     )
 }

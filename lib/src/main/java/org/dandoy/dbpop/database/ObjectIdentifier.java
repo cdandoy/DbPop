@@ -41,10 +41,8 @@ public class ObjectIdentifier implements Comparable<ObjectIdentifier> {
         return type.equals(that.type) &&
                Objects.equals(catalog, that.catalog) &&
                Objects.equals(schema, that.schema) &&
-               name.equals(that.name)
-               /* We don't have the parent when the ObjectIdentifier is built from a file name. We will have to trust that a FK name is unique within a catalog+schema
-               && Objects.equals(parent, that.parent)
-               */;
+               name.equals(that.name) &&
+               Objects.equals(this.parent, that.parent);
     }
 
     @Override

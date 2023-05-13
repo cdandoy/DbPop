@@ -1,0 +1,16 @@
+.code-changes-component {
+  .column-path, .column-db {
+    overflow-x: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .column-buttons {
+    text-align: center;
+    white-space: nowrap;
+
+    button {
+      margin: 0 3px;
+    }
+  }
+}

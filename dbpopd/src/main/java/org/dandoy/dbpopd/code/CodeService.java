@@ -39,13 +39,13 @@ public class CodeService {
     private final ConfigurationService configurationService;
     private final PopulateService populateService;
     private final DatasetsService datasetsService;
-    private final ChangeDetector changeDetector;
+    private final DatabaseChangeDetector databaseChangeDetector;
 
-    public CodeService(ConfigurationService configurationService, PopulateService populateService, DatasetsService datasetsService, ChangeDetector changeDetector) {
+    public CodeService(ConfigurationService configurationService, PopulateService populateService, DatasetsService datasetsService, DatabaseChangeDetector databaseChangeDetector) {
         this.configurationService = configurationService;
         this.populateService = populateService;
         this.datasetsService = datasetsService;
-        this.changeDetector = changeDetector;
+        this.databaseChangeDetector = databaseChangeDetector;
     }
 
     /**
@@ -117,7 +117,7 @@ public class CodeService {
      * Dumps the content of the database to the file system
      */
     private DownloadResult downloadToFile(Database database, DbToFileVisitor visitor) {
-        return changeDetector.holdingChanges(() -> {
+        return databaseChangeDetector.holdingChanges(() -> {
 
             long t0 = System.currentTimeMillis();
             database.createDatabaseIntrospector().visit(visitor);
@@ -156,7 +156,7 @@ public class CodeService {
     @SneakyThrows
     public UploadResult uploadFileToTarget() {
         long t0 = System.currentTimeMillis();
-        return changeDetector.holdingChanges(() -> {
+        return databaseChangeDetector.holdingChanges(() -> {
             try (Database targetDatabase = configurationService.createTargetDatabase()) {
                 try (Connection connection = targetDatabase.getConnection()) {
                     try (Statement statement = connection.createStatement()) {
