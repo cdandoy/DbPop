@@ -150,11 +150,9 @@ public class ChangeDetector {
                 }
                 change.setDatabaseChanged(true);
                 changes.add(change);
+                sendCodeChangeMessage();
             }
-            sendCodeChangeMessage();
-
         }
-        sendCodeChangeMessage();
     }
 
     private ChangeFile getChangeFile() {
