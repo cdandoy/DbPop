@@ -15,7 +15,15 @@ interface Message {
 
 export function useCodeChanges() {
     const [changes, setChanges] = useState<Change[]>(DefaultChanges);
-    const {lastJsonMessage} = useWebSocket(WS_URL);
+    const {lastJsonMessage} = useWebSocket(
+        WS_URL,
+        {
+            shouldReconnect: () => true,
+            reconnectAttempts: 10,
+            reconnectInterval: (attemptNumber) =>
+                Math.min(Math.pow(2, attemptNumber) * 1000, 10000),
+        }
+    );
 
     function refreshChanges() {
         targetChanges()
@@ -28,6 +36,7 @@ export function useCodeChanges() {
 
     useEffect(() => {
         if (lastJsonMessage) {
+            console.log(lastJsonMessage)
             const message = lastJsonMessage as any as Message;
             if (message.messageType === 'CODE_CHANGE') {
                 targetChanges()
