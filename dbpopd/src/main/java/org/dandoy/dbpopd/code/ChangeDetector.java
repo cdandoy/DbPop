@@ -90,6 +90,12 @@ public class ChangeDetector {
         return Arrays.equals(fileHash, dbHash);
     }
 
+    private boolean areSameHash(File file, ObjectIdentifier objectIdentifier) {
+        byte[] fileHash = fileChangeDetector.getHash(file);
+        byte[] dbHash = databaseChangeDetector.getHash(objectIdentifier);
+        return Arrays.equals(fileHash, dbHash);
+    }
+
     synchronized void whenFileChanged(@Nullable File file, @NotNull ObjectIdentifier objectIdentifier) {
         if (applyChanges) {
             try (ChangeFile changeFile = getChangeFile()) {
@@ -113,13 +119,14 @@ public class ChangeDetector {
             }
         } else {
             Change change = removeChange(file, objectIdentifier);
-            // We assume that whenever the file is changed, it must be applied to the database
-            if (change == null) {
-                change = new Change(file, objectIdentifier);
+            if (!areSameHash(file, objectIdentifier)) {
+                if (change == null) {
+                    change = new Change(file, objectIdentifier);
+                }
+                change.setFileChanged(true);
+                changes.add(change);
+                sendCodeChangeMessage();
             }
-            change.setFileChanged(true);
-            changes.add(change);
-            sendCodeChangeMessage();
         }
     }
 

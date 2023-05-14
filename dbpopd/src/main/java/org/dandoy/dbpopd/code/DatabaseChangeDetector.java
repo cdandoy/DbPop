@@ -134,6 +134,13 @@ public class DatabaseChangeDetector {
         return ChangeDetector.getMessageDigest().digest(bytes);
     }
 
+    byte[] getHash(ObjectIdentifier objectIdentifier) {
+        if (objectIdentifier == null) return null;
+        ObjectSignature objectSignature = targetObjectSignatures.get(objectIdentifier);
+        if (objectSignature == null) return null;
+        return objectSignature.hash;
+    }
+
     public record ObjectSignature(Date modifyDate, byte[] hash) {}
 
     interface ChangeSession {
