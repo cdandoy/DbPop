@@ -1,5 +1,6 @@
 import axios from "axios";
 import {TableName} from "../models/TableName";
+import {ObjectIdentifier} from "../models/ObjectIdentifier";
 
 export interface CodeDiff {
     entries: CodeDiffEntry[]
@@ -52,3 +53,16 @@ export function downloadTargetToFile() {
     return axios.get(`/code/target/download`);
 }
 
+export function uploadFileChangeToTarget(path: string, objectIdentifier: ObjectIdentifier) {
+    return axios.post(`/code/target/changes/apply-file`, {
+        path: path,
+        objectIdentifier: objectIdentifier,
+    });
+}
+
+export function uploadDbChangeToTarget(path: string, objectIdentifier: ObjectIdentifier) {
+    return axios.post(`/code/target/changes/apply-db`, {
+        path: path,
+        objectIdentifier: objectIdentifier,
+    });
+}

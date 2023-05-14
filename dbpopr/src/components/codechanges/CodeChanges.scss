@@ -1,4 +1,16 @@
 .code-changes-component {
+  .pageheader-component .text-end {
+    margin-top: 25px;
+    font-style: italic;
+    font-size: 120%;
+    cursor: default;
+
+    i {
+      color: orange;
+      padding-right: 5px;
+    }
+  }
+
   .column-path, .column-db {
     overflow-x: hidden;
     white-space: nowrap;

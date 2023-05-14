@@ -1,5 +1,7 @@
 package org.dandoy.dbpopd.code;
 
+import io.micronaut.http.HttpStatus;
+import io.micronaut.problem.HttpStatusType;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Singleton;
 import lombok.SneakyThrows;
@@ -12,10 +14,9 @@ import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.IOUtils;
 import org.dandoy.dbpopd.utils.Pair;
+import org.zalando.problem.Problem;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,13 +40,13 @@ public class CodeService {
     private final ConfigurationService configurationService;
     private final PopulateService populateService;
     private final DatasetsService datasetsService;
-    private final DatabaseChangeDetector databaseChangeDetector;
+    private final ChangeDetector changeDetector;
 
-    public CodeService(ConfigurationService configurationService, PopulateService populateService, DatasetsService datasetsService, DatabaseChangeDetector databaseChangeDetector) {
+    public CodeService(ConfigurationService configurationService, PopulateService populateService, DatasetsService datasetsService, ChangeDetector changeDetector) {
         this.configurationService = configurationService;
         this.populateService = populateService;
         this.datasetsService = datasetsService;
-        this.databaseChangeDetector = databaseChangeDetector;
+        this.changeDetector = changeDetector;
     }
 
     /**
@@ -104,6 +105,12 @@ public class CodeService {
         }
     }
 
+    public void downloadTargetToFile(ObjectIdentifier objectIdentifier) {
+        try (Database database = configurationService.createTargetDatabase()) {
+            downloadToFile(database, objectIdentifier);
+        }
+    }
+
     private DownloadResult downloadToFile(Database database) {
         File codeDirectory = configurationService.getCodeDirectory();
         FileUtils.deleteRecursively(codeDirectory);
@@ -113,11 +120,32 @@ public class CodeService {
         }
     }
 
+    private void downloadToFile(Database database, ObjectIdentifier objectIdentifier) {
+        changeDetector.holdingChanges(changeSession -> {
+            changeSession.removeObjectIdentifier(objectIdentifier);
+            File codeDirectory = configurationService.getCodeDirectory();
+            DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
+            databaseIntrospector.visitModuleDefinitions(List.of(objectIdentifier), new DatabaseVisitor() {
+                @Override
+                public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
+                    File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
+                    try (Writer writer = new OutputStreamWriter(new FileOutputStream(file))) {
+                        writer.write(definition);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+            return null;
+        });
+    }
+
     /**
      * Dumps the content of the database to the file system
      */
     private DownloadResult downloadToFile(Database database, DbToFileVisitor visitor) {
-        return databaseChangeDetector.holdingChanges(() -> {
+        return changeDetector.holdingChanges(changeSession -> {
+            changeSession.checkAllDatabaseObjects();
 
             long t0 = System.currentTimeMillis();
             database.createDatabaseIntrospector().visit(visitor);
@@ -156,87 +184,135 @@ public class CodeService {
     @SneakyThrows
     public UploadResult uploadFileToTarget() {
         long t0 = System.currentTimeMillis();
-        return databaseChangeDetector.holdingChanges(() -> {
+        return changeDetector.holdingChanges(changeSession -> {
+            changeSession.checkAllDatabaseObjects();
             try (Database targetDatabase = configurationService.createTargetDatabase()) {
-                try (Connection connection = targetDatabase.getConnection()) {
-                    try (Statement statement = connection.createStatement()) {
-                        List<UploadResult.FileExecution> fileExecutions = new ArrayList<>();
+                Connection connection = targetDatabase.getConnection();
+                try (Statement statement = connection.createStatement()) {
+                    List<UploadResult.FileExecution> fileExecutions = new ArrayList<>();
 
-                        File codeDirectory = configurationService.getCodeDirectory();
-                        for (String catalog : targetDatabase.getCatalogs()) {
+                    File codeDirectory = configurationService.getCodeDirectory();
+                    for (String catalog : targetDatabase.getCatalogs()) {
 
-                            // USE <database>
-                            targetDatabase.createCatalog(catalog);
-                            statement.execute("USE " + catalog);
+                        // USE <database>
+                        targetDatabase.createCatalog(catalog);
+                        statement.execute("USE " + catalog);
 
-                            List<Pair<File, ObjectIdentifier>> changes = getCatalogChanges(codeDirectory, catalog);
-                            for (int i = changes.size() - 1; i >= 0; i--) {
-                                Pair<File, ObjectIdentifier> pair = changes.get(i);
-                                ObjectIdentifier objectIdentifier = pair.right();
-                                try {
-                                    String sql = switch (objectIdentifier.getType()) {
-                                        case "USER_TABLE" -> "DROP TABLE IF EXISTS " + targetDatabase.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
-                                        case "FOREIGN_KEY_CONSTRAINT" -> "ALTER TABLE %s DROP CONSTRAINT %s".formatted(
-                                                targetDatabase.quote(".", objectIdentifier.getParent().getSchema(), objectIdentifier.getParent().getName()),
-                                                targetDatabase.quote(objectIdentifier.getName())
-                                        );
-                                        case "SQL_STORED_PROCEDURE" -> "DROP PROCEDURE IF EXISTS " + targetDatabase.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
-                                        case "SQL_INLINE_TABLE_VALUED_FUNCTION" -> "DROP FUNCTION IF EXISTS " + targetDatabase.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
-                                        default -> null;
-                                    };
-                                    if (sql != null) {
-                                        log.info("Executing {}", sql);
-                                        statement.execute(sql);
-                                    }
+                        List<Pair<File, ObjectIdentifier>> changes = getCatalogChanges(codeDirectory, catalog);
+                        for (int i = changes.size() - 1; i >= 0; i--) {
+                            Pair<File, ObjectIdentifier> pair = changes.get(i);
+                            ObjectIdentifier objectIdentifier = pair.right();
+                            try {
+                                String sql = switch (objectIdentifier.getType()) {
+                                    case "USER_TABLE" -> "DROP TABLE IF EXISTS " + targetDatabase.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
+                                    case "FOREIGN_KEY_CONSTRAINT" -> "ALTER TABLE %s DROP CONSTRAINT %s".formatted(
+                                            targetDatabase.quote(".", objectIdentifier.getParent().getSchema(), objectIdentifier.getParent().getName()),
+                                            targetDatabase.quote(objectIdentifier.getName())
+                                    );
+                                    case "SQL_STORED_PROCEDURE" -> "DROP PROCEDURE IF EXISTS " + targetDatabase.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
+                                    case "SQL_INLINE_TABLE_VALUED_FUNCTION" -> "DROP FUNCTION IF EXISTS " + targetDatabase.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
+                                    default -> null;
+                                };
+                                if (sql != null) {
+                                    log.info("Executing {}", sql);
+                                    statement.execute(sql);
+                                }
 
-                                } catch (SQLException e) {
-                                    if (!e.getSQLState().equals("S0001")) {
-                                        log.error("Failed to delete " + objectIdentifier, e);
-                                    }
+                            } catch (SQLException e) {
+                                if (!e.getSQLState().equals("S0001")) {
+                                    log.error("Failed to delete " + objectIdentifier, e);
                                 }
                             }
+                        }
 
-                            // Create the schemas
-                            changes.stream()
-                                    .map(it -> it.right().getSchema())
-                                    .distinct()
-                                    .forEach(schema -> {
-                                        try {
-                                            statement.getConnection().commit();
-                                            if (!"dbo".equals(schema)) {
-                                                statement.execute("CREATE SCHEMA " + schema);
-                                            }
-                                        } catch (SQLException e) {
-                                            if (!e.getSQLState().equals("S0001")) {
-                                                throw new RuntimeException(e);
-                                            }
+                        // Create the schemas
+                        changes.stream()
+                                .map(it -> it.right().getSchema())
+                                .distinct()
+                                .forEach(schema -> {
+                                    try {
+                                        statement.getConnection().commit();
+                                        if (!"dbo".equals(schema)) {
+                                            statement.execute("CREATE SCHEMA " + schema);
                                         }
-                                    });
+                                    } catch (SQLException e) {
+                                        if (!e.getSQLState().equals("S0001")) {
+                                            throw new RuntimeException(e);
+                                        }
+                                    }
+                                });
 
-                            for (Pair<File, ObjectIdentifier> change : changes) {
-                                File file = change.left();
-                                ObjectIdentifier objectIdentifier = change.right();
-                                UploadResult.FileExecution fileExecution = execute(statement, objectIdentifier.getType(), file);
-                                fileExecutions.add(fileExecution);
-                            }
+                        for (Pair<File, ObjectIdentifier> change : changes) {
+                            File file = change.left();
+                            ObjectIdentifier objectIdentifier = change.right();
+                            UploadResult.FileExecution fileExecution = execute(statement, objectIdentifier.getType(), file);
+                            fileExecutions.add(fileExecution);
                         }
-
-                        // Reload the base dataset.
-                        // We must clear the cache first because it may not know about the new objects
-                        if (configurationService.getDatasetsDirectory().isDirectory()) {
-                            List<String> datasets = datasetsService.getDatasets();
-                            String datasetToLoad = datasets.contains("base") ? "base" : datasets.contains("static") ? "static" : !datasets.isEmpty() ? datasets.get(0) : null;
-                            if (datasetToLoad != null) {
-                                configurationService.clearTargetDatabaseCache();
-                                populateService.populate(List.of(datasetToLoad), true);
-                            }
-                        }
-
-                        long t1 = System.currentTimeMillis();
-                        return new UploadResult(fileExecutions, t1 - t0);
-                    } finally {
-                        configurationService.clearTargetDatabaseCache();
                     }
+
+                    // Reload the base dataset.
+                    // We must clear the cache first because it may not know about the new objects
+                    if (configurationService.getDatasetsDirectory().isDirectory()) {
+                        List<String> datasets = datasetsService.getDatasets();
+                        String datasetToLoad = datasets.contains("base") ? "base" : datasets.contains("static") ? "static" : !datasets.isEmpty() ? datasets.get(0) : null;
+                        if (datasetToLoad != null) {
+                            configurationService.clearTargetDatabaseCache();
+                            populateService.populate(List.of(datasetToLoad), true);
+                        }
+                    }
+
+                    long t1 = System.currentTimeMillis();
+                    return new UploadResult(fileExecutions, t1 - t0);
+                } finally {
+                    configurationService.clearTargetDatabaseCache();
+                }
+            } catch (SQLException | IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @SneakyThrows
+    public void uploadFileToTarget(File file) {
+        long t0 = System.currentTimeMillis();
+        changeDetector.holdingChanges(changeSession -> {
+            try (Database targetDatabase = configurationService.createTargetDatabase()) {
+                Connection connection = targetDatabase.getConnection();
+                try (Statement statement = connection.createStatement()) {
+                    File codeDirectory = configurationService.getCodeDirectory();
+                    ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(codeDirectory, file);
+                    if (objectIdentifier == null) {
+                        throw Problem.builder()
+                                .withTitle("Cannot convert the file to a database object: " + file)
+                                .withStatus(new HttpStatusType(HttpStatus.INTERNAL_SERVER_ERROR))
+                                .build();
+                    }
+                    String catalog = objectIdentifier.getCatalog();
+                    // USE <database>
+                    targetDatabase.createCatalog(catalog);
+                    statement.execute("USE " + catalog);
+
+                    // CREATE SCHEMA
+                    String schema = objectIdentifier.getSchema();
+                    try {
+                        statement.getConnection().commit();
+                        if (!"dbo".equals(schema)) {
+                            statement.execute("CREATE SCHEMA " + schema);
+                        }
+                    } catch (SQLException e) {
+                        if (!e.getSQLState().equals("S0001")) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+                    UploadResult.FileExecution fileExecution = execute(statement, objectIdentifier.getType(), file);
+
+                    changeSession.removeFile(file);
+
+                    long t1 = System.currentTimeMillis();
+                    return new UploadResult(List.of(fileExecution), t1 - t0);
+                } finally {
+                    configurationService.clearTargetDatabaseCache();
                 }
             } catch (SQLException | IOException e) {
                 throw new RuntimeException(e);
@@ -261,9 +337,16 @@ public class CodeService {
                 if (matcher.matches()) {
                     String pre = matcher.group(1);
                     String post = matcher.group(2);
-                    //noinspection SqlResolve
-                    String createOrAlter = pre + "CREATE OR ALTER" + post;
-                    statement.execute(createOrAlter);
+                    try {
+                        //noinspection SqlResolve
+                        statement.execute(pre + "ALTER" + post);
+                    } catch (SQLException e) {
+                        if (!e.getSQLState().equals("S0001")) {
+                            throw e;
+                        }
+                        //noinspection SqlResolve
+                        statement.execute(pre + "CREATE OR ALTER" + post);
+                    }
                 } else {
                     log.warn("Could not identify " + sqlFile);
                 }
@@ -345,5 +428,21 @@ public class CodeService {
         entries.sort(Comparator.comparing(CodeDiff.Entry::tableName));
 
         return new CodeDiff(entries);
+    }
+
+    public void deleteTargetObject(ObjectIdentifier objectIdentifier) {
+        changeDetector.holdingChanges(changeSession -> {
+            try (Database targetDatabase = configurationService.createTargetDatabase()) {
+                targetDatabase.dropObject(objectIdentifier);
+                changeSession.removeObjectIdentifier(objectIdentifier);
+            }
+        });
+    }
+
+    public void deleteFile(File file) {
+        changeDetector.holdingChanges(changeSession -> {
+            if (!file.delete() && file.exists()) throw new RuntimeException("Failed to delete " + file);
+            changeSession.removeFile(file);
+        });
     }
 }

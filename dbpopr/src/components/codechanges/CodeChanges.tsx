@@ -4,7 +4,8 @@ import './CodeChanges.scss'
 import PageHeader from "../pageheader/PageHeader";
 import useWebSocket from "react-use-websocket";
 import {Change, DefaultChanges, targetChanges} from "../../api/changeApi";
-import {uploadFileChangeToTarget} from "../../api/codeApi";
+import {uploadDbChangeToTarget, uploadFileChangeToTarget} from "../../api/codeApi";
+import {ObjectIdentifier} from "../../models/ObjectIdentifier";
 
 const WS_URL = 'ws://localhost:8080/ws/site';
 
@@ -46,13 +47,23 @@ export function useCodeChanges() {
 export default function CodeChanges() {
     const {changes, refreshChanges} = useCodeChanges();
 
-    function onApplyFileChanges(path: string) {
-        uploadFileChangeToTarget(path)
+    function onApplyFileChanges(path: string, objectIdentifier: ObjectIdentifier) {
+        uploadFileChangeToTarget(path, objectIdentifier)
+            .then(() => refreshChanges());
+    }
+
+    function onApplyDbChanges(path: string, objectIdentifier: ObjectIdentifier) {
+        uploadDbChangeToTarget(path, objectIdentifier)
             .then(() => refreshChanges());
     }
 
     return <div className={"code-changes-component"}>
-        <PageHeader title={"Code Changes"} subtitle={"Track Modified database code"}/>
+        <PageHeader title={"Code Changes"} subtitle={"Track Modified database code"} tool={
+            <div title={"This section is still under construction"}>
+                <i className={"fa fa-warning"}/>
+                Experimental
+            </div>}
+        />
 
         <div className={"row mt-1"}>
             <div className={"col-5"}><h4>Source File</h4></div>
@@ -69,6 +80,7 @@ export default function CodeChanges() {
                                 size={"sm"}
                                 style={change.databaseChanged ? {} : {visibility: "hidden"}}
                                 title={"Apply the database change to the source file"}
+                                onClick={() => onApplyDbChanges(change.path, change.objectIdentifier)}
                         >
                             <i className={"fa fa-arrow-left"}/>
                         </Button>
@@ -76,7 +88,7 @@ export default function CodeChanges() {
                                 size={"sm"}
                                 style={change.fileChanged ? {} : {visibility: "hidden"}}
                                 title={"Apply the source file change to the database"}
-                                onClick={() => onApplyFileChanges(change.path)}
+                                onClick={() => onApplyFileChanges(change.path, change.objectIdentifier)}
                         >
                             <i className={"fa fa-arrow-right"}/>
                         </Button>

@@ -9,10 +9,8 @@ import org.dandoy.dbpop.utils.CollectionUtils;
 import org.dandoy.dbpop.utils.StringUtils;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyList;
@@ -20,10 +18,10 @@ import static java.util.Collections.emptyList;
 @Slf4j
 public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     private final Connection connection;
-    private final Database database;
+    private final SqlServerDatabase database;
 
     @SneakyThrows
-    public SqlServerDatabaseIntrospector(Database database) {
+    public SqlServerDatabaseIntrospector(SqlServerDatabase database) {
         this.database = database;
         this.connection = database.getConnection();
     }
@@ -378,14 +376,12 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     }
 
     private void visitModuleDefinitions(DatabaseVisitor databaseVisitor, String catalog, Collection<ObjectIdentifier> objectIdentifiers) {
+        Collection<SqlServerObjectIdentifier> sqlServerObjectIdentifiers = toSqlServerObjectIdentifier(objectIdentifiers);
         List<SqlServerObjectIdentifier> regularIdentifiers = new ArrayList<>();
         List<SqlServerObjectIdentifier> tableIdentifiers = new ArrayList<>();
         List<SqlServerObjectIdentifier> fkIdentifiers = new ArrayList<>();
         List<SqlServerObjectIdentifier> indexIdentifiers = new ArrayList<>();
-        for (ObjectIdentifier objectIdentifier : objectIdentifiers) {
-            if (!(objectIdentifier instanceof SqlServerObjectIdentifier sqlServerObjectIdentifier)) {
-                throw new RuntimeException("Expected SqlServerObjectIdentifier, got " + (objectIdentifier == null ? "null" : objectIdentifier.getClass()));
-            }
+        for (SqlServerObjectIdentifier sqlServerObjectIdentifier : sqlServerObjectIdentifiers) {
             switch (sqlServerObjectIdentifier.getType()) {
                 case "USER_TABLE" -> tableIdentifiers.add(sqlServerObjectIdentifier);
                 case "FOREIGN_KEY_CONSTRAINT" -> fkIdentifiers.add(sqlServerObjectIdentifier);
@@ -400,6 +396,199 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         CollectionUtils.partition(tableIdentifiers, bindCount, identifiers -> visitTableDefinitions(databaseVisitor, catalog, identifiers, bindCount));
         CollectionUtils.partition(fkIdentifiers, bindCount, identifiers -> visitForeignKeyDefinitions(databaseVisitor, catalog, identifiers, bindCount));
         CollectionUtils.partition(indexIdentifiers, indexBindCount, identifiers -> visitIndexDefinitions(databaseVisitor, catalog, identifiers, indexBindCount));
+    }
+
+    private List<SqlServerObjectIdentifier> toSqlServerObjectIdentifier(Collection<ObjectIdentifier> objectIdentifiers) {
+        List<SqlServerObjectIdentifier> ret = new ArrayList<>();
+        List<ObjectIdentifier> todo = new ArrayList<>();
+        List<ObjectIdentifier> todoWithParent = new ArrayList<>();
+        List<ObjectIdentifier> todoIndexes = new ArrayList<>();
+
+        for (ObjectIdentifier objectIdentifier : objectIdentifiers) {
+            if (objectIdentifier instanceof SqlServerObjectIdentifier sqlServerObjectIdentifier) {
+                ret.add(sqlServerObjectIdentifier);
+            } else if (objectIdentifier.getParent() == null) {
+                todo.add(objectIdentifier);
+            } else if (objectIdentifier.getType().equals("INDEX")) {
+                todoIndexes.add(objectIdentifier);
+            } else {
+                todoWithParent.add(objectIdentifier);
+            }
+        }
+
+        if (!todo.isEmpty()) {
+            List<SqlServerObjectIdentifier> list = toSqlServerObjectIdentifiers(todo);
+            ret.addAll(list);
+        }
+
+        if (!todoWithParent.isEmpty()) {
+            List<SqlServerObjectIdentifier> list = toSqlServerObjectIdentifiersWithParents(todoWithParent);
+            ret.addAll(list);
+        }
+
+        if (!todoIndexes.isEmpty()) {
+            List<SqlServerObjectIdentifier> list = toIndexSqlServerObjectIdentifiers(todoIndexes);
+            ret.addAll(list);
+        }
+        return ret;
+    }
+
+    private List<SqlServerObjectIdentifier> toSqlServerObjectIdentifiers(Collection<ObjectIdentifier> objectIdentifiers) {
+        List<SqlServerObjectIdentifier> ret = new ArrayList<>();
+
+        try {
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT o.object_id
+                    FROM sys.schemas s
+                             JOIN sys.objects o ON s.schema_id = o.schema_id
+                    WHERE s.name = ?
+                      AND o.name = ?;
+                    """)) {
+                for (Map.Entry<String, List<ObjectIdentifier>> entry : objectIdentifiers.stream()
+                        .collect(Collectors.groupingBy(ObjectIdentifier::getCatalog)).entrySet()) {
+                    String catalog = entry.getKey();
+                    database.use(catalog);
+                    List<ObjectIdentifier> list = entry.getValue();
+                    for (ObjectIdentifier objectIdentifier : list) {
+                        preparedStatement.setString(1, objectIdentifier.getSchema());
+                        preparedStatement.setString(2, objectIdentifier.getName());
+                        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                            if (resultSet.next()) {
+                                int objectId = resultSet.getInt("object_id");
+                                ret.add(
+                                        new SqlServerObjectIdentifier(
+                                                objectId,
+                                                objectIdentifier.getType(),
+                                                objectIdentifier.getCatalog(),
+                                                objectIdentifier.getSchema(),
+                                                objectIdentifier.getName()
+                                        )
+                                );
+                            } else {
+                                log.error("Object not found: " + objectIdentifier);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return ret;
+    }
+
+    private List<SqlServerObjectIdentifier> toSqlServerObjectIdentifiersWithParents(Collection<ObjectIdentifier> objectIdentifiers) {
+        List<SqlServerObjectIdentifier> ret = new ArrayList<>();
+
+        try {
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT o.object_id, o.parent_object_id
+                    FROM sys.schemas s
+                             JOIN sys.objects o ON s.schema_id = o.schema_id
+                             JOIN sys.objects po ON po.object_id = o.parent_object_id
+                             JOIN sys.schemas ps ON ps.schema_id = po.schema_id
+                    WHERE s.name = ?
+                      AND o.name = ?
+                      AND ps.name = ?
+                      AND po.name = ?
+                    """)) {
+                for (Map.Entry<String, List<ObjectIdentifier>> entry : objectIdentifiers.stream()
+                        .collect(Collectors.groupingBy(ObjectIdentifier::getCatalog)).entrySet()) {
+                    String catalog = entry.getKey();
+                    database.use(catalog);
+                    List<ObjectIdentifier> list = entry.getValue();
+                    for (ObjectIdentifier objectIdentifier : list) {
+                        preparedStatement.setString(1, objectIdentifier.getSchema());
+                        preparedStatement.setString(2, objectIdentifier.getName());
+                        ObjectIdentifier parentObjectIdentifier = objectIdentifier.getParent();
+                        preparedStatement.setString(3, parentObjectIdentifier.getSchema());
+                        preparedStatement.setString(4, parentObjectIdentifier.getName());
+                        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                            if (resultSet.next()) {
+                                int objectId = resultSet.getInt("object_id");
+                                int parentObjectId = resultSet.getInt("parent_object_id");
+                                ret.add(
+                                        new SqlServerObjectIdentifier(
+                                                objectId,
+                                                objectIdentifier.getType(),
+                                                objectIdentifier.getCatalog(),
+                                                objectIdentifier.getSchema(),
+                                                objectIdentifier.getName(),
+                                                new SqlServerObjectIdentifier(
+                                                        parentObjectId,
+                                                        parentObjectIdentifier.getType(),
+                                                        parentObjectIdentifier.getCatalog(),
+                                                        parentObjectIdentifier.getSchema(),
+                                                        parentObjectIdentifier.getName()
+                                                )
+                                        )
+                                );
+                            } else {
+                                log.error("Object not found: " + objectIdentifier);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return ret;
+    }
+
+    private List<SqlServerObjectIdentifier> toIndexSqlServerObjectIdentifiers(Collection<ObjectIdentifier> objectIdentifiers) {
+        List<SqlServerObjectIdentifier> ret = new ArrayList<>();
+
+        try {
+            try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                    SELECT t.object_id
+                    FROM sys.schemas s
+                             JOIN sys.tables t ON s.schema_id = t.schema_id
+                             JOIN sys.indexes i ON i.object_id = t.object_id
+                    WHERE s.name = ?
+                      AND t.name = ?
+                      AND i.name = ?
+                    """)) {
+                for (Map.Entry<String, List<ObjectIdentifier>> entry : objectIdentifiers.stream()
+                        .collect(Collectors.groupingBy(ObjectIdentifier::getCatalog)).entrySet()) {
+                    String catalog = entry.getKey();
+                    database.use(catalog);
+                    List<ObjectIdentifier> list = entry.getValue();
+                    for (ObjectIdentifier objectIdentifier : list) {
+                        ObjectIdentifier parentObjectIdentifier = objectIdentifier.getParent();
+                        preparedStatement.setString(1, parentObjectIdentifier.getSchema());
+                        preparedStatement.setString(2, parentObjectIdentifier.getName());
+                        preparedStatement.setString(3, objectIdentifier.getName());
+                        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                            if (resultSet.next()) {
+                                int parentObjectId = resultSet.getInt("object_id");
+                                ret.add(
+                                        new SqlServerObjectIdentifier(
+                                                null,
+                                                objectIdentifier.getType(),
+                                                objectIdentifier.getCatalog(),
+                                                objectIdentifier.getSchema(),
+                                                objectIdentifier.getName(),
+                                                new SqlServerObjectIdentifier(
+                                                        parentObjectId,
+                                                        parentObjectIdentifier.getType(),
+                                                        parentObjectIdentifier.getCatalog(),
+                                                        parentObjectIdentifier.getSchema(),
+                                                        parentObjectIdentifier.getName()
+                                                )
+                                        )
+                                );
+                            } else {
+                                log.error("Object not found: " + objectIdentifier);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return ret;
     }
 
     /**

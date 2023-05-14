@@ -79,7 +79,7 @@ class CodeControllerTest {
             }
 
             {   // Change the code verify it gets downloaded
-                changeDetector.captureObjectSignatures();
+                changeDetector.getDatabaseChangeDetector().captureObjectSignatures();
                 try (Connection targetConnection = configurationService.createTargetConnection()) {
                     try (Statement statement = targetConnection.createStatement()) {
                         statement.execute("USE dbpop");
@@ -94,7 +94,7 @@ class CodeControllerTest {
                                 """);
                     }
                 }
-                changeDetector.compareObjectSignatures();
+                changeDetector.getDatabaseChangeDetector().compareObjectSignatures();
                 File file = new File(configurationService.getCodeDirectory(), "dbpop/dbo/SQL_STORED_PROCEDURE/GetCustomers.sql");
                 assertTrue(IOUtils.toString(file).contains("Coucou"));
             }
@@ -126,6 +126,6 @@ class CodeControllerTest {
             }
         }
 
-        changeDetector.checkCodeChanges();
+        changeDetector.getDatabaseChangeDetector().checkCodeChanges();
     }
 }

@@ -37,7 +37,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         }
     }
 
-    private void use(String catalog) throws SQLException {
+    void use(String catalog) throws SQLException {
         try (Statement statement = getConnection().createStatement()) {
             statement.execute("USE " + catalog);
         }

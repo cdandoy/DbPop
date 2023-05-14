@@ -1,23 +1,23 @@
 package org.dandoy.dbpopd.code;
 
 import io.micronaut.context.annotation.Context;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import jakarta.inject.Singleton;
+import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
+import org.dandoy.dbpopd.utils.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.security.MessageDigest;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardWatchEventKinds.*;
 
-@Singleton
 @Slf4j
 @Context
 public class FileChangeDetector {
@@ -33,7 +33,6 @@ public class FileChangeDetector {
         this.changeDetector = changeDetector;
     }
 
-    @PostConstruct
     void postContruct() {
         try {
             watchService = FileSystems.getDefault().newWatchService();
@@ -56,7 +55,6 @@ public class FileChangeDetector {
 
     }
 
-    @PreDestroy
     void preDestroy() {
         try {
             if (watchService != null) {
@@ -132,13 +130,13 @@ public class FileChangeDetector {
         if (Files.isDirectory(path)) {
             watch(path);
         }
-        scan(path);
+        onPathModified(path);
     }
 
     private void onEntryModified(Path path) {
         log.debug("FileChangeDetector.onEntryModified: {}", path);
         if (!Files.isDirectory(path)) {
-            scan(path);
+            onPathModified(path);
         }
     }
 
@@ -155,11 +153,11 @@ public class FileChangeDetector {
         }
     }
 
-    private void scan(Path path) {
+    private void onPathModified(Path path) {
         try {
             if (Files.isDirectory(path)) {
                 try (Stream<Path> stream = Files.list(path)) {
-                    stream.forEach(this::scan);
+                    stream.forEach(this::onPathModified);
                 }
             } else {
                 File file = path.toFile();
@@ -171,5 +169,23 @@ public class FileChangeDetector {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    byte[] getHash(@Nullable File file) {
+        if (file == null) return null;
+        if (!file.isFile()) return null;
+        MessageDigest messageDigest = ChangeDetector.getMessageDigest();
+        String sql = IOUtils.toString(file);
+        sql = ChangeDetector.cleanSql(sql);
+        byte[] bytes = sql.getBytes(StandardCharsets.UTF_8);
+        return messageDigest.digest(bytes);
+    }
+
+    interface ChangeSession {
+        void check(File file);
+
+        void removeFile(File file);
+
+        void checkAllFiles();
     }
 }
