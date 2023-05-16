@@ -43,7 +43,6 @@ public class ChangeDetector {
     private final FileChangeDetector fileChangeDetector;
     @Setter
     private boolean applyChanges = false;
-    @Getter
     private final List<Change> changes = new ArrayList<>();
 
     public ChangeDetector(ConfigurationService configurationService, SiteWebSocket siteWebSocket) {
@@ -51,6 +50,10 @@ public class ChangeDetector {
         this.siteWebSocket = siteWebSocket;
         this.databaseChangeDetector = new DatabaseChangeDetector(configurationService, this);
         this.fileChangeDetector = new FileChangeDetector(configurationService, this);
+    }
+
+    public List<Change> getChanges() {
+        return new ArrayList<>(changes);
     }
 
     @PostConstruct
@@ -196,17 +199,12 @@ public class ChangeDetector {
     synchronized <R> R holdingChanges(Function<ChangeSession, R> function) {
         AtomicBoolean hasChanged = new AtomicBoolean();
         Set<File> checkFiles = new HashSet<>();
-        Set<ObjectIdentifier> checkIdentifiers = new HashSet<>();
         Set<File> removeFiles = new HashSet<>();
         Set<ObjectIdentifier> removeIdentifiers = new HashSet<>();
         AtomicBoolean checkAllFiles = new AtomicBoolean(false);
         AtomicBoolean checkAllDatabase = new AtomicBoolean(false);
         try {
             return function.apply(new ChangeSession() {
-                @Override
-                public void check(ObjectIdentifier objectIdentifier) {
-                    checkIdentifiers.add(objectIdentifier);
-                }
 
                 @Override
                 public void checkAllDatabaseObjects() {
@@ -241,9 +239,6 @@ public class ChangeDetector {
             } else {
                 for (ObjectIdentifier objectIdentifier : removeIdentifiers) {
                     removeChange(null, objectIdentifier);
-                }
-                for (ObjectIdentifier objectIdentifier : checkIdentifiers) {
-                    //FIXME: databaseChangeDetector.captureObjectSignature(objectIdentifier);
                 }
             }
             if (checkAllFiles.get()) {

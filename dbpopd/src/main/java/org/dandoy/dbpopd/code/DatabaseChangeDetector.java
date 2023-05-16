@@ -144,7 +144,6 @@ public class DatabaseChangeDetector {
     public record ObjectSignature(Date modifyDate, byte[] hash) {}
 
     interface ChangeSession {
-        void check(ObjectIdentifier objectIdentifier);
 
         void checkAllDatabaseObjects();
 

@@ -4,7 +4,7 @@ import './CodeChanges.scss'
 import PageHeader from "../pageheader/PageHeader";
 import useWebSocket from "react-use-websocket";
 import {Change, DefaultChanges, targetChanges} from "../../api/changeApi";
-import {uploadDbChangeToTarget, uploadFileChangeToTarget} from "../../api/codeApi";
+import {ApplyChange, uploadDbChangeToTarget, uploadFileChangeToTarget} from "../../api/codeApi";
 import {ObjectIdentifier} from "../../models/ObjectIdentifier";
 
 const WS_URL = 'ws://localhost:8080/ws/site';
@@ -57,12 +57,24 @@ export default function CodeChanges() {
     const {changes, refreshChanges} = useCodeChanges();
 
     function onApplyFileChanges(path: string, objectIdentifier: ObjectIdentifier) {
-        uploadFileChangeToTarget(path, objectIdentifier)
+        uploadFileChangeToTarget([{path, objectIdentifier}])
             .then(() => refreshChanges());
     }
 
     function onApplyDbChanges(path: string, objectIdentifier: ObjectIdentifier) {
-        uploadDbChangeToTarget(path, objectIdentifier)
+        uploadDbChangeToTarget([{path, objectIdentifier}])
+            .then(() => refreshChanges());
+    }
+
+    function onApplyAllFileChanges() {
+        const applyChanges = changes.map(value => ({path: value.path, objectIdentifier: value.objectIdentifier} as ApplyChange));
+        uploadFileChangeToTarget(applyChanges)
+            .then(() => refreshChanges());
+    }
+
+    function onApplyAllDbChanges() {
+        const applyChanges = changes.map(value => ({path: value.path, objectIdentifier: value.objectIdentifier} as ApplyChange));
+        uploadDbChangeToTarget(applyChanges)
             .then(() => refreshChanges());
     }
 
@@ -74,38 +86,81 @@ export default function CodeChanges() {
             </div>}
         />
 
-        <div className={"row mt-1"}>
-            <div className={"col-5"}><h4>Source File</h4></div>
-            <div className={"col-2 text-center"}><h4>Apply</h4></div>
-            <div className={"col-5"}><h4>Database Object</h4></div>
-        </div>
-
         <div className={"changes"}>
-            {changes.map(change => (
-                <div key={change.path} className={"row mt-1"}>
-                    <div className={"col-5 column-path"} title={change.path}>{change.path}</div>
-                    <div className={"col-2 column-buttons"}>
-                        <Button variant={"primary"}
-                                size={"sm"}
-                                style={change.databaseChanged ? {} : {visibility: "hidden"}}
-                                title={"Apply the database change to the source file"}
-                                onClick={() => onApplyDbChanges(change.path, change.objectIdentifier)}
-                        >
-                            <i className={"fa fa-arrow-left"}/>
-                        </Button>
-                        <Button variant={"primary"}
-                                size={"sm"}
-                                style={change.fileChanged ? {} : {visibility: "hidden"}}
-                                title={"Apply the source file change to the database"}
-                                onClick={() => onApplyFileChanges(change.path, change.objectIdentifier)}
-                        >
-                            <i className={"fa fa-arrow-right"}/>
-                        </Button>
-                    </div>
-                    <div className={"col-5 column-db"} title={change.dbname}>{change.dbname}</div>
+            <div className={"row mt-1"}>
+                <div className={"col-5"}><h5>Source File</h5></div>
+                <div className={"col-2 column-buttons text-center"}>
+                    {/* Apply All Left */}
+                    <Button variant={"primary"}
+                            style={changes.filter(it => it.databaseChanged).length ? {} : {visibility: "hidden"}}
+                            title={"Apply all the database change to the source file"}
+                            onClick={() => onApplyAllDbChanges()}
+                    >
+                        <i className={"fa fa-arrow-left"}/>
+                    </Button>
+
+                    {/*Spacer*/}
+                    <Button variant={"primary"}
+                            size={"sm"}
+                            style={{visibility: "hidden"}}
+                    >
+                        <i className={"fa fa-code-compare"}/>
+                    </Button>
+
+                    {/* Apply Right */}
+                    <Button variant={"primary"}
+                            size={"sm"}
+                            style={changes.filter(it => it.fileChanged).length ? {} : {visibility: "hidden"}}
+                            title={"Apply all the source file change to the database"}
+                            onClick={() => onApplyAllFileChanges()}
+                    >
+                        <i className={"fa fa-arrow-right"}/>
+                    </Button>
+
                 </div>
-            ))
-            }
+                <div className={"col-5"}><h5>Database Object</h5></div>
+            </div>
+
+            <div>
+                {changes.map(change => (
+                    <div key={change.path} className={"row mt-1"}>
+                        <div className={"col-5 column-path"} title={change.path}>{change.path}</div>
+                        <div className={"col-2 column-buttons"}>
+                            {/* Apply Left */}
+                            <Button variant={"primary"}
+                                    size={"sm"}
+                                    style={change.databaseChanged ? {} : {visibility: "hidden"}}
+                                    title={"Apply the database change to the source file"}
+                                    onClick={() => onApplyDbChanges(change.path, change.objectIdentifier)}
+                            >
+                                <i className={"fa fa-arrow-left"}/>
+                            </Button>
+
+                            {/*Compare*/}
+                            <Button variant={"primary"}
+                                    size={"sm"}
+                                    style={false /*change.databaseChanged || change.fileChanged*/ ? {} : {visibility: "hidden"}}
+                                    title={"Compare"}
+                                    onClick={() => onApplyFileChanges(change.path, change.objectIdentifier)}
+                            >
+                                <i className={"fa fa-code-compare"}/>
+                            </Button>
+
+                            {/* Apply Right */}
+                            <Button variant={"primary"}
+                                    size={"sm"}
+                                    style={change.fileChanged ? {} : {visibility: "hidden"}}
+                                    title={"Apply the source file change to the database"}
+                                    onClick={() => onApplyFileChanges(change.path, change.objectIdentifier)}
+                            >
+                                <i className={"fa fa-arrow-right"}/>
+                            </Button>
+                        </div>
+                        <div className={"col-5 column-db"} title={change.dbname}>{change.dbname}</div>
+                    </div>
+                ))
+                }
+            </div>
         </div>
     </div>;
 }

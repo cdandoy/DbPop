@@ -129,6 +129,7 @@ public class CodeService {
                 @Override
                 public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
                     File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
+                    if (!file.getParentFile().mkdirs() && !file.getParentFile().isDirectory()) throw new RuntimeException("Failed to create the directory " + file.getParent());
                     try (Writer writer = new OutputStreamWriter(new FileOutputStream(file))) {
                         writer.write(definition);
                     } catch (IOException e) {

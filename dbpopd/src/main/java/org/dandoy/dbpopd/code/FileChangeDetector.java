@@ -39,10 +39,12 @@ public class FileChangeDetector {
             thread = new Thread(this::threadLoop, "FileChangeDetector");
             thread.setDaemon(true);
             thread.start();
-            try (Stream<Path> stream = Files.walk(codePath)) {
-                stream
-                        .filter(Files::isDirectory)
-                        .forEach(this::watch);
+            if (Files.isDirectory(codePath)) {
+                try (Stream<Path> stream = Files.walk(codePath)) {
+                    stream
+                            .filter(Files::isDirectory)
+                            .forEach(this::watch);
+                }
             }
             for (Path path = codePath.getParent(); path != null; path = path.getParent()) {
                 if (Files.isDirectory(path)) {

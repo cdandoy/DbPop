@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.site.SiteWebSocket;
 import org.zalando.problem.Problem;
 
 import java.io.File;
@@ -25,11 +26,13 @@ public class CodeController {
     private final ConfigurationService configurationService;
     private final CodeService codeService;
     private final ChangeDetector changeDetector;
+    private final SiteWebSocket siteWebSocket;
 
-    public CodeController(ConfigurationService configurationService, CodeService codeService, ChangeDetector changeDetector) {
+    public CodeController(ConfigurationService configurationService, CodeService codeService, ChangeDetector changeDetector, SiteWebSocket siteWebSocket) {
         this.configurationService = configurationService;
         this.codeService = codeService;
         this.changeDetector = changeDetector;
+        this.siteWebSocket = siteWebSocket;
     }
 
     @Get("source/compare")
@@ -102,15 +105,14 @@ public class CodeController {
 
     record ApplyChangesRequest(String path, ObjectIdentifierResponse objectIdentifier) {}
 
-    private File safeGetFile(ApplyChangesRequest request) {
-        String requestedPath = request.path;
+    private File safeGetFile(String path) {
         // Resolve the requested path and validate that it is valid
         Path codePath = configurationService.getCodeDirectory().toPath();
-        Path resolved = codePath.resolve(requestedPath).normalize();
+        Path resolved = codePath.resolve(path).normalize();
         if (!resolved.startsWith(codePath))
             throw Problem.builder()
                     .withStatus(new HttpStatusType(HttpStatus.BAD_REQUEST))
-                    .withTitle("Invalid Path: " + requestedPath)
+                    .withTitle("Invalid Path: " + path)
                     .build();
 
         // Verify the file exists
@@ -118,29 +120,36 @@ public class CodeController {
         if (!file.exists())
             throw Problem.builder()
                     .withStatus(new HttpStatusType(HttpStatus.NOT_FOUND))
-                    .withTitle("File does not exist: " + requestedPath)
+                    .withTitle("File does not exist: " + path)
                     .build();
         return file;
     }
 
-    @Post("target/changes/apply-file")
-    public void applyFileChanges(@Body ApplyChangesRequest request) {
-        if (request.path != null) {
-            File file = safeGetFile(request);
-            codeService.uploadFileToTarget(file);
-        } else {
-            codeService.deleteTargetObject(request.objectIdentifier.toObjectIdentifier());
-        }
+    @Post("target/changes/apply-files")
+    public void applyFileChanges(@Body ApplyChangesRequest[] requests) {
+        siteWebSocket.holdChanges(() -> {
+            for (ApplyChangesRequest change : requests) {
+                if (change.path != null) {
+                    File file = safeGetFile(change.path);
+                    codeService.uploadFileToTarget(file);
+                } else {
+                    codeService.deleteTargetObject(change.objectIdentifier.toObjectIdentifier());
+                }
+            }
+        });
     }
 
-
-    @Post("target/changes/apply-db")
-    public void applyDbChanges(@Body ApplyChangesRequest request) {
-        if (request.objectIdentifier != null) {
-            codeService.downloadTargetToFile(request.objectIdentifier.toObjectIdentifier());
-        } else {
-            File file = safeGetFile(request);
-            codeService.deleteFile(file);
-        }
+    @Post("target/changes/apply-dbs")
+    public void applyDbChanges(@Body ApplyChangesRequest[] requests) {
+        siteWebSocket.holdChanges(() -> {
+            for (ApplyChangesRequest change : requests) {
+                if (change.objectIdentifier != null) {
+                    codeService.downloadTargetToFile(change.objectIdentifier.toObjectIdentifier());
+                } else {
+                    File file = safeGetFile(change.path());
+                    codeService.deleteFile(file);
+                }
+            }
+        });
     }
 }

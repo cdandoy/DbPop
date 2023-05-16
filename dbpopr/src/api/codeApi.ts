@@ -53,16 +53,15 @@ export function downloadTargetToFile() {
     return axios.get(`/code/target/download`);
 }
 
-export function uploadFileChangeToTarget(path: string, objectIdentifier: ObjectIdentifier) {
-    return axios.post(`/code/target/changes/apply-file`, {
-        path: path,
-        objectIdentifier: objectIdentifier,
-    });
+export interface ApplyChange {
+    path: string
+    objectIdentifier: ObjectIdentifier
 }
 
-export function uploadDbChangeToTarget(path: string, objectIdentifier: ObjectIdentifier) {
-    return axios.post(`/code/target/changes/apply-db`, {
-        path: path,
-        objectIdentifier: objectIdentifier,
-    });
+export function uploadFileChangeToTarget(changes:ApplyChange[]) {
+    return axios.post(`/code/target/changes/apply-files`, changes);
+}
+
+export function uploadDbChangeToTarget(changes:ApplyChange[]) {
+    return axios.post(`/code/target/changes/apply-dbs`, changes);
 }
