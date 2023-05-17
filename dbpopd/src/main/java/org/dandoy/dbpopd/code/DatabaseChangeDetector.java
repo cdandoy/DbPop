@@ -6,14 +6,10 @@ import org.dandoy.dbpop.database.DatabaseIntrospector;
 import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpopd.ConfigurationService;
-import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 
-import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
-
-import static org.dandoy.dbpopd.utils.DbPopdFileUtils.toFile;
 
 /**
  * DatabasechangeDetector runs every 3 seconds.
@@ -58,7 +54,6 @@ public class DatabaseChangeDetector {
             if (targetDatabase != null) {
                 Set<ObjectIdentifier> seen = new HashSet<>(targetObjectSignatures.keySet());
 
-                File codeDirectory = configurationService.getCodeDirectory();
                 // The file already contains that code
                 DatabaseIntrospector databaseIntrospector = targetDatabase.createDatabaseIntrospector();
                 List<ObjectIdentifier> changedIdentifiers = new ArrayList<>();
@@ -77,28 +72,20 @@ public class DatabaseChangeDetector {
 
                 databaseIntrospector.visitModuleDefinitions(changedIdentifiers, new DatabaseVisitor() {
                     @Override
-                    public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
-                        byte[] sqlHash = getHash(definition);
+                    public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String sql) {
+                        byte[] sqlHash = getHash(sql);
                         ObjectSignature oldSignature = targetObjectSignatures.get(objectIdentifier);
                         seen.remove(objectIdentifier);
                         if (oldSignature == null || !Arrays.equals(sqlHash, oldSignature.hash())) {
                             targetObjectSignatures.put(objectIdentifier, new ObjectSignature(modifyDate, sqlHash));
-                            File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
-                            changeDetector.whenDatabaseChanged(
-                                    file.exists() ? file : null,
-                                    objectIdentifier,
-                                    definition
-                            );
+                            changeDetector.whenDatabaseObjectChanged(objectIdentifier, sql);
                         }
                     }
                 });
 
                 for (ObjectIdentifier removedObjectIdentifier : seen) {
                     targetObjectSignatures.remove(removedObjectIdentifier);
-                    File file = toFile(codeDirectory, removedObjectIdentifier);
-                    if (file != null) {
-                        changeDetector.whenDatabaseChanged(file, removedObjectIdentifier, null);
-                    }
+                    changeDetector.whenDatabaseObjectDeleted(removedObjectIdentifier);
                 }
             }
         }
@@ -113,10 +100,10 @@ public class DatabaseChangeDetector {
                 for (String catalog : targetDatabase.getCatalogs()) {
                     databaseIntrospector.visitModuleDefinitions(catalog, new DatabaseVisitor() {
                         @Override
-                        public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
-                            byte[] hash = messageDigest.digest(definition.getBytes(StandardCharsets.UTF_8));
+                        public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String sql) {
+                            byte[] hash = messageDigest.digest(sql.getBytes(StandardCharsets.UTF_8));
                             ret.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
-                            changeDetector.whenDatabaseChanged(toFile(configurationService.getCodeDirectory(), objectIdentifier), objectIdentifier, definition);
+                            changeDetector.whenDatabaseObjectChanged(objectIdentifier, sql);
                         }
                     });
                 }
@@ -142,11 +129,4 @@ public class DatabaseChangeDetector {
     }
 
     public record ObjectSignature(Date modifyDate, byte[] hash) {}
-
-    interface ChangeSession {
-
-        void checkAllDatabaseObjects();
-
-        void removeObjectIdentifier(ObjectIdentifier objectIdentifier);
-    }
 }

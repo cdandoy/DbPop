@@ -37,9 +37,11 @@ public class SqlServerDatabase extends DefaultDatabase {
         }
     }
 
-    void use(String catalog) throws SQLException {
+    void use(String catalog) {
         try (Statement statement = getConnection().createStatement()) {
             statement.execute("USE " + catalog);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -793,21 +795,22 @@ public class SqlServerDatabase extends DefaultDatabase {
         String sql = switch (objectIdentifier.getType()) {
             case "USER_TABLE" -> "DROP TABLE %s".formatted(quote(objectIdentifier));
             case "INDEX" -> "DROP INDEX %s on %s".formatted(
-                    quote(objectIdentifier),
-                    quote(objectIdentifier.getParent())
+                    quote(".", objectIdentifier.getSchema(), objectIdentifier.getName()),
+                    quote(".", objectIdentifier.getParent().getSchema(), objectIdentifier.getName())
             );
             case "FOREIGN_KEY_CONSTRAINT" -> "ALTER TABLE %s DROP CONSTRAINT %s".formatted(
-                    quote(objectIdentifier.getParent()),
+                    quote(".", objectIdentifier.getSchema(), objectIdentifier.getName()),
                     objectIdentifier.getName()
             );
             case "SQL_STORED_PROCEDURE" -> "DROP PROCEDURE %s".formatted(
-                    quote(objectIdentifier)
+                    quote(".", objectIdentifier.getSchema(), objectIdentifier.getName())
             );
             case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_TABLE_VALUED_FUNCTION" -> "DROP FUNCTION %s".formatted(
-                    quote(objectIdentifier)
+                    quote(".", objectIdentifier.getSchema(), objectIdentifier.getName())
             );
             default -> throw new RuntimeException("Unexpected type: " + objectIdentifier.getType());
         };
+        use(objectIdentifier.getCatalog());
         executeSql(sql);
     }
 

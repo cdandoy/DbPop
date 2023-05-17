@@ -4,7 +4,7 @@ import './CodeChanges.scss'
 import PageHeader from "../pageheader/PageHeader";
 import useWebSocket from "react-use-websocket";
 import {Change, DefaultChanges, targetChanges} from "../../api/changeApi";
-import {ApplyChange, uploadDbChangeToTarget, uploadFileChangeToTarget} from "../../api/codeApi";
+import {uploadDbChangeToTarget, uploadFileChangeToTarget} from "../../api/codeApi";
 import {ObjectIdentifier} from "../../models/ObjectIdentifier";
 
 const WS_URL = 'ws://localhost:8080/ws/site';
@@ -36,7 +36,6 @@ export function useCodeChanges() {
 
     useEffect(() => {
         if (lastJsonMessage) {
-            console.log(lastJsonMessage)
             const message = lastJsonMessage as any as Message;
             if (message.messageType === 'CODE_CHANGE') {
                 targetChanges()
@@ -57,23 +56,23 @@ export default function CodeChanges() {
     const {changes, refreshChanges} = useCodeChanges();
 
     function onApplyFileChanges(path: string, objectIdentifier: ObjectIdentifier) {
-        uploadFileChangeToTarget([{path, objectIdentifier}])
+        uploadFileChangeToTarget([objectIdentifier])
             .then(() => refreshChanges());
     }
 
     function onApplyDbChanges(path: string, objectIdentifier: ObjectIdentifier) {
-        uploadDbChangeToTarget([{path, objectIdentifier}])
+        uploadDbChangeToTarget([objectIdentifier])
             .then(() => refreshChanges());
     }
 
     function onApplyAllFileChanges() {
-        const applyChanges = changes.map(value => ({path: value.path, objectIdentifier: value.objectIdentifier} as ApplyChange));
+        const applyChanges = changes.map(value => value.objectIdentifier);
         uploadFileChangeToTarget(applyChanges)
             .then(() => refreshChanges());
     }
 
     function onApplyAllDbChanges() {
-        const applyChanges = changes.map(value => ({path: value.path, objectIdentifier: value.objectIdentifier} as ApplyChange));
+        const applyChanges = changes.map(value => value.objectIdentifier);
         uploadDbChangeToTarget(applyChanges)
             .then(() => refreshChanges());
     }
@@ -92,7 +91,7 @@ export default function CodeChanges() {
                 <div className={"col-2 column-buttons text-center"}>
                     {/* Apply All Left */}
                     <Button variant={"primary"}
-                            style={changes.filter(it => it.databaseChanged).length ? {} : {visibility: "hidden"}}
+                            style={changes.filter(it => it.databaseChanged || it.databaseDeleted).length ? {} : {visibility: "hidden"}}
                             title={"Apply all the database change to the source file"}
                             onClick={() => onApplyAllDbChanges()}
                     >
@@ -110,7 +109,7 @@ export default function CodeChanges() {
                     {/* Apply Right */}
                     <Button variant={"primary"}
                             size={"sm"}
-                            style={changes.filter(it => it.fileChanged).length ? {} : {visibility: "hidden"}}
+                            style={changes.filter(it => it.fileChanged || it.fileDeleted).length ? {} : {visibility: "hidden"}}
                             title={"Apply all the source file change to the database"}
                             onClick={() => onApplyAllFileChanges()}
                     >
@@ -129,7 +128,7 @@ export default function CodeChanges() {
                             {/* Apply Left */}
                             <Button variant={"primary"}
                                     size={"sm"}
-                                    style={change.databaseChanged ? {} : {visibility: "hidden"}}
+                                    style={change.databaseChanged || change.databaseDeleted ? {} : {visibility: "hidden"}}
                                     title={"Apply the database change to the source file"}
                                     onClick={() => onApplyDbChanges(change.path, change.objectIdentifier)}
                             >
@@ -149,7 +148,7 @@ export default function CodeChanges() {
                             {/* Apply Right */}
                             <Button variant={"primary"}
                                     size={"sm"}
-                                    style={change.fileChanged ? {} : {visibility: "hidden"}}
+                                    style={change.fileChanged || change.fileDeleted ? {} : {visibility: "hidden"}}
                                     title={"Apply the source file change to the database"}
                                     onClick={() => onApplyFileChanges(change.path, change.objectIdentifier)}
                             >

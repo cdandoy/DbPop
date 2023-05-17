@@ -3,9 +3,7 @@ package org.dandoy.dbpopd.code;
 import io.micronaut.context.annotation.Context;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
-import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpopd.ConfigurationService;
-import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.IOUtils;
 
 import java.io.File;
@@ -21,14 +19,12 @@ import static java.nio.file.StandardWatchEventKinds.*;
 @Slf4j
 @Context
 public class FileChangeDetector {
-    private final File codeDirectory;
     private WatchService watchService;
     private Thread thread;
     private final Path codePath;
     private final ChangeDetector changeDetector;
 
     public FileChangeDetector(ConfigurationService configurationService, ChangeDetector changeDetector) {
-        codeDirectory = configurationService.getCodeDirectory();
         codePath = configurationService.getCodeDirectory().toPath();
         this.changeDetector = changeDetector;
     }
@@ -148,10 +144,7 @@ public class FileChangeDetector {
             watchKey.cancel();
         } else {
             File file = path.toFile();
-            ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(codeDirectory, file);
-            if (objectIdentifier != null) {
-                changeDetector.whenFileChanged(null, objectIdentifier);
-            }
+            changeDetector.whenFileDeleted(file);
         }
     }
 
@@ -163,10 +156,7 @@ public class FileChangeDetector {
                 }
             } else {
                 File file = path.toFile();
-                ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(codeDirectory, file);
-                if (objectIdentifier != null) {
-                    changeDetector.whenFileChanged(file, objectIdentifier);
-                }
+                changeDetector.whenFileChanged(file);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -181,13 +171,5 @@ public class FileChangeDetector {
         sql = ChangeDetector.cleanSql(sql);
         byte[] bytes = sql.getBytes(StandardCharsets.UTF_8);
         return messageDigest.digest(bytes);
-    }
-
-    interface ChangeSession {
-        void check(File file);
-
-        void removeFile(File file);
-
-        void checkAllFiles();
     }
 }

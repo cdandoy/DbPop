@@ -15,6 +15,7 @@ import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.site.CodeChangeMessage;
 import org.dandoy.dbpopd.site.SiteWebSocket;
+import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.IOUtils;
 
 import javax.validation.constraints.NotNull;
@@ -99,80 +100,18 @@ public class ChangeDetector {
         return Arrays.equals(fileHash, dbHash);
     }
 
-    synchronized void whenFileChanged(@Nullable File file, @NotNull ObjectIdentifier objectIdentifier) {
-        if (applyChanges) {
-            try (ChangeFile changeFile = getChangeFile()) {
-                try (Database targetDatabase = configurationService.getTargetDatabaseCache()) {
-                    if (file != null) {
-                        log.info("Executing {}", file);
-                        String sql = IOUtils.toString(file);
-                        Connection connection = targetDatabase.getConnection();
-                        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-                            preparedStatement.execute();
-                        }
-                        changeFile.objectUpdated(objectIdentifier);
-                    } else {
-                        log.info("Deleting {}", objectIdentifier);
-                        targetDatabase.dropObject(objectIdentifier);
-                        changeFile.objectDeleted(objectIdentifier);
-                    }
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        } else {
-            Change change = removeChange(file, objectIdentifier);
-            if (!areSameHash(file, objectIdentifier)) {
-                if (change == null) {
-                    change = new Change(file, objectIdentifier);
-                }
-                change.setFileChanged(true);
-                changes.add(change);
-                sendCodeChangeMessage();
-            }
-        }
-    }
-
     private void sendCodeChangeMessage() {
         siteWebSocket.sendMessage(CodeChangeMessage.MESSAGE);
-    }
-
-    synchronized void whenDatabaseChanged(File file, @NotNull ObjectIdentifier objectIdentifier, @Nullable String definition) {
-        if (applyChanges) {
-            try (ChangeFile changeFile = getChangeFile()) {
-                if (definition != null) {
-                    log.info("Downloading {}", file);
-                    writeDefinition(file, definition);
-                    changeFile.objectUpdated(objectIdentifier);
-                } else {
-                    log.info("deleting {}", file);
-                    changeFile.objectDeleted(objectIdentifier);
-                    if (!file.delete() && file.exists()) {
-                        log.error("Failed to delete " + file);
-                    }
-                }
-            }
-        } else {
-            Change change = removeChange(file, objectIdentifier);
-            if (!areSameHash(file, definition)) {
-                if (change == null) {
-                    change = new Change(file, definition == null ? null : objectIdentifier);
-                }
-                change.setDatabaseChanged(true);
-                changes.add(change);
-                sendCodeChangeMessage();
-            }
-        }
     }
 
     private ChangeFile getChangeFile() {
         return new ChangeFile(new File(configurationService.getCodeDirectory(), "changes.txt"));
     }
 
-    private Change removeChange(File file, ObjectIdentifier objectIdentifier) {
+    Change removeChange(ObjectIdentifier objectIdentifier) {
         for (int i = 0; i < changes.size(); i++) {
             Change change = changes.get(i);
-            if (change.equals(file, objectIdentifier)) {
+            if (objectIdentifier.equals(change.getObjectIdentifier())) {
                 changes.remove(i);
                 return change;
             }
@@ -198,14 +137,10 @@ public class ChangeDetector {
      */
     synchronized <R> R holdingChanges(Function<ChangeSession, R> function) {
         AtomicBoolean hasChanged = new AtomicBoolean();
-        Set<File> checkFiles = new HashSet<>();
-        Set<File> removeFiles = new HashSet<>();
         Set<ObjectIdentifier> removeIdentifiers = new HashSet<>();
-        AtomicBoolean checkAllFiles = new AtomicBoolean(false);
         AtomicBoolean checkAllDatabase = new AtomicBoolean(false);
         try {
             return function.apply(new ChangeSession() {
-
                 @Override
                 public void checkAllDatabaseObjects() {
                     checkAllDatabase.set(true);
@@ -217,38 +152,13 @@ public class ChangeDetector {
                     hasChanged.set(true);
                 }
 
-                @Override
-                public void check(File file) {
-                    checkFiles.add(file);
-                }
-
-                @Override
-                public void removeFile(File file) {
-                    removeFiles.add(file);
-                    hasChanged.set(true);
-                }
-
-                @Override
-                public void checkAllFiles() {
-                    checkAllFiles.set(true);
-                }
             });
         } finally {
             if (checkAllDatabase.get()) {
                 databaseChangeDetector.captureObjectSignatures();
             } else {
                 for (ObjectIdentifier objectIdentifier : removeIdentifiers) {
-                    removeChange(null, objectIdentifier);
-                }
-            }
-            if (checkAllFiles.get()) {
-                // FIXME: fileChangeDetector.captureAllSignatures();
-            } else {
-                for (File file : removeFiles) {
-                    removeChange(file, null);
-                }
-                for (File file : checkFiles) {
-                    // FIXME: fileChangeDetector.captureSignature(file);
+                    removeChange(objectIdentifier);
                 }
             }
             if (hasChanged.get()) {
@@ -264,6 +174,110 @@ public class ChangeDetector {
         });
     }
 
-    interface ChangeSession extends DatabaseChangeDetector.ChangeSession, FileChangeDetector.ChangeSession {
+    interface ChangeSession {
+        void checkAllDatabaseObjects();
+
+        void removeObjectIdentifier(ObjectIdentifier objectIdentifier);
+    }
+
+    synchronized void whenDatabaseObjectChanged(@NotNull ObjectIdentifier objectIdentifier, @Nullable String sql) {
+        File file = DbPopdFileUtils.toFile(configurationService.getCodeDirectory(), objectIdentifier);
+
+        if (applyChanges) {
+            try (ChangeFile changeFile = getChangeFile()) {
+                log.info("Downloading {}", file);
+                writeDefinition(file, sql);
+                changeFile.objectUpdated(objectIdentifier);
+            }
+        } else {
+            Change change = removeChange(objectIdentifier);
+            if (!areSameHash(file, sql)) {
+                if (change == null) {
+                    change = new Change(file, sql == null ? null : objectIdentifier);
+                }
+                change.setDatabaseChanged();
+                changes.add(change);
+            }
+            sendCodeChangeMessage();
+        }
+    }
+
+    synchronized void whenDatabaseObjectDeleted(@NotNull ObjectIdentifier objectIdentifier) {
+        File file = DbPopdFileUtils.toFile(configurationService.getCodeDirectory(), objectIdentifier);
+        if (applyChanges) {
+            try (ChangeFile changeFile = getChangeFile()) {
+                log.info("deleting {}", file);
+                changeFile.objectDeleted(objectIdentifier);
+                if (!file.delete() && file.exists()) {
+                    log.error("Failed to delete " + file);
+                }
+            }
+        } else {
+            Change change = removeChange(objectIdentifier);
+            if (file.isFile()) {
+                if (change == null) {
+                    change = new Change(file, objectIdentifier);
+                }
+                change.setDatabaseDeleted();
+                changes.add(change);
+            }
+            sendCodeChangeMessage();
+        }
+    }
+
+    synchronized void whenFileChanged(@NotNull File file) {
+        ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(configurationService.getCodeDirectory(), file);
+        if (objectIdentifier == null) return; // Not a DB file
+        if (applyChanges) {
+            try (ChangeFile changeFile = getChangeFile()) {
+                if (!areSameHash(file, objectIdentifier)) {
+                    try (Database targetDatabase = configurationService.getTargetDatabaseCache()) {
+                        log.info("Executing {}", file);
+                        String sql = IOUtils.toString(file);
+                        Connection connection = targetDatabase.getConnection();
+                        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                            preparedStatement.execute();
+                        }
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                changeFile.objectUpdated(objectIdentifier);
+            }
+        } else {
+            Change change = removeChange(objectIdentifier);
+            if (!areSameHash(file, objectIdentifier)) {
+                if (change == null) {
+                    change = new Change(file, objectIdentifier);
+                }
+                change.setFileChanged();
+                changes.add(change);
+            }
+            sendCodeChangeMessage();
+        }
+    }
+
+    synchronized void whenFileDeleted(@NotNull File file) {
+        ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(configurationService.getCodeDirectory(), file);
+        if (objectIdentifier == null) return; // Not a SQL file
+        if (applyChanges) {
+            try (ChangeFile changeFile = getChangeFile()) {
+                try (Database targetDatabase = configurationService.getTargetDatabaseCache()) {
+                    log.info("Deleting {}", objectIdentifier);
+                    targetDatabase.dropObject(objectIdentifier);
+                    changeFile.objectDeleted(objectIdentifier);
+                }
+            }
+        } else {
+            Change change = removeChange(objectIdentifier);
+            if (!areSameHash(file, objectIdentifier)) {
+                if (change == null) {
+                    change = new Change(file, objectIdentifier);
+                }
+                change.setFileDeleted();
+                changes.add(change);
+            }
+            sendCodeChangeMessage();
+        }
     }
 }

@@ -7,6 +7,8 @@ export interface Change {
     objectIdentifier: ObjectIdentifier;
     fileChanged: boolean;
     databaseChanged: boolean;
+    fileDeleted: boolean;
+    databaseDeleted: boolean;
 }
 
 export const DefaultChanges: Change[] = [];

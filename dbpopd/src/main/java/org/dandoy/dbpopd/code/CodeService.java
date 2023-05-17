@@ -308,7 +308,7 @@ public class CodeService {
 
                     UploadResult.FileExecution fileExecution = execute(statement, objectIdentifier.getType(), file);
 
-                    changeSession.removeFile(file);
+                    changeSession.removeObjectIdentifier(objectIdentifier);
 
                     long t1 = System.currentTimeMillis();
                     return new UploadResult(List.of(fileExecution), t1 - t0);
@@ -321,7 +321,7 @@ public class CodeService {
         });
     }
 
-    private static final Pattern CREATE_PATTERN = Pattern.compile("(.*\\b)CREATE(\\s+(?:FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b.*)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern CREATE_PATTERN = Pattern.compile("(.*)\\bCREATE(\\s+(?:FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b.*)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     private UploadResult.FileExecution execute(Statement statement, String type, File sqlFile) throws IOException {
         log.info("Executing {}", sqlFile);
@@ -334,22 +334,22 @@ public class CodeService {
             if (type.equals("USER_TABLE") || type.equals("FOREIGN_KEY_CONSTRAINT") || type.equals("INDEX")) {
                 statement.execute(sql);
             } else {
-                Matcher matcher = CREATE_PATTERN.matcher(sql);
-                if (matcher.matches()) {
-                    String pre = matcher.group(1);
-                    String post = matcher.group(2);
-                    try {
-                        //noinspection SqlResolve
-                        statement.execute(pre + "ALTER" + post);
-                    } catch (SQLException e) {
-                        if (!e.getSQLState().equals("S0001")) {
-                            throw e;
-                        }
-                        //noinspection SqlResolve
-                        statement.execute(pre + "CREATE OR ALTER" + post);
+                try {
+                    statement.execute(sql);
+                } catch (SQLException e) {
+                    if (!e.getSQLState().equals("S0001")) {
+                        throw e;
                     }
-                } else {
-                    log.warn("Could not identify " + sqlFile);
+                    Matcher matcher = CREATE_PATTERN.matcher(sql);
+                    if (matcher.matches()) {
+                        String pre = matcher.group(1);
+                        String post = matcher.group(2);
+                        //noinspection SqlResolve
+                        sql = pre + "ALTER" + post;
+                        statement.execute(sql);
+                    } else {
+                        throw e;
+                    }
                 }
             }
             return new UploadResult.FileExecution(sqlFile.getPath(), type, objectName, null);
@@ -443,7 +443,8 @@ public class CodeService {
     public void deleteFile(File file) {
         changeDetector.holdingChanges(changeSession -> {
             if (!file.delete() && file.exists()) throw new RuntimeException("Failed to delete " + file);
-            changeSession.removeFile(file);
+            ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(configurationService.getCodeDirectory(), file);
+            changeSession.removeObjectIdentifier(objectIdentifier);
         });
     }
 }

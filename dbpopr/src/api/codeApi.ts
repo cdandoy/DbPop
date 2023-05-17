@@ -58,10 +58,10 @@ export interface ApplyChange {
     objectIdentifier: ObjectIdentifier
 }
 
-export function uploadFileChangeToTarget(changes:ApplyChange[]) {
-    return axios.post(`/code/target/changes/apply-files`, changes);
+export function uploadDbChangeToTarget(objectIdentifiers:ObjectIdentifier[]) {
+    return axios.post(`/code/target/changes/apply-dbs`, objectIdentifiers);
 }
 
-export function uploadDbChangeToTarget(changes:ApplyChange[]) {
-    return axios.post(`/code/target/changes/apply-dbs`, changes);
+export function uploadFileChangeToTarget(objectIdentifiers:ObjectIdentifier[]) {
+    return axios.post(`/code/target/changes/apply-files`, objectIdentifiers);
 }
