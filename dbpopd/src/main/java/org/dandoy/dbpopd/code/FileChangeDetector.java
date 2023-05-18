@@ -11,7 +11,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardWatchEventKinds.*;
@@ -23,6 +25,10 @@ public class FileChangeDetector {
     private Thread thread;
     private final Path codePath;
     private final ChangeDetector changeDetector;
+    /**
+     * Accumulates the actions and only send the events if nothing happened for a few seconds
+     */
+    private final List<Runnable> pending = new ArrayList<>();
 
     public FileChangeDetector(ConfigurationService configurationService, ChangeDetector changeDetector) {
         codePath = configurationService.getCodeDirectory().toPath();
@@ -50,7 +56,6 @@ public class FileChangeDetector {
         } catch (IOException e) {
             log.error("Cannot watch the directory " + codePath, e);
         }
-
     }
 
     void preDestroy() {
@@ -97,36 +102,37 @@ public class FileChangeDetector {
     void threadLoop() {
         while (true) {
             try {
-                WatchKey watchKey = watchService.take();
-                if (watchKey == null) break;
-                List<WatchEvent<?>> watchEvents = watchKey.pollEvents();
-                for (WatchEvent<?> pollEvent : watchEvents) {
-                    // Check that the event is about Paths
-                    if (pollEvent.context() instanceof Path childPath && watchKey.watchable() instanceof Path parentPath) {
-                        log.debug("WatchEvent {}: {}", pollEvent.kind(), childPath);
-                        Path path = parentPath.resolve(childPath);
-                        if (codePath.startsWith(path)) {
-                            if (Files.isDirectory(path)) {
-                                // The event is about a directory above .../code/
-                                if (pollEvent.kind() == ENTRY_CREATE) {
-                                    watchPathAndSubPaths(path);
-                                } else if (pollEvent.kind() == ENTRY_DELETE) {
-                                    watchKey.cancel();
+                WatchKey watchKey = getWatchKey();
+                if (watchKey != null) {
+                    List<WatchEvent<?>> watchEvents = watchKey.pollEvents();
+                    for (WatchEvent<?> pollEvent : watchEvents) {
+                        // Check that the event is about Paths
+                        if (pollEvent.context() instanceof Path childPath && watchKey.watchable() instanceof Path parentPath) {
+                            log.debug("WatchEvent {}: {}", pollEvent.kind(), childPath);
+                            Path path = parentPath.resolve(childPath);
+                            if (codePath.startsWith(path)) {
+                                if (Files.isDirectory(path)) {
+                                    // The event is about a directory above .../code/
+                                    if (pollEvent.kind() == ENTRY_CREATE) {
+                                        watchPathAndSubPaths(path);
+                                    } else if (pollEvent.kind() == ENTRY_DELETE) {
+                                        watchKey.cancel();
+                                    }
                                 }
-                            }
-                        } else if (path.startsWith(codePath)) {
-                            // The event is withing .../code/
-                            if (pollEvent.kind() == ENTRY_CREATE) {
-                                onEntryCreated(path);
-                            } else if (pollEvent.kind() == ENTRY_DELETE) {
-                                onEntryDeleted(watchKey, path);
-                            } else if (pollEvent.kind() == ENTRY_MODIFY) {
-                                onEntryModified(path);
+                            } else if (path.startsWith(codePath)) {
+                                // The event is withing .../code/
+                                if (pollEvent.kind() == ENTRY_CREATE) {
+                                    onEntryCreated(path);
+                                } else if (pollEvent.kind() == ENTRY_DELETE) {
+                                    onEntryDeleted(watchKey, path);
+                                } else if (pollEvent.kind() == ENTRY_MODIFY) {
+                                    onEntryModified(path);
+                                }
                             }
                         }
                     }
+                    watchKey.reset();
                 }
-                watchKey.reset();
             } catch (ClosedWatchServiceException ignored) {
                 log.debug("FileChangeDetector - WatchService closed");
                 break;
@@ -136,6 +142,24 @@ public class FileChangeDetector {
             }
         }
         log.debug("FileChangeDetector thread stopped");
+    }
+
+    private WatchKey getWatchKey() throws InterruptedException {
+        WatchKey watchKey;
+        if (pending.isEmpty()) {
+            watchKey = watchService.take();
+        } else {
+            watchKey = watchService.poll(1, TimeUnit.SECONDS);
+            if (watchKey == null) {
+                log.debug("Processing {} events", pending.size());
+                changeDetector.holdingChanges(changeSession -> {
+                    pending.forEach(Runnable::run);
+                    pending.clear();
+                });
+                return null;
+            }
+        }
+        return watchKey;
     }
 
     private void onEntryCreated(Path path) {
@@ -157,7 +181,7 @@ public class FileChangeDetector {
             watchKey.cancel();
         } else {
             File file = path.toFile();
-            changeDetector.whenFileDeleted(file);
+            pending.add(() -> changeDetector.whenFileDeleted(file));
         }
     }
 
@@ -172,7 +196,7 @@ public class FileChangeDetector {
                 if (!file.isDirectory() && file.length() == 0) {
                     log.debug("Found an empty file: {}", file);
                 }
-                changeDetector.whenFileChanged(file);
+                pending.add(() -> changeDetector.whenFileChanged(file));
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

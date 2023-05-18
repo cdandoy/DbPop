@@ -9,7 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpopd.ConfigurationService;
-import org.dandoy.dbpopd.site.SiteWebSocket;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -23,13 +22,11 @@ public class CodeController {
     private final ConfigurationService configurationService;
     private final CodeService codeService;
     private final ChangeDetector changeDetector;
-    private final SiteWebSocket siteWebSocket;
 
-    public CodeController(ConfigurationService configurationService, CodeService codeService, ChangeDetector changeDetector, SiteWebSocket siteWebSocket) {
+    public CodeController(ConfigurationService configurationService, CodeService codeService, ChangeDetector changeDetector) {
         this.configurationService = configurationService;
         this.codeService = codeService;
         this.changeDetector = changeDetector;
-        this.siteWebSocket = siteWebSocket;
     }
 
     @Get("source/compare")
@@ -104,37 +101,33 @@ public class CodeController {
 
     @Post("target/changes/apply-files")
     public void applyToDatabase(@Body ObjectIdentifierResponse[] objectIdentifierResponses) {
-        siteWebSocket.holdChanges(() -> {
-            for (ObjectIdentifierResponse objectIdentifierResponse : objectIdentifierResponses) {
-                ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
-                Change change = changeDetector.removeChange(objectIdentifier);
-                File file = change.getFile();
-                if (change.isFileChanged()) {
-                    codeService.uploadFileToTarget(file);
-                } else if (change.isFileDeleted()) {
-                    codeService.deleteTargetObject(objectIdentifier);
-                } else {
-                    throw new RuntimeException();
-                }
+        for (ObjectIdentifierResponse objectIdentifierResponse : objectIdentifierResponses) {
+            ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
+            Change change = changeDetector.removeChange(objectIdentifier);
+            File file = change.getFile();
+            if (change.isFileChanged()) {
+                codeService.uploadFileToTarget(file);
+            } else if (change.isFileDeleted()) {
+                codeService.deleteTargetObject(objectIdentifier);
+            } else {
+                throw new RuntimeException();
             }
-        });
+        }
     }
 
     @Post("target/changes/apply-dbs")
     public void applyToFile(@Body ObjectIdentifierResponse[] objectIdentifierResponses) {
-        siteWebSocket.holdChanges(() -> {
-            for (ObjectIdentifierResponse objectIdentifierResponse : objectIdentifierResponses) {
-                ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
-                Change change = changeDetector.removeChange(objectIdentifier);
-                File file = change.getFile();
-                if (change.isDatabaseChanged()) {
-                    codeService.downloadTargetToFile(objectIdentifier);
-                } else if (change.isDatabaseDeleted()) {
-                    codeService.deleteFile(file);
-                } else {
-                    throw new RuntimeException();
-                }
+        for (ObjectIdentifierResponse objectIdentifierResponse : objectIdentifierResponses) {
+            ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
+            Change change = changeDetector.removeChange(objectIdentifier);
+            File file = change.getFile();
+            if (change.isDatabaseChanged()) {
+                codeService.downloadTargetToFile(objectIdentifier);
+            } else if (change.isDatabaseDeleted()) {
+                codeService.deleteFile(file);
+            } else {
+                throw new RuntimeException();
             }
-        });
+        }
     }
 }

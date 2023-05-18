@@ -69,7 +69,9 @@ public class ChangeDetector {
 
     @Scheduled(fixedDelay = "3s", initialDelay = "3s")
     void checkDatabaseCodeChanges() {
-        databaseChangeDetector.checkCodeChanges();
+        holdingChanges(changeSession -> {
+            databaseChangeDetector.checkCodeChanges();
+        });
     }
 
     static String cleanSql(String sql) {
@@ -136,35 +138,36 @@ public class ChangeDetector {
      * Safely executes the function without checking for code changes
      */
     synchronized <R> R holdingChanges(Function<ChangeSession, R> function) {
-        AtomicBoolean hasChanged = new AtomicBoolean();
-        Set<ObjectIdentifier> removeIdentifiers = new HashSet<>();
-        AtomicBoolean checkAllDatabase = new AtomicBoolean(false);
-        try {
-            return function.apply(new ChangeSession() {
-                @Override
-                public void checkAllDatabaseObjects() {
-                    checkAllDatabase.set(true);
-                }
+        return siteWebSocket.holdChanges(() -> {
+            AtomicBoolean hasChanged = new AtomicBoolean();
+            Set<ObjectIdentifier> removeIdentifiers = new HashSet<>();
+            AtomicBoolean checkAllDatabase = new AtomicBoolean(false);
+            try {
+                return function.apply(new ChangeSession() {
+                    @Override
+                    public void checkAllDatabaseObjects() {
+                        checkAllDatabase.set(true);
+                    }
 
-                @Override
-                public void removeObjectIdentifier(ObjectIdentifier objectIdentifier) {
-                    removeIdentifiers.add(objectIdentifier);
-                    hasChanged.set(true);
+                    @Override
+                    public void removeObjectIdentifier(ObjectIdentifier objectIdentifier) {
+                        removeIdentifiers.add(objectIdentifier);
+                        hasChanged.set(true);
+                    }
+                });
+            } finally {
+                if (checkAllDatabase.get()) {
+                    databaseChangeDetector.captureObjectSignatures();
+                } else {
+                    for (ObjectIdentifier objectIdentifier : removeIdentifiers) {
+                        removeChange(objectIdentifier);
+                    }
                 }
-
-            });
-        } finally {
-            if (checkAllDatabase.get()) {
-                databaseChangeDetector.captureObjectSignatures();
-            } else {
-                for (ObjectIdentifier objectIdentifier : removeIdentifiers) {
-                    removeChange(objectIdentifier);
+                if (hasChanged.get()) {
+                    sendCodeChangeMessage();
                 }
             }
-            if (hasChanged.get()) {
-                sendCodeChangeMessage();
-            }
-        }
+        });
     }
 
     synchronized void holdingChanges(Consumer<ChangeSession> consumer) {
