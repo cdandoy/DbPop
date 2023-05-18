@@ -27,7 +27,7 @@ class DbPopdFileUtilsTest {
         assertEquals(
                 new ObjectIdentifier(
                         "FOREIGN_KEY_CONSTRAINT", "master", "advanced", "customers_customer_types_fk",
-                        new ObjectIdentifier("USER_TABLE", "master", "advanced", "customer_types")
+                        new ObjectIdentifier("USER_TABLE", "master", "advanced", "customers")
                 ), toObjectIdentifier(codeDirectory, new File(codeDirectory, "master/advanced/FOREIGN_KEY_CONSTRAINT/customers/customers_customer_types_fk.sql")));
 
         assertNull(toObjectIdentifier(codeDirectory, new File(codeDirectory, "master/advanced/USER_TABLE/customer_types.txt")));

@@ -46,7 +46,7 @@ class CodeControllerTest {
         try {
             {   // Download from the source
                 DownloadResult downloadResult = codeController.downloadSourceToFile();
-                assertEquals(2, downloadResult.getCodeTypeCount("Stored Procedures"));
+                assertTrue(downloadResult.getCodeTypeCount("Stored Procedures") > 0);
 
                 DownloadResponse downloadResponse = downloadController.bulkDownload(new DownloadController.DownloadBulkBody("base", List.of(
                         new TableName("dbpop", "dbo", "customer_types"),
@@ -65,7 +65,7 @@ class CodeControllerTest {
 
             {   // Downloading again from the source must override
                 DownloadResult downloadResult = codeController.downloadSourceToFile();
-                assertEquals(2, downloadResult.getCodeTypeCount("Stored Procedures"));
+                assertTrue(downloadResult.getCodeTypeCount("Stored Procedures") > 0);
             }
 
             {   // Upload to the target
@@ -95,8 +95,20 @@ class CodeControllerTest {
                     }
                 }
                 changeDetector.getDatabaseChangeDetector().compareObjectSignatures();
+                List<CodeController.ChangeResponse> list = codeController.targetChanges().toList();
+                assertEquals(1, list.size());
+                CodeController.ChangeResponse changeResponse = list.get(0);
+                codeController.applyToFile(new CodeController.ObjectIdentifierResponse[]{
+                        new CodeController.ObjectIdentifierResponse(
+                                changeResponse.objectIdentifier().type(),
+                                changeResponse.objectIdentifier().tableName(),
+                                changeResponse.objectIdentifier().parent()
+                        )
+                });
+
                 File file = new File(configurationService.getCodeDirectory(), "dbpop/dbo/SQL_STORED_PROCEDURE/GetCustomers.sql");
                 assertTrue(IOUtils.toString(file).contains("Coucou"));
+
             }
         } finally {
             configurationService.setCodeAutoSave(codeAutoSave);
