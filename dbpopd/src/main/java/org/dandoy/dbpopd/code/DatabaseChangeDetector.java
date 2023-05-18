@@ -92,25 +92,27 @@ public class DatabaseChangeDetector {
     }
 
     synchronized void captureObjectSignatures() {
-        try (Database targetDatabase = safeGetTargetDatabase()) {
-            if (targetDatabase != null) {
-                Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
-                DatabaseIntrospector databaseIntrospector = targetDatabase.createDatabaseIntrospector();
-                MessageDigest messageDigest = ChangeDetector.getMessageDigest();
-                for (String catalog : targetDatabase.getCatalogs()) {
-                    databaseIntrospector.visitModuleDefinitions(catalog, new DatabaseVisitor() {
-                        @Override
-                        public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String sql) {
-                            byte[] hash = messageDigest.digest(sql.getBytes(StandardCharsets.UTF_8));
-                            ret.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
-                            changeDetector.whenDatabaseObjectChanged(objectIdentifier, sql);
-                        }
-                    });
+        changeDetector.holdingChanges(changeSession -> {
+            try (Database targetDatabase = safeGetTargetDatabase()) {
+                if (targetDatabase != null) {
+                    Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
+                    DatabaseIntrospector databaseIntrospector = targetDatabase.createDatabaseIntrospector();
+                    MessageDigest messageDigest = ChangeDetector.getMessageDigest();
+                    for (String catalog : targetDatabase.getCatalogs()) {
+                        databaseIntrospector.visitModuleDefinitions(catalog, new DatabaseVisitor() {
+                            @Override
+                            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String sql) {
+                                byte[] hash = messageDigest.digest(sql.getBytes(StandardCharsets.UTF_8));
+                                ret.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
+                                changeDetector.whenDatabaseObjectChanged(objectIdentifier, sql);
+                            }
+                        });
+                    }
+                    targetObjectSignatures = ret;
+                    hasScannedTargetCode = true;
                 }
-                targetObjectSignatures = ret;
-                hasScannedTargetCode = true;
             }
-        }
+        });
     }
 
     byte[] getHash(String sql) {

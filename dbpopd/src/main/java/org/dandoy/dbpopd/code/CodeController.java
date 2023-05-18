@@ -104,37 +104,33 @@ public class CodeController {
 
     @Post("target/changes/apply-files")
     public void applyToDatabase(@Body ObjectIdentifierResponse[] objectIdentifierResponses) {
-        siteWebSocket.holdChanges(() -> {
-            for (ObjectIdentifierResponse objectIdentifierResponse : objectIdentifierResponses) {
-                ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
-                Change change = changeDetector.removeChange(objectIdentifier);
-                File file = change.getFile();
-                if (change.isFileChanged()) {
-                    codeService.uploadFileToTarget(file);
-                } else if (change.isFileDeleted()) {
-                    codeService.deleteTargetObject(objectIdentifier);
-                } else {
-                    throw new RuntimeException();
-                }
+        for (ObjectIdentifierResponse objectIdentifierResponse : objectIdentifierResponses) {
+            ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
+            Change change = changeDetector.removeChange(objectIdentifier);
+            File file = change.getFile();
+            if (change.isFileChanged()) {
+                codeService.uploadFileToTarget(file);
+            } else if (change.isFileDeleted()) {
+                codeService.deleteTargetObject(objectIdentifier);
+            } else {
+                throw new RuntimeException();
             }
-        });
+        }
     }
 
     @Post("target/changes/apply-dbs")
     public void applyToFile(@Body ObjectIdentifierResponse[] objectIdentifierResponses) {
-        siteWebSocket.holdChanges(() -> {
-            for (ObjectIdentifierResponse objectIdentifierResponse : objectIdentifierResponses) {
-                ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
-                Change change = changeDetector.removeChange(objectIdentifier);
-                File file = change.getFile();
-                if (change.isDatabaseChanged()) {
-                    codeService.downloadTargetToFile(objectIdentifier);
-                } else if (change.isDatabaseDeleted()) {
-                    codeService.deleteFile(file);
-                } else {
-                    throw new RuntimeException();
-                }
+        for (ObjectIdentifierResponse objectIdentifierResponse : objectIdentifierResponses) {
+            ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
+            Change change = changeDetector.removeChange(objectIdentifier);
+            File file = change.getFile();
+            if (change.isDatabaseChanged()) {
+                codeService.downloadTargetToFile(objectIdentifier);
+            } else if (change.isDatabaseDeleted()) {
+                codeService.deleteFile(file);
+            } else {
+                throw new RuntimeException();
             }
-        });
+        }
     }
 }

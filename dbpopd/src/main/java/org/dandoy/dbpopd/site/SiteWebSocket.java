@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 @Slf4j
 @Singleton
@@ -47,10 +48,10 @@ public class SiteWebSocket {
         }
     }
 
-    public void holdChanges(Runnable runnable) {
+    public <T> T holdChanges(Supplier<T> supplier) {
         setDelayed(true);
         try {
-            runnable.run();
+            return supplier.get();
         } finally {
             setDelayed(false);
         }
