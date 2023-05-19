@@ -203,7 +203,7 @@ export default function CodeChanges() {
 
             <ChangesBox/>
         </>}
-        {changes.length == 0 && <>
+        {changes.length === 0 && <>
             <h5 className={"text-center"}>
                 No Changes Detected
             </h5>
