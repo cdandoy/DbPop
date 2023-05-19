@@ -2,11 +2,11 @@ import {NavLink} from "react-router-dom";
 import SidebarMenu from "../sidebar/SidebarMenu";
 import React, {useContext} from "react";
 import {SiteContext} from "./App";
-import {useCodeChanges} from "../codechanges/CodeChanges";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function Menu() {
     const siteResponse = useContext(SiteContext);
-    const {changes} = useCodeChanges();
+    const messageState = useContext(WebSocketStateContext);
 
     return (
         <ul className="menu-links">
@@ -25,7 +25,7 @@ export default function Menu() {
             <li className="nav-link">
                 <NavLink to={"/codechanges"}>
                     <SidebarMenu text="Code Changes" icons="fa fa-code"/>
-                    {changes && changes.length > 0 &&
+                    {(messageState.codeChanges && messageState.codeChanges.length > 0) &&
                         <span style={{position: "absolute", right: "20px"}} title={"Code Change Detected"}>
                             <i className={"fa fa-circle"} style={{color: "#ffb000"}}></i>
                         </span>

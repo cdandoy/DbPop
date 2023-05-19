@@ -11,12 +11,15 @@ import RoutesComponent from "../RoutesComponent";
 import {DefaultSiteResponse, siteApi, SiteResponse} from "../../api/siteApi";
 import {SiteStatus, useSetupStatusEffect} from "./sitestatus/useSetupStatusEffect";
 import SiteStatusComponent from "./sitestatus/SiteStatusComponent";
+import {useWebSocketState, WebSocketStateContext} from "../ws/useWebSocketState";
+import {ServerDisconnected} from "./ServerDisconnected";
 
 export const SiteContext = React.createContext<SiteResponse>(DefaultSiteResponse);
 
 export default function App() {
     const [siteStatus, setSiteStatus] = useState<SiteStatus>({statuses: [], complete: false});
     const [siteResponse, setSiteResponse] = useState<SiteResponse>(DefaultSiteResponse);
+    const messageState = useWebSocketState();
 
     useEffect(() => {
         siteApi()
@@ -30,12 +33,15 @@ export default function App() {
             <>
                 <HashRouter>
                     <SiteContext.Provider value={siteResponse}>
-                        <Sidebar title1={"DbPop"} title2={`v${process.env.REACT_APP_VERSION}`} menu=<Menu/> bottomMenu=<BottomMenu/> >
-                            <Header/>
-                            <div className="container">
-                                <RoutesComponent/>
-                            </div>
-                        </Sidebar>
+                        <WebSocketStateContext.Provider value={messageState}>
+                            <Sidebar title1={"DbPop"} title2={`v${process.env.REACT_APP_VERSION}`} menu=<Menu/> bottomMenu=<BottomMenu/> >
+                                <Header/>
+                                <div className="container">
+                                    <RoutesComponent/>
+                                </div>
+                            </Sidebar>
+                            {messageState.connected || <ServerDisconnected/>}
+                        </WebSocketStateContext.Provider>
                     </SiteContext.Provider>
                 </HashRouter>
             </>

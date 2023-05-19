@@ -1,80 +1,34 @@
-import React, {useEffect, useState} from "react";
+import React, {useContext} from "react";
 import {Button} from "react-bootstrap";
 import './CodeChanges.scss'
 import PageHeader from "../pageheader/PageHeader";
-import useWebSocket from "react-use-websocket";
-import {Change, DefaultChanges, targetChanges} from "../../api/changeApi";
 import {uploadDbChangeToTarget, uploadFileChangeToTarget} from "../../api/codeApi";
 import {ObjectIdentifier} from "../../models/ObjectIdentifier";
-
-const WS_URL = 'ws://localhost:8080/ws/site';
-
-interface Message {
-    messageType: string
-}
-
-export function useCodeChanges() {
-    const [changes, setChanges] = useState<Change[]>(DefaultChanges);
-    const {lastJsonMessage} = useWebSocket(
-        WS_URL,
-        {
-            shouldReconnect: () => true,
-            reconnectAttempts: 10,
-            reconnectInterval: (attemptNumber) =>
-                Math.min(Math.pow(2, attemptNumber) * 1000, 10000),
-        }
-    );
-
-    function refreshChanges() {
-        targetChanges()
-            .then(result => {
-                setChanges(result.data);
-            })
-    }
-
-    useEffect(() => refreshChanges(), []);
-
-    useEffect(() => {
-        if (lastJsonMessage) {
-            const message = lastJsonMessage as any as Message;
-            if (message.messageType === 'CODE_CHANGE') {
-                targetChanges()
-                    .then(result => {
-                        setChanges(result.data);
-                    })
-            }
-        }
-    }, [lastJsonMessage]);
-
-    return {
-        changes,
-        refreshChanges
-    }
-}
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function CodeChanges() {
-    const {changes, refreshChanges} = useCodeChanges();
+    const messageState = useContext(WebSocketStateContext);
 
     function onApplyFileChanges(path: string, objectIdentifier: ObjectIdentifier) {
         uploadFileChangeToTarget([objectIdentifier])
-            .then(() => refreshChanges());
+            .then(() => messageState.refreshCodeChanges());
     }
 
     function onApplyDbChanges(path: string, objectIdentifier: ObjectIdentifier) {
         uploadDbChangeToTarget([objectIdentifier])
-            .then(() => refreshChanges());
+            .then(() => messageState.refreshCodeChanges());
     }
 
     function onApplyAllFileChanges() {
-        const applyChanges = changes.map(value => value.objectIdentifier);
+        const applyChanges = messageState.codeChanges.map(value => value.objectIdentifier);
         uploadFileChangeToTarget(applyChanges)
-            .then(() => refreshChanges());
+            .then(() => messageState.refreshCodeChanges());
     }
 
     function onApplyAllDbChanges() {
-        const applyChanges = changes.map(value => value.objectIdentifier);
+        const applyChanges = messageState.codeChanges.map(value => value.objectIdentifier);
         uploadDbChangeToTarget(applyChanges)
-            .then(() => refreshChanges());
+            .then(() => messageState.refreshCodeChanges());
     }
 
 
@@ -103,7 +57,7 @@ export default function CodeChanges() {
                 <div className="card-body">
                     <table>
                         <tbody>
-                        {changes.filter(it => it.databaseChanged || it.databaseDeleted).length > 0 &&
+                        {messageState.codeChanges.filter(it => it.databaseChanged || it.databaseDeleted).length > 0 &&
                             <tr>
                                 <td>
                                     <Button variant={"primary"}
@@ -119,7 +73,7 @@ export default function CodeChanges() {
                                 <td><strong>Apply All Database Changes</strong></td>
                             </tr>
                         }
-                        {changes.filter(it => it.fileChanged || it.fileDeleted).length > 0 &&
+                        {messageState.codeChanges.filter(it => it.fileChanged || it.fileDeleted).length > 0 &&
                             <tr>
                                 <td>
                                     <Button variant={"outline-primary"}
@@ -148,7 +102,7 @@ export default function CodeChanges() {
                 <div className="card-body">
                     <table className={"table table-hover"}>
                         <tbody>
-                        {changes.map(change => <tr key={change.objectIdentifier.type + '-' + change.dbname}>
+                        {messageState.codeChanges.map(change => <tr key={change.objectIdentifier.type + '-' + change.dbname}>
                             <td width={"100%"}>
                                 <ObjectIdentifierIcon objectIdentifier={change.objectIdentifier}/>
                                 {change.dbname}
@@ -194,7 +148,7 @@ export default function CodeChanges() {
             </div>}
         />
 
-        {changes.length > 0 && <>
+        {messageState.codeChanges.length > 0 && <>
             <div className={"row"}>
                 <div className={"col-6"}>
                     <ApplyAllBox/>
@@ -203,7 +157,7 @@ export default function CodeChanges() {
 
             <ChangesBox/>
         </>}
-        {changes.length === 0 && <>
+        {messageState.codeChanges.length === 0 && <>
             <h5 className={"text-center"}>
                 No Changes Detected
             </h5>
