@@ -6,13 +6,13 @@
       <GradleProjectSettings>
         <option name="delegatedBuild" value="false" />
         <option name="testRunner" value="PLATFORM" />
-        <option name="distributionType" value="DEFAULT_WRAPPED" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/dbpopd" />
             <option value="$PROJECT_DIR$/dbpopr" />
+            <option value="$PROJECT_DIR$/diff" />
             <option value="$PROJECT_DIR$/lib" />
             <option value="$PROJECT_DIR$/test-resources" />
           </set>
