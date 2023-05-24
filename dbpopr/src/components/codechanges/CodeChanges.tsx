@@ -1,13 +1,21 @@
-import React, {useContext} from "react";
+import React, {useContext, useEffect, useState} from "react";
 import {Button} from "react-bootstrap";
 import './CodeChanges.scss'
 import PageHeader from "../pageheader/PageHeader";
 import {uploadDbChangeToTarget, uploadFileChangeToTarget} from "../../api/codeApi";
 import {ObjectIdentifier} from "../../models/ObjectIdentifier";
 import {WebSocketStateContext} from "../ws/useWebSocketState";
+import {CodeCompare} from "./CodeCompare";
 
 export default function CodeChanges() {
     const messageState = useContext(WebSocketStateContext);
+    const [compareObject, setCompareObject] = useState<ObjectIdentifier | undefined>();
+
+    useEffect(() => {
+        if (messageState.codeChanges?.length > 0) {
+            setCompareObject(messageState.codeChanges[0].objectIdentifier);
+        }
+    }, [messageState.codeChanged])
 
     function onApplyFileChanges(path: string, objectIdentifier: ObjectIdentifier) {
         uploadFileChangeToTarget([objectIdentifier])
@@ -31,7 +39,6 @@ export default function CodeChanges() {
             .then(() => messageState.refreshCodeChanges());
     }
 
-
     function ObjectIdentifierIcon({objectIdentifier}: { objectIdentifier: ObjectIdentifier }) {
         function icon(type: string) {
             if (type === 'SQL_STORED_PROCEDURE') return 'fa-code'
@@ -49,7 +56,6 @@ export default function CodeChanges() {
             <i className={`fa fa-fw ${icon(objectIdentifier.type)}`} title={title(objectIdentifier.type)}></i>&nbsp;
         </>
     }
-
 
     function ApplyAllBox() {
         return <>
@@ -105,7 +111,9 @@ export default function CodeChanges() {
                         {messageState.codeChanges.map(change => <tr key={change.objectIdentifier.type + '-' + change.dbname}>
                             <td width={"100%"}>
                                 <ObjectIdentifierIcon objectIdentifier={change.objectIdentifier}/>
-                                {change.dbname}
+                                <span onClick={event => setCompareObject(change.objectIdentifier)}>
+                                    {change.dbname}
+                                </span>
                             </td>
                             <td width={"0"} style={{whiteSpace: "nowrap"}}>
                                 {(change.fileChanged || change.fileDeleted) && <>
@@ -148,20 +156,27 @@ export default function CodeChanges() {
             </div>}
         />
 
-        {messageState.codeChanges.length > 0 && <>
-            <div className={"row"}>
-                <div className={"col-6"}>
-                    <ApplyAllBox/>
-                </div>
-            </div>
+        {compareObject ?
+            <CodeCompare/>
+            :
+            <>
+                {messageState.codeChanges.length > 0 && <>
+                    <div className={"row"}>
+                        <div className={"col-6"}>
+                            <ApplyAllBox/>
+                        </div>
+                    </div>
 
-            <ChangesBox/>
-        </>}
-        {messageState.codeChanges.length === 0 && <>
-            <h5 className={"text-center"}>
-                No Changes Detected
-            </h5>
-        </>
+                    <ChangesBox/>
+                </>}
+                {messageState.codeChanges.length === 0 && <>
+                    <h5 className={"text-center"}>
+                        No Changes Detected
+                    </h5>
+                </>
+                }
+            </>
         }
+
     </div>
 }

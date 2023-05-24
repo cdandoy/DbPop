@@ -4,13 +4,12 @@ import org.dandoy.dbpop.database.mssql.SqlServerDatabase;
 import org.dandoy.dbpop.database.pgsql.PostgresDatabase;
 import org.dandoy.dbpop.upload.DataFileHeader;
 import org.dandoy.dbpop.utils.NotImplementedException;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public abstract class Database implements AutoCloseable {
 
@@ -112,4 +111,20 @@ public abstract class Database implements AutoCloseable {
     }
 
     public abstract void dropObject(ObjectIdentifier objectIdentifier);
+
+    public String getDefinition(ObjectIdentifier objectIdentifier) {
+        List<String> definitions = new ArrayList<>();
+        DatabaseIntrospector databaseIntrospector = createDatabaseIntrospector();
+        databaseIntrospector.visitModuleDefinitions(List.of(objectIdentifier), new DatabaseVisitor() {
+            @Override
+            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String definition) {
+                definitions.add(definition);
+            }
+        });
+        if (definitions.isEmpty()) {
+            return null;
+        } else {
+            return definitions.get(0);
+        }
+    }
 }

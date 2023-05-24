@@ -1,18 +1,28 @@
 package org.dandoy.dbpopd.code;
 
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
+import com.github.difflib.text.DiffRowGenerator;
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.utils.DbPopdFileUtils;
+import org.dandoy.dbpopd.utils.IOUtils;
+import org.dandoy.diff.DiffLine;
+import org.dandoy.diff.DiffLineGenerator;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Stream;
 
 @Controller("/code")
@@ -129,5 +139,54 @@ public class CodeController {
                 throw new RuntimeException();
             }
         }
+    }
+
+    @Post("/target/diff/")
+    public List<DiffLine> targetDiff(@Body ObjectIdentifierResponse objectIdentifierResponse) {
+        List<String> fileLines;
+        Patch<String> patch;
+        if (false) {
+            ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
+            String fileDefinition = getFileDefinition(objectIdentifier);
+            String databaseDefinition = getDatabaseDefinition(objectIdentifier);
+            fileLines = Arrays.asList(fileDefinition.split("\n"));
+            List<String> databaseLines = Arrays.asList(databaseDefinition.split("\n"));
+            patch = DiffUtils.diff(
+                    fileLines,
+                    databaseLines,
+                    DiffRowGenerator.DEFAULT_EQUALIZER
+            );
+        } else {
+            String fileDefinition1 = getFileDefinition(new ObjectIdentifier("SQL_STORED_PROCEDURE", "master", "dbo", "GetInvoices"));
+            String fileDefinition2 = getFileDefinition(new ObjectIdentifier("SQL_STORED_PROCEDURE", "master", "dbo", "GetInvoices2"));
+            fileLines = Arrays.asList(fileDefinition1.split("\n"));
+            List<String> fileLines2 = Arrays.asList(fileDefinition2.split("\n"));
+            patch = DiffUtils.diff(
+                    fileLines,
+                    fileLines2,
+                    DiffRowGenerator.DEFAULT_EQUALIZER
+            );
+        }
+
+        return DiffLineGenerator.create()
+                .showInlineDiffs(true)
+                .inlineDiffByWord(true)
+                .build()
+                .generateDiffLines(fileLines, patch);
+    }
+
+    private String getFileDefinition(ObjectIdentifier objectIdentifier) {
+        File file = DbPopdFileUtils.toFile(configurationService.getCodeDirectory(), objectIdentifier);
+        if (file != null && file.isFile()) {
+            return IOUtils.toString(file);
+        }
+        return "";
+    }
+
+    private String getDatabaseDefinition(ObjectIdentifier objectIdentifier) {
+        Database targetDatabase = configurationService.getTargetDatabaseCache();
+        String definition = targetDatabase.getDefinition(objectIdentifier);
+        if (definition == null) return "";
+        return definition;
     }
 }

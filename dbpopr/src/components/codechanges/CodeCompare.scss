@@ -1,0 +1,62 @@
+#code-compare-component {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: -15px;
+  margin-left: -15px;
+  font-family: "Courier New", monospace;
+
+  .code-compare-left, .code-compare-right {
+    flex-basis: 0;
+    flex-grow: 1;
+    position: relative;
+    width: 100%;
+    min-height: 1px;
+    padding-right: 15px;
+    padding-left: 15px;
+  }
+
+  .code-compare-deleted-pos {
+    background-color: lightgreen;
+    display: inline-block;
+    min-width: 2px;
+    height: 1em;
+  }
+
+  .code-compare-deleted-line {
+    border: 1px solid lightgreen;
+  }
+
+  .code-compare-left:empty::after, .code-compare-right:empty::after {
+    content: ".";
+    visibility: hidden;
+  }
+
+  .code-compare-left .code-compare-line-INSERT {
+    background-color: lightgray;
+  }
+
+  .code-compare-line-CHANGE {
+    background-color: lightblue;
+  }
+
+  .code-compare-right .code-compare-line-INSERT {
+    background-color: lightgreen;
+  }
+
+  .code-compare-left .code-compare-line-DELETE {
+    background-color: lightgreen;
+  }
+
+  .code-compare-right .code-compare-line-DELETE {
+    min-height: 1rem;
+    background-color: lightgray;
+  }
+
+  .code-compare-segment-INSERT {
+    background-color: lightgreen;
+  }
+
+  .code-compare-segment-CHANGE {
+    background-color: lightblue;
+  }
+}

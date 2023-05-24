@@ -24,8 +24,10 @@ dependencies {
     implementation 'ch.qos.logback:logback-classic:1.4.4'
     implementation('org.slf4j:jcl-over-slf4j:2.0.3')
     implementation project(":lib")
+    implementation project(":diff")
     implementation 'org.apache.commons:commons-csv:1.9.0'
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    implementation "io.github.java-diff-utils:java-diff-utils:4.12"
     testImplementation 'commons-io:commons-io:2.11.0'
     testImplementation project(":test-resources")
 }
