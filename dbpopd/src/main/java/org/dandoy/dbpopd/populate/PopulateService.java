@@ -7,10 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.DatabaseCache;
 import org.dandoy.dbpop.upload.PopulateDatasetException;
 import org.dandoy.dbpop.upload.Populator;
+import org.dandoy.dbpop.upload.PopulatorListener;
 import org.dandoy.dbpop.utils.ExceptionUtils;
 import org.dandoy.dbpop.utils.MultiCauseException;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.datasets.DatasetsService;
+import org.dandoy.dbpopd.extensions.ExtensionService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 
 import java.io.File;
@@ -24,11 +26,24 @@ import java.util.Optional;
 public class PopulateService {
     private final ConfigurationService configurationService;
     private final DatasetsService datasetsService;
+    private final ExtensionService extensionService;
     private Map<File, Long> fileTimestamps = new HashMap<>();
+    private final PopulatorListener populatorListener = new PopulatorListener() {
+        @Override
+        public void afterPopulate() {
+            extensionService.afterPopulate();
+        }
 
-    public PopulateService(ConfigurationService configurationService, DatasetsService datasetsService) {
+        @Override
+        public void afterPopulate(String dataset) {
+            extensionService.afterPopulate(dataset);
+        }
+    };
+
+    public PopulateService(ConfigurationService configurationService, DatasetsService datasetsService, ExtensionService extensionService) {
         this.configurationService = configurationService;
         this.datasetsService = datasetsService;
+        this.extensionService = extensionService;
     }
 
     public PopulateResult populate(List<String> dataset) {
@@ -40,7 +55,9 @@ public class PopulateService {
         try {
             long t0 = System.currentTimeMillis();
             DatabaseCache databaseCache = configurationService.getTargetDatabaseCache();
-            Populator populator = Populator.createPopulator(databaseCache, configurationService.getDatasetsDirectory());
+            Populator populator = Populator
+                    .createPopulator(databaseCache, configurationService.getDatasetsDirectory())
+                    .setPopulatorListener(populatorListener);
             if (forceStatic) {
                 populator.setStaticLoaded(false);
             } else {

@@ -2,6 +2,7 @@ package org.dandoy.dbpop.upload;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -28,6 +29,14 @@ public class Populator {
     @Getter
     @Setter
     private boolean staticLoaded;
+    @Getter
+    @Setter
+    @Accessors(chain = true)
+    PopulatorListener populatorListener = new PopulatorListener() {
+        public void afterPopulate() {}
+
+        public void afterPopulate(String dataset) {}
+    };
 
     protected Populator(Database database, Map<String, Dataset> datasetsByName, Map<TableName, Table> tablesByName) {
         this.database = database;
@@ -137,6 +146,7 @@ public class Populator {
                 } finally {
                     databasePreparationStrategy.afterInserts();
                 }
+                populatorListener.afterPopulate();
                 return rowCount;
             } catch (SQLException e) {
                 throw new RuntimeException(e);
@@ -171,6 +181,7 @@ public class Populator {
             for (DataFile dataFile : dataset.getDataFiles()) {
                 rowCount += loadDataFile(dataFile);
             }
+            populatorListener.afterPopulate(dataset.getName());
         } catch (Exception e) {
             throw new PopulateDatasetException(dataset.getName(), String.format("Failed to load the dataset %s", dataset.getName()), e);
         }

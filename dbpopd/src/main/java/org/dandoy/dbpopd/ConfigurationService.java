@@ -37,6 +37,8 @@ public class ConfigurationService {
     private final File setupDirectory;
     @Getter
     private final File codeDirectory;
+    @Getter
+    private final File extensionsDirectory;
     private DatabaseCache sourceDatabaseCache;
     private DatabaseCache targetDatabaseCache;
     @Getter
@@ -51,6 +53,7 @@ public class ConfigurationService {
             @Property(name = "dbpopd.configuration.datasets") @Nullable String datasetsDirectory,
             @Property(name = "dbpopd.configuration.setup") @Nullable String setupDirectory,
             @Property(name = "dbpopd.configuration.code") @Nullable String codeDirectory,
+            @Property(name = "dbpopd.configuration.extensions") @Nullable String extensionsDirectory,
             @Property(name = "dbpopd.configuration.codeAutoSave", defaultValue = "false") boolean codeAutoSave
     ) {
         configurationDir = toCanonical(new File(configurationPath));
@@ -65,6 +68,7 @@ public class ConfigurationService {
         this.datasetsDirectory = datasetsDirectory != null ? toCanonical(new File(datasetsDirectory)) : new File(configurationDir, "datasets");
         this.setupDirectory = setupDirectory != null ? toCanonical(new File(setupDirectory)) : new File(configurationDir, "setup");
         this.codeDirectory = codeDirectory != null ? toCanonical(new File(codeDirectory)) : new File(configurationDir, "code");
+        this.extensionsDirectory = extensionsDirectory != null ? toCanonical(new File(extensionsDirectory)) : new File(configurationDir, "extensions");
         this.codeAutoSave = codeAutoSave;
 
         log.info("Configuration directory: {}", toCanonical(this.configurationDir));
