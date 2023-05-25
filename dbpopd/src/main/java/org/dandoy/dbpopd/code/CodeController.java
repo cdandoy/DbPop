@@ -172,7 +172,9 @@ public class CodeController {
     private String getFileDefinition(ObjectIdentifier objectIdentifier) {
         File file = DbPopdFileUtils.toFile(configurationService.getCodeDirectory(), objectIdentifier);
         if (file != null && file.isFile()) {
-            return IOUtils.toString(file);
+            return IOUtils.toString(file)
+                    .replace("\r\n", "\n")  // Windows
+                    .replace("\r", "\n");   // Mac
         }
         return "";
     }
