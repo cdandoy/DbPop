@@ -17,6 +17,7 @@ import DownloadSourceFullComponent from "./tools/data/source_full/DownloadSource
 import StructuredDownloadComponent from "./tools/data/source_structured/StructuredDownloadComponent";
 import DownloadTargetFullComponent from "./tools/data/target_full/DownloadTargetFullComponent";
 import CodeChanges from "./codechanges/CodeChanges";
+import {CodeCompare} from "./codecompare/CodeCompare";
 
 export default function RoutesComponent() {
     const siteResponse = useContext(SiteContext);
@@ -39,6 +40,7 @@ export default function RoutesComponent() {
                 <Route path="/tools/target/compare" element=<CodeTargetCompare/>/>
                 <Route path="/tools/target/upload" element=<CodeTargetUload/>/>
                 <Route path="/tools/target/download" element=<CodeTargetDownload/>/>
+                <Route path="/codechanges/diff" element=<CodeCompare/>/>
             </>}
 
             <Route path="/vfk" element=<VirtualFksComponent/>/>

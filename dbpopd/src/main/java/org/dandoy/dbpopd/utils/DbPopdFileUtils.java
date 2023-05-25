@@ -76,6 +76,28 @@ public class DbPopdFileUtils {
         };
     }
 
+    public static String toFileName(String... parts) {
+        return Arrays.stream(parts)
+                .map(DbPopdFileUtils::toFileName)
+                .collect(Collectors.joining("/"));
+    }
+
+    public static String toFileName(ObjectIdentifier objectIdentifier) {
+        return switch (objectIdentifier.getType()) {
+            case "INDEX", "FOREIGN_KEY_CONSTRAINT" -> toFileName(
+                    objectIdentifier.getCatalog(),
+                    objectIdentifier.getSchema(),
+                    objectIdentifier.getType(),
+                    objectIdentifier.getParent().getName(),
+                    objectIdentifier.getName() + ".sql");
+            default -> toFileName(
+                    objectIdentifier.getCatalog(),
+                    objectIdentifier.getSchema(),
+                    objectIdentifier.getType(),
+                    objectIdentifier.getName() + ".sql");
+        };
+    }
+
     public static ObjectIdentifier toObjectIdentifier(File directory, File file) {
         Path directoryPath = directory.toPath();
         Path path = file.toPath();

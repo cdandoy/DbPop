@@ -44,10 +44,34 @@ import static java.util.stream.Collectors.toList;
  * </code>
  */
 public final class DiffLineGenerator {
+    private static final BiPredicate<String, String> DEFAULT_EQUALIZER = Object::equals;
+    private static final BiPredicate<String, String> IGNORE_WHITESPACE_EQUALIZER = (original, revised) -> adjustWhitespace(original).equals(adjustWhitespace(revised));
 
-    public static final BiPredicate<String, String> DEFAULT_EQUALIZER = Object::equals;
-    public static final BiPredicate<String, String> IGNORE_WHITESPACE_EQUALIZER = (original, revised) -> adjustWhitespace(original).equals(adjustWhitespace(revised));
-    public static final Function<String, String> LINE_NORMALIZER_FOR_HTML = StringUtils::normalize;
+    private final BiPredicate<String, String> equalizer;
+    private final Function<String, List<String>> inlineDiffSplitter;
+    private final boolean reportLinesUnchanged;
+    private final Function<String, String> lineNormalizer;
+    private final boolean showInlineDiffs;
+    private final boolean decompressDeltas;
+
+    DiffLineGenerator(DiffLineGeneratorBuilder builder) {
+        showInlineDiffs = builder.showInlineDiffs;
+        boolean ignoreWhiteSpaces = builder.ignoreWhiteSpaces;
+        inlineDiffSplitter = builder.inlineDiffSplitter;
+        decompressDeltas = builder.decompressDeltas;
+
+        if (builder.equalizer != null) {
+            equalizer = builder.equalizer;
+        } else {
+            equalizer = ignoreWhiteSpaces ? IGNORE_WHITESPACE_EQUALIZER : DEFAULT_EQUALIZER;
+        }
+
+        reportLinesUnchanged = builder.reportLinesUnchanged;
+        lineNormalizer = builder.lineNormalizer;
+
+        Objects.requireNonNull(inlineDiffSplitter);
+        Objects.requireNonNull(lineNormalizer);
+    }
 
     /**
      * Splitting lines by character to achieve char by char diff checking.
@@ -68,8 +92,8 @@ public final class DiffLineGenerator {
     public static final Function<String, List<String>> SPLITTER_BY_WORD = DiffLineGenerator::splitStringPreserveDelimiter;
     public static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 
-    public static Builder create() {
-        return new Builder();
+    public static DiffLineGeneratorBuilder create() {
+        return new DiffLineGeneratorBuilder();
     }
 
     private static String adjustWhitespace(String raw) {
@@ -93,32 +117,6 @@ public final class DiffLineGenerator {
             }
         }
         return list;
-    }
-
-    private final BiPredicate<String, String> equalizer;
-    private final Function<String, List<String>> inlineDiffSplitter;
-    private final boolean reportLinesUnchanged;
-    private final Function<String, String> lineNormalizer;
-    private final boolean showInlineDiffs;
-    private final boolean decompressDeltas;
-
-    DiffLineGenerator(Builder builder) {
-        showInlineDiffs = builder.showInlineDiffs;
-        boolean ignoreWhiteSpaces = builder.ignoreWhiteSpaces;
-        inlineDiffSplitter = builder.inlineDiffSplitter;
-        decompressDeltas = builder.decompressDeltas;
-
-        if (builder.equalizer != null) {
-            equalizer = builder.equalizer;
-        } else {
-            equalizer = ignoreWhiteSpaces ? IGNORE_WHITESPACE_EQUALIZER : DEFAULT_EQUALIZER;
-        }
-
-        reportLinesUnchanged = builder.reportLinesUnchanged;
-        lineNormalizer = builder.lineNormalizer;
-
-        Objects.requireNonNull(inlineDiffSplitter);
-        Objects.requireNonNull(lineNormalizer);
     }
 
     /**
@@ -302,12 +300,16 @@ public final class DiffLineGenerator {
             if (areMostlyChanges(leftSegments, rightSegments)) {
                 diffLine = new DiffLine(Tag.CHANGE, mergeChanges(leftSegments), mergeChanges(rightSegments));
             } else {
-                diffLine = new DiffLine(Tag.EQUAL, leftSegments, rightSegments);
+                diffLine = createDiffLine(leftSegments, rightSegments);
             }
 
             diffLines.add(diffLine);
         }
         return diffLines;
+    }
+
+    private static DiffLine createDiffLine(List<DiffSegment> leftSegments, List<DiffSegment> rightSegments) {
+        return new DiffLine(Tag.EQUAL, leftSegments, rightSegments);
     }
 
     private static List<DiffSegment> mergeChanges(List<DiffSegment> segments) {

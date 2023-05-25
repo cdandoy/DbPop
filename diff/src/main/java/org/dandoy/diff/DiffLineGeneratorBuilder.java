@@ -4,22 +4,17 @@ import java.util.List;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
-/**
- * This class used for building the DiffLineGenerator.
- *
- * @author dmitry
- */
 @SuppressWarnings("unused")
-public class Builder {
+public class DiffLineGeneratorBuilder {
     boolean showInlineDiffs = false;
     boolean ignoreWhiteSpaces = false;
     boolean decompressDeltas = true;
     boolean reportLinesUnchanged = false;
     Function<String, List<String>> inlineDiffSplitter = DiffLineGenerator.SPLITTER_BY_CHARACTER;
-    Function<String, String> lineNormalizer = DiffLineGenerator.LINE_NORMALIZER_FOR_HTML;
+    Function<String, String> lineNormalizer = Function.identity();
     BiPredicate<String, String> equalizer = null;
 
-    Builder() {
+    DiffLineGeneratorBuilder() {
     }
 
     /**
@@ -28,7 +23,7 @@ public class Builder {
      * @param val the value to set. Default: false.
      * @return builder with configured showInlineDiff parameter
      */
-    public Builder showInlineDiffs(boolean val) {
+    public DiffLineGeneratorBuilder showInlineDiffs(boolean val) {
         showInlineDiffs = val;
         return this;
     }
@@ -39,7 +34,7 @@ public class Builder {
      * @param val the value to set. Default: true.
      * @return builder with configured ignoreWhiteSpaces parameter
      */
-    public Builder ignoreWhiteSpaces(boolean val) {
+    public DiffLineGeneratorBuilder ignoreWhiteSpaces(boolean val) {
         ignoreWhiteSpaces = val;
         return this;
     }
@@ -57,7 +52,7 @@ public class Builder {
      * results within an inline diff. So the deltas are decompressed into
      * smaller parts and rebuild. But this could result in more differences.
      */
-    public Builder decompressDeltas(boolean decompressDeltas) {
+    public DiffLineGeneratorBuilder decompressDeltas(boolean decompressDeltas) {
         this.decompressDeltas = decompressDeltas;
         return this;
     }
@@ -72,7 +67,7 @@ public class Builder {
      * true:     (aBa : aba) --  changed: (aBa) : (aba)
      * </pre>
      */
-    public Builder inlineDiffByWord(boolean inlineDiffByWord) {
+    public DiffLineGeneratorBuilder inlineDiffByWord(boolean inlineDiffByWord) {
         inlineDiffSplitter = inlineDiffByWord ? DiffLineGenerator.SPLITTER_BY_WORD : DiffLineGenerator.SPLITTER_BY_CHARACTER;
         return this;
     }
@@ -82,7 +77,7 @@ public class Builder {
      * someone could think about sentence splitter, comma splitter or stuff
      * like that.
      */
-    public Builder inlineDiffBySplitter(Function<String, List<String>> inlineDiffSplitter) {
+    public DiffLineGeneratorBuilder inlineDiffBySplitter(Function<String, List<String>> inlineDiffSplitter) {
         this.inlineDiffSplitter = inlineDiffSplitter;
         return this;
     }
@@ -93,7 +88,7 @@ public class Builder {
      * value. To change this you can provide a customized line normalizer
      * here.
      */
-    public Builder lineNormalizer(Function<String, String> lineNormalizer) {
+    public DiffLineGeneratorBuilder lineNormalizer(Function<String, String> lineNormalizer) {
         this.lineNormalizer = lineNormalizer;
         return this;
     }
@@ -104,7 +99,7 @@ public class Builder {
      * @param equalizer equalizer for diff processing.
      * @return builder with configured equalizer parameter
      */
-    public Builder equalizer(BiPredicate<String, String> equalizer) {
+    public DiffLineGeneratorBuilder equalizer(BiPredicate<String, String> equalizer) {
         this.equalizer = equalizer;
         return this;
     }

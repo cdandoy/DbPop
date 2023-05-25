@@ -3,16 +3,33 @@
   flex-wrap: wrap;
   margin-right: -15px;
   margin-left: -15px;
-  font-family: "Courier New", monospace;
 
-  .code-compare-left, .code-compare-right {
+  .code-compare-col {
     flex-basis: 0;
     flex-grow: 1;
     position: relative;
-    width: 100%;
-    min-height: 1px;
     padding-right: 15px;
     padding-left: 15px;
+    max-width: 50%;
+
+    h5 {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #ccc;
+    }
+  }
+
+  .code-compare-left, .code-compare-right {
+    white-space: nowrap;
+    overflow: auto;
+    font-family: "Courier New", monospace;
+    font-size: 80%;
+
+    span {
+      white-space: pre;
+    }
   }
 
   .code-compare-deleted-pos {

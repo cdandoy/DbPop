@@ -141,38 +141,32 @@ public class CodeController {
         }
     }
 
-    @Post("/target/diff/")
-    public List<DiffLine> targetDiff(@Body ObjectIdentifierResponse objectIdentifierResponse) {
-        List<String> fileLines;
-        Patch<String> patch;
-        if (false) {
-            ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
-            String fileDefinition = getFileDefinition(objectIdentifier);
-            String databaseDefinition = getDatabaseDefinition(objectIdentifier);
-            fileLines = Arrays.asList(fileDefinition.split("\n"));
-            List<String> databaseLines = Arrays.asList(databaseDefinition.split("\n"));
-            patch = DiffUtils.diff(
-                    fileLines,
-                    databaseLines,
-                    DiffRowGenerator.DEFAULT_EQUALIZER
-            );
-        } else {
-            String fileDefinition1 = getFileDefinition(new ObjectIdentifier("SQL_STORED_PROCEDURE", "master", "dbo", "GetInvoices"));
-            String fileDefinition2 = getFileDefinition(new ObjectIdentifier("SQL_STORED_PROCEDURE", "master", "dbo", "GetInvoices2"));
-            fileLines = Arrays.asList(fileDefinition1.split("\n"));
-            List<String> fileLines2 = Arrays.asList(fileDefinition2.split("\n"));
-            patch = DiffUtils.diff(
-                    fileLines,
-                    fileLines2,
-                    DiffRowGenerator.DEFAULT_EQUALIZER
-            );
-        }
+    public record CodeDiffResponse(List<DiffLine> diffLines, String leftName, String rightName) {}
 
-        return DiffLineGenerator.create()
-                .showInlineDiffs(true)
-                .inlineDiffByWord(true)
-                .build()
-                .generateDiffLines(fileLines, patch);
+    @Post("/target/diff/")
+    public CodeDiffResponse targetDiff(@Body ObjectIdentifierResponse objectIdentifierResponse) {
+        ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
+        String leftDefinition = getFileDefinition(objectIdentifier);
+        String rightDefinition = getDatabaseDefinition(objectIdentifier);
+//        String leftDefinition = getFileDefinition(new ObjectIdentifier("SQL_STORED_PROCEDURE", "master", "dbo", "GetInvoices"));
+//        String rightDefinition = getFileDefinition(new ObjectIdentifier("SQL_STORED_PROCEDURE", "master", "dbo", "GetInvoices2"));
+        List<String> fileLines = Arrays.asList(leftDefinition.split("\n"));
+        List<String> databaseLines = Arrays.asList(rightDefinition.split("\n"));
+        Patch<String> patch = DiffUtils.diff(
+                fileLines,
+                databaseLines,
+                DiffRowGenerator.DEFAULT_EQUALIZER
+        );
+
+        return new CodeDiffResponse(
+                DiffLineGenerator.create()
+                        .showInlineDiffs(true)
+                        .inlineDiffByWord(true)
+                        .build()
+                        .generateDiffLines(fileLines, patch),
+                DbPopdFileUtils.toFileName(objectIdentifier),
+                objectIdentifier.toQualifiedName()
+        );
     }
 
     private String getFileDefinition(ObjectIdentifier objectIdentifier) {
