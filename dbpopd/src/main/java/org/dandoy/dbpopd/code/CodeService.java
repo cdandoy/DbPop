@@ -146,7 +146,7 @@ public class CodeService {
      */
     private DownloadResult downloadToFile(Database database, DbToFileVisitor visitor) {
         return changeDetector.holdingChanges(changeSession -> {
-            changeSession.checkAllDatabaseObjects();
+            changeSession.checkAllFiles();
 
             long t0 = System.currentTimeMillis();
             database.createDatabaseIntrospector().visit(visitor);

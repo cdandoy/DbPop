@@ -5,16 +5,22 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 
-import static org.dandoy.dbpopd.utils.DbPopdFileUtils.toFileName;
-import static org.dandoy.dbpopd.utils.DbPopdFileUtils.toObjectIdentifier;
+import static org.dandoy.dbpopd.utils.DbPopdFileUtils.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class DbPopdFileUtilsTest {
     @Test
     void testToFileName() {
-        assertEquals("a_b_c_d", toFileName("a_b_c_d"));
-        assertEquals("a_b_c_d", toFileName("a_b@c:d"));
+        assertEquals("should_not_change", DbPopdFileUtils.encodeFileName("should_not_change"));
+        test("a_b@c:d!");
+        test("<name>.sql");
+    }
+
+    private static void test(String filename) {
+        String encoded = encodeFileName(filename);
+        String decoded = decodeFileName(encoded);
+        assertEquals(filename, decoded);
     }
 
     @Test

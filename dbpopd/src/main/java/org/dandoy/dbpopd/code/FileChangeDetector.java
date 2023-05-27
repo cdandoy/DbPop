@@ -225,7 +225,21 @@ public class FileChangeDetector {
             }
             setHasCode(found[0]);
         } catch (IOException e) {
-            log.error("checkHasCodeDirectory failed", e);
+            // ignore, this may happen when delete a directory with many subdirectories
+        }
+    }
+
+    public void checkAllFiles() {
+        try {
+            Files.walkFileTree(codePath, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
+                    changeDetector.whenFileChanged(path.toFile());
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            log.error("Failed to checkAllFiles()", e);
         }
     }
 }

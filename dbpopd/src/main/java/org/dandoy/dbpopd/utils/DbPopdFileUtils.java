@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class DbPopdFileUtils {
+    public static final String BAD_FILENAME_CHARACTERS = "@$%&\\/:*?\"'<>|~`#^+={}[];!";
+
     public static List<File> getFiles(File dir) {
         ArrayList<File> ret = new ArrayList<>();
         getFiles(dir, ret);
@@ -29,18 +31,19 @@ public class DbPopdFileUtils {
         }
     }
 
-    static String toFileName(String in) {
+    static String encodeFileName(String in) {
         // Try not to create a new string: look at each character and if one is bad, then calculate the new string
-        String bad = "@$%&\\/:*?\"'<>|~`#^+={}[];!";
         char[] chars = in.toCharArray();
         for (int i = 0; i < chars.length; i++) {
             char c = chars[i];
-            if (bad.indexOf(c) >= 0) {
+            if (BAD_FILENAME_CHARACTERS.indexOf(c) >= 0) {
                 StringBuilder sb = new StringBuilder(in.substring(0, i));
                 for (int j = i; j < chars.length; j++) {
                     char c2 = chars[j];
-                    if (bad.indexOf(c2) >= 0) {
-                        sb.append('_');
+                    int pos = BAD_FILENAME_CHARACTERS.indexOf(c2);
+                    if (pos >= 0) {
+                        char repl = (char) ('a' + pos);
+                        sb.append('~').append(repl);
                     } else {
                         sb.append(c2);
                     }
@@ -51,11 +54,28 @@ public class DbPopdFileUtils {
         return in;
     }
 
+    static String decodeFileName(String in) {
+        if (!in.contains("~")) return in;
+
+        StringBuilder sb = new StringBuilder();
+        char[] chars = in.toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            char c = chars[i];
+            if (c == '~' && i < chars.length - 1) {
+                char c2 = chars[++i];
+                sb.append(BAD_FILENAME_CHARACTERS.charAt(c2 - 'a'));
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
     public static File toFile(File directory, String... parts) {
         return new File(
                 directory,
                 Arrays.stream(parts)
-                        .map(DbPopdFileUtils::toFileName)
+                        .map(DbPopdFileUtils::encodeFileName)
                         .collect(Collectors.joining("/"))
         );
     }
@@ -76,21 +96,21 @@ public class DbPopdFileUtils {
         };
     }
 
-    public static String toFileName(String... parts) {
+    public static String encodeFileName(String... parts) {
         return Arrays.stream(parts)
-                .map(DbPopdFileUtils::toFileName)
+                .map(DbPopdFileUtils::encodeFileName)
                 .collect(Collectors.joining("/"));
     }
 
-    public static String toFileName(ObjectIdentifier objectIdentifier) {
+    public static String encodeFileName(ObjectIdentifier objectIdentifier) {
         return switch (objectIdentifier.getType()) {
-            case "INDEX", "FOREIGN_KEY_CONSTRAINT" -> toFileName(
+            case "INDEX", "FOREIGN_KEY_CONSTRAINT" -> encodeFileName(
                     objectIdentifier.getCatalog(),
                     objectIdentifier.getSchema(),
                     objectIdentifier.getType(),
                     objectIdentifier.getParent().getName(),
                     objectIdentifier.getName() + ".sql");
-            default -> toFileName(
+            default -> encodeFileName(
                     objectIdentifier.getCatalog(),
                     objectIdentifier.getSchema(),
                     objectIdentifier.getType(),
@@ -103,10 +123,10 @@ public class DbPopdFileUtils {
         Path path = file.toPath();
         Path relativePath = directoryPath.relativize(path);
         if (relativePath.getNameCount() == 4 || relativePath.getNameCount() == 5) {
-            String catalog = relativePath.getName(0).toString();
-            String schema = relativePath.getName(1).toString();
-            String type = relativePath.getName(2).toString();
-            String filename = relativePath.getName(relativePath.getNameCount() - 1).toString();
+            String catalog = decodeFileName(relativePath.getName(0).toString());
+            String schema = decodeFileName(relativePath.getName(1).toString());
+            String type = decodeFileName(relativePath.getName(2).toString());
+            String filename = decodeFileName(relativePath.getName(relativePath.getNameCount() - 1).toString());
             if (filename.endsWith(".sql")) {
                 String name = filename.substring(0, filename.length() - 4);
                 if (relativePath.getNameCount() == 4) {

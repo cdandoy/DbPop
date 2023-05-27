@@ -157,6 +157,7 @@ public class CodeController {
                 fileLines,
                 databaseLines,
                 DiffRowGenerator.DEFAULT_EQUALIZER
+//                DiffRowGenerator.IGNORE_WHITESPACE_EQUALIZER
         );
 
         return new CodeDiffResponse(
@@ -165,7 +166,7 @@ public class CodeController {
                         .inlineDiffByWord(true)
                         .build()
                         .generateDiffLines(fileLines, patch),
-                DbPopdFileUtils.toFileName(objectIdentifier),
+                DbPopdFileUtils.encodeFileName(objectIdentifier),
                 objectIdentifier.toQualifiedName()
         );
     }
@@ -173,9 +174,7 @@ public class CodeController {
     private String getFileDefinition(ObjectIdentifier objectIdentifier) {
         File file = DbPopdFileUtils.toFile(configurationService.getCodeDirectory(), objectIdentifier);
         if (file != null && file.isFile()) {
-            return IOUtils.toString(file)
-                    .replace("\r\n", "\n")  // Windows
-                    .replace("\r", "\n");   // Mac
+            return normalizeEOL(IOUtils.toString(file));
         }
         return "";
     }
@@ -184,6 +183,12 @@ public class CodeController {
         Database targetDatabase = configurationService.getTargetDatabaseCache();
         String definition = targetDatabase.getDefinition(objectIdentifier);
         if (definition == null) return "";
-        return definition;
+        return normalizeEOL(definition);
+    }
+
+    private static String normalizeEOL(String s) {
+        return s
+                .replace("\r\n", "\n")  // Windows
+                .replace("\r", "\n");   // Mac
     }
 }

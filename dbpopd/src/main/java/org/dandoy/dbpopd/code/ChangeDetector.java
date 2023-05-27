@@ -74,12 +74,14 @@ public class ChangeDetector {
     }
 
     static String cleanSql(String sql) {
-        // \r\n => \n
-        sql = sql.replace("\r", "");
+        sql = sql
+                .replace("\r\n", "\n")  // Windows
+                .replace("\r", "\n");   // Mac
 
-        // trim \n at the end of the text
+        // trim empty lines at the end of the text
         while (sql.endsWith("\n")) {
             sql = sql.substring(0, sql.length() - 1);
+            sql = sql.trim();
         }
         return sql;
     }
@@ -145,6 +147,7 @@ public class ChangeDetector {
             AtomicBoolean hasChanged = new AtomicBoolean();
             Set<ObjectIdentifier> removeIdentifiers = new HashSet<>();
             AtomicBoolean checkAllDatabase = new AtomicBoolean(false);
+            AtomicBoolean checkAllFiles = new AtomicBoolean(false);
             try {
                 return function.apply(new ChangeSession() {
                     @Override
@@ -157,14 +160,21 @@ public class ChangeDetector {
                         removeIdentifiers.add(objectIdentifier);
                         hasChanged.set(true);
                     }
+
+                    @Override
+                    public void checkAllFiles() {
+                        checkAllFiles.set(true);
+                    }
                 });
             } finally {
                 if (checkAllDatabase.get()) {
                     databaseChangeDetector.captureObjectSignatures();
-                } else {
-                    for (ObjectIdentifier objectIdentifier : removeIdentifiers) {
-                        removeChange(objectIdentifier);
-                    }
+                }
+                if (checkAllFiles.get()) {
+                    fileChangeDetector.checkAllFiles();
+                }
+                for (ObjectIdentifier objectIdentifier : removeIdentifiers) {
+                    removeChange(objectIdentifier);
                 }
                 if (hasChanged.get()) {
                     sendCodeChangeMessage();
@@ -184,6 +194,8 @@ public class ChangeDetector {
         void checkAllDatabaseObjects();
 
         void removeObjectIdentifier(ObjectIdentifier objectIdentifier);
+
+        void checkAllFiles();
     }
 
     synchronized void whenDatabaseObjectChanged(@NotNull ObjectIdentifier objectIdentifier, @Nullable String sql) {

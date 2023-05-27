@@ -8,7 +8,6 @@ import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpopd.ConfigurationService;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.*;
 
 /**
@@ -97,12 +96,11 @@ public class DatabaseChangeDetector {
                 if (targetDatabase != null) {
                     Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
                     DatabaseIntrospector databaseIntrospector = targetDatabase.createDatabaseIntrospector();
-                    MessageDigest messageDigest = ChangeDetector.getMessageDigest();
                     for (String catalog : targetDatabase.getCatalogs()) {
                         databaseIntrospector.visitModuleDefinitions(catalog, new DatabaseVisitor() {
                             @Override
                             public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String sql) {
-                                byte[] hash = messageDigest.digest(sql.getBytes(StandardCharsets.UTF_8));
+                                byte[] hash = getHash(sql);
                                 ret.put(objectIdentifier, new ObjectSignature(modifyDate, hash));
                                 changeDetector.whenDatabaseObjectChanged(objectIdentifier, sql);
                             }
