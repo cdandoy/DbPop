@@ -24,8 +24,9 @@ interface DiffSegment {
 }
 
 function Segments({segments}: { segments: DiffSegment[] }) {
+    let segmentNo = 0;
     return <>
-        {segments.map(segment => <span className={"code-compare-segment-" + segment.tag}>{segment.text}</span>)}
+        {segments.map(segment => <span key={`seg-${segmentNo++}`} className={"code-compare-segment-" + segment.tag}>{segment.text}</span>)}
     </>
 }
 
@@ -67,13 +68,14 @@ export function CodeCompare() {
     }, []);
 
     if (!codeDiff) return <div>Loading...</div>
+    let lineNo = 0;
     return <>
         <PageHeader title={codeDiff.rightName} tool={<Tool/>}/>
         <div id={"code-compare-component"}>
             <div className={"code-compare-col"}>
                 <h5>File</h5>
                 <div className={"code-compare-left"}>
-                    {codeDiff.diffLines?.map(diffLine => <div className={"code-compare-line-" + diffLine.tag}>
+                    {codeDiff.diffLines?.map(diffLine => <div key={`left-${lineNo++}`} className={"code-compare-line-" + diffLine.tag}>
                         <Segments segments={diffLine.leftSegments}/>&nbsp;
                     </div>)}
                 </div>
@@ -81,7 +83,7 @@ export function CodeCompare() {
             <div className={"code-compare-col"}>
                 <h5>Database</h5>
                 <div className={"code-compare-right"}>
-                    {codeDiff.diffLines?.map(diffLine => <div className={"code-compare-line-" + diffLine.tag}>
+                    {codeDiff.diffLines?.map(diffLine => <div key={`right-${lineNo++}`} className={"code-compare-line-" + diffLine.tag}>
                         <Segments segments={diffLine.rightSegments}/>&nbsp;
                     </div>)}
                 </div>
