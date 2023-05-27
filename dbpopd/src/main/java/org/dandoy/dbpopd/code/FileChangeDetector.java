@@ -2,17 +2,20 @@ package org.dandoy.dbpopd.code;
 
 import io.micronaut.context.annotation.Context;
 import jakarta.annotation.Nullable;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.site.Message;
+import org.dandoy.dbpopd.site.MessageType;
 import org.dandoy.dbpopd.utils.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -24,7 +27,10 @@ public class FileChangeDetector {
     private WatchService watchService;
     private Thread thread;
     private final Path codePath;
+    private final Map<WatchKey, Path> keys = new HashMap<>();
+    private final Set<Path> knownFiles = new HashSet<>();
     private final ChangeDetector changeDetector;
+    private boolean hasCodeDirectory;
     /**
      * Accumulates the actions and only send the events if nothing happened for a few seconds
      */
@@ -80,23 +86,43 @@ public class FileChangeDetector {
     private void watch(Path path) {
         try {
             log.debug("Watching {}", path);
-            path.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+            WatchKey watchKey = path.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+            keys.put(watchKey, path);
         } catch (IOException e) {
             log.error("Failed to register the path " + path, e);
         }
     }
 
     private void watchPathAndSubPaths(Path path) {
-        if (Files.isDirectory(path)) {
-
-            watch(path);
-
-            try (Stream<Path> stream = Files.list(path)) {
-                stream.forEach(this::watchPathAndSubPaths);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to list " + path, e);
-            }
+        try {
+            Files.walkFileTree(path, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) {
+                    watch(path);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            log.error("registerAll failed", e);
         }
+    }
+
+    private void handlePathChanged(Path path) {
+        File file = path.toFile();
+        log.debug("File modified: {}", file);
+        pending.add(() -> {
+            checkHasCodeDirectory(true);
+            changeDetector.whenFileChanged(file);
+        });
+    }
+
+    private void handlePathDeleted(Path path) {
+        File file = path.toFile();
+        log.debug("File deleted: {}", file);
+        pending.add(() -> {
+            checkHasCodeDirectory(false);
+            changeDetector.whenFileDeleted(file);
+        });
     }
 
     void threadLoop() {
@@ -106,32 +132,40 @@ public class FileChangeDetector {
                 if (watchKey != null) {
                     List<WatchEvent<?>> watchEvents = watchKey.pollEvents();
                     for (WatchEvent<?> pollEvent : watchEvents) {
+                        if (pollEvent.kind() == OVERFLOW) continue;
+
                         // Check that the event is about Paths
-                        if (pollEvent.context() instanceof Path childPath && watchKey.watchable() instanceof Path parentPath) {
+                        if (pollEvent.context() instanceof Path childPath) {
                             log.debug("WatchEvent {}: {}", pollEvent.kind(), childPath);
+                            Path parentPath = keys.get(watchKey);
                             Path path = parentPath.resolve(childPath);
-                            if (codePath.startsWith(path)) {
+
+                            if (pollEvent.kind() == ENTRY_CREATE) {
                                 if (Files.isDirectory(path)) {
-                                    // The event is about a directory above .../code/
-                                    if (pollEvent.kind() == ENTRY_CREATE) {
-                                        watchPathAndSubPaths(path);
-                                    } else if (pollEvent.kind() == ENTRY_DELETE) {
-                                        watchKey.cancel();
-                                    }
+                                    watchPathAndSubPaths(path);
+                                } else {
+                                    knownFiles.add(path);
+                                    handlePathChanged(path);
                                 }
-                            } else if (path.startsWith(codePath)) {
-                                // The event is withing .../code/
-                                if (pollEvent.kind() == ENTRY_CREATE) {
-                                    onEntryCreated(path);
-                                } else if (pollEvent.kind() == ENTRY_DELETE) {
-                                    onEntryDeleted(watchKey, path);
-                                } else if (pollEvent.kind() == ENTRY_MODIFY) {
-                                    onEntryModified(path);
+                            } else if (pollEvent.kind() == ENTRY_DELETE) {
+                                if (knownFiles.remove(path)) {
+                                    handlePathDeleted(path);
+                                }
+                            } else if (pollEvent.kind() == ENTRY_MODIFY) {
+                                if (knownFiles.contains(path)) {
+                                    handlePathChanged(path);
                                 }
                             }
                         }
                     }
-                    watchKey.reset();
+                    boolean valid = watchKey.reset();
+                    if (!valid) {
+                        Path removed = keys.remove(watchKey);
+                        log.debug("No longer watching {}", removed);
+                        if (keys.isEmpty()) {
+                            log.error("FileChangeDetector has nothing left to watch");
+                        }
+                    }
                 }
             } catch (ClosedWatchServiceException ignored) {
                 log.debug("FileChangeDetector - WatchService closed");
@@ -162,47 +196,6 @@ public class FileChangeDetector {
         return watchKey;
     }
 
-    private void onEntryCreated(Path path) {
-        log.debug("FileChangeDetector.onEntryCreated: {}", path);
-        watchPathAndSubPaths(path);
-        onPathModified(path);
-    }
-
-    private void onEntryModified(Path path) {
-        log.debug("FileChangeDetector.onEntryModified: {}", path);
-        if (!Files.isDirectory(path)) {
-            onPathModified(path);
-        }
-    }
-
-    private void onEntryDeleted(WatchKey watchKey, Path path) {
-        log.debug("FileChangeDetector.onEntryDeleted: {}", path);
-        if (Files.isDirectory(path)) {
-            watchKey.cancel();
-        } else {
-            File file = path.toFile();
-            pending.add(() -> changeDetector.whenFileDeleted(file));
-        }
-    }
-
-    private void onPathModified(Path path) {
-        try {
-            if (Files.isDirectory(path)) {
-                try (Stream<Path> stream = Files.list(path)) {
-                    stream.forEach(this::onPathModified);
-                }
-            } else {
-                File file = path.toFile();
-                if (!file.isDirectory() && file.length() == 0) {
-                    log.debug("Found an empty file: {}", file);
-                }
-                pending.add(() -> changeDetector.whenFileChanged(file));
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     byte[] getHash(@Nullable File file) {
         if (file == null) return null;
         if (!file.isFile()) return null;
@@ -211,5 +204,46 @@ public class FileChangeDetector {
         sql = ChangeDetector.cleanSql(sql);
         byte[] bytes = sql.getBytes(StandardCharsets.UTF_8);
         return messageDigest.digest(bytes);
+    }
+
+    static class HasCodeDirectoryMessage extends Message {
+        @Getter
+        private final boolean hasCodeDirectory;
+
+        public HasCodeDirectoryMessage(boolean hasCodeDirectory) {
+            super(MessageType.HAS_CODE_DIRECTORY);
+            this.hasCodeDirectory = hasCodeDirectory;
+        }
+    }
+
+    private void setHasCodeDirectory(boolean hasCodeDirectory) {
+        log.debug("setHasCodeDirectory({})", hasCodeDirectory);
+        if (this.hasCodeDirectory != hasCodeDirectory) {
+            this.hasCodeDirectory = hasCodeDirectory;
+            changeDetector.sendMessage(new HasCodeDirectoryMessage(hasCodeDirectory));
+        }
+    }
+
+    private void checkHasCodeDirectory(boolean added) {
+        if (hasCodeDirectory && added) return;      // We already had code, and a file or directory was added
+        try {
+            final boolean[] found = {false};
+            if (Files.isDirectory(codePath)) {
+                Files.walkFileTree(codePath, new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                        String filename = file.getName(file.getNameCount() - 1).toString();
+                        if (filename.toLowerCase().endsWith(".sql")) {
+                            found[0] = true;
+                            return FileVisitResult.TERMINATE;
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+            }
+            setHasCodeDirectory(found[0]);
+        } catch (IOException e) {
+            log.error("checkHasCodeDirectory failed", e);
+        }
     }
 }

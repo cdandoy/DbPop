@@ -103,7 +103,11 @@ public class ChangeDetector {
     }
 
     private void sendCodeChangeMessage() {
-        siteWebSocket.sendMessage(Message.CODE_CHANGE_MESSAGE);
+        sendMessage(Message.CODE_CHANGE_MESSAGE);
+    }
+
+    void sendMessage(Message message) {
+        siteWebSocket.sendMessage(message);
     }
 
     private ChangeFile getChangeFile() {

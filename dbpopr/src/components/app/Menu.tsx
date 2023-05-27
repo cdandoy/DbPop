@@ -25,7 +25,7 @@ export default function Menu() {
             <li className="nav-link">
                 <NavLink to={"/codechanges"}>
                     <SidebarMenu text="Code Changes" icons="fa fa-code"/>
-                    {(messageState.codeChanges && messageState.codeChanges.length > 0) &&
+                    {(messageState.hasCodeDirectory && messageState.codeChanges && messageState.codeChanges.length > 0) &&
                         <span style={{position: "absolute", right: "20px"}} title={"Code Change Detected"}>
                             <i className={"fa fa-circle"} style={{color: "#ffb000"}}></i>
                         </span>
