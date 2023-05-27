@@ -92,6 +92,7 @@ public class CodeController {
         Path codePath = configurationService.getCodeDirectory().toPath();
         return changeDetector.getChanges()
                 .stream()
+                .limit(100)
                 .map(change -> {
                             String path = change.getFile() == null ? null : codePath.relativize(change.getFile().toPath()).toString();
                             ObjectIdentifier objectIdentifier = change.getObjectIdentifier();

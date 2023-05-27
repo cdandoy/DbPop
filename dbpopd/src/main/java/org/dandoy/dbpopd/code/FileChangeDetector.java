@@ -2,11 +2,8 @@ package org.dandoy.dbpopd.code;
 
 import io.micronaut.context.annotation.Context;
 import jakarta.annotation.Nullable;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpopd.ConfigurationService;
-import org.dandoy.dbpopd.site.Message;
-import org.dandoy.dbpopd.site.MessageType;
 import org.dandoy.dbpopd.utils.IOUtils;
 
 import java.io.File;
@@ -30,7 +27,7 @@ public class FileChangeDetector {
     private final Map<WatchKey, Path> keys = new HashMap<>();
     private final Set<Path> knownFiles = new HashSet<>();
     private final ChangeDetector changeDetector;
-    private boolean hasCodeDirectory;
+    private boolean hasCode;
     /**
      * Accumulates the actions and only send the events if nothing happened for a few seconds
      */
@@ -48,6 +45,7 @@ public class FileChangeDetector {
             thread.setDaemon(true);
             thread.start();
             if (Files.isDirectory(codePath)) {
+                checkHasCodeDirectory();
                 try (Stream<Path> stream = Files.walk(codePath)) {
                     stream
                             .filter(Files::isDirectory)
@@ -110,19 +108,13 @@ public class FileChangeDetector {
     private void handlePathChanged(Path path) {
         File file = path.toFile();
         log.debug("File modified: {}", file);
-        pending.add(() -> {
-            checkHasCodeDirectory(true);
-            changeDetector.whenFileChanged(file);
-        });
+        pending.add(() -> changeDetector.whenFileChanged(file));
     }
 
     private void handlePathDeleted(Path path) {
         File file = path.toFile();
         log.debug("File deleted: {}", file);
-        pending.add(() -> {
-            checkHasCodeDirectory(false);
-            changeDetector.whenFileDeleted(file);
-        });
+        pending.add(() -> changeDetector.whenFileDeleted(file));
     }
 
     void threadLoop() {
@@ -158,6 +150,7 @@ public class FileChangeDetector {
                             }
                         }
                     }
+                    checkHasCodeDirectory();
                     boolean valid = watchKey.reset();
                     if (!valid) {
                         Path removed = keys.remove(watchKey);
@@ -206,26 +199,15 @@ public class FileChangeDetector {
         return messageDigest.digest(bytes);
     }
 
-    static class HasCodeDirectoryMessage extends Message {
-        @Getter
-        private final boolean hasCodeDirectory;
-
-        public HasCodeDirectoryMessage(boolean hasCodeDirectory) {
-            super(MessageType.HAS_CODE_DIRECTORY);
-            this.hasCodeDirectory = hasCodeDirectory;
+    private void setHasCode(boolean hasCode) {
+        log.debug("setHasCodeDirectory({})", hasCode);
+        if (this.hasCode != hasCode) {
+            this.hasCode = hasCode;
+            changeDetector.setHasCode(hasCode);
         }
     }
 
-    private void setHasCodeDirectory(boolean hasCodeDirectory) {
-        log.debug("setHasCodeDirectory({})", hasCodeDirectory);
-        if (this.hasCodeDirectory != hasCodeDirectory) {
-            this.hasCodeDirectory = hasCodeDirectory;
-            changeDetector.sendMessage(new HasCodeDirectoryMessage(hasCodeDirectory));
-        }
-    }
-
-    private void checkHasCodeDirectory(boolean added) {
-        if (hasCodeDirectory && added) return;      // We already had code, and a file or directory was added
+    private void checkHasCodeDirectory() {
         try {
             final boolean[] found = {false};
             if (Files.isDirectory(codePath)) {
@@ -241,7 +223,7 @@ public class FileChangeDetector {
                     }
                 });
             }
-            setHasCodeDirectory(found[0]);
+            setHasCode(found[0]);
         } catch (IOException e) {
             log.error("checkHasCodeDirectory failed", e);
         }

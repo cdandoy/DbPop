@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpopd.ConfigurationService;
-import org.dandoy.dbpopd.site.Message;
 import org.dandoy.dbpopd.site.SiteWebSocket;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.IOUtils;
@@ -103,11 +102,11 @@ public class ChangeDetector {
     }
 
     private void sendCodeChangeMessage() {
-        sendMessage(Message.CODE_CHANGE_MESSAGE);
+        siteWebSocket.codeChanged();
     }
 
-    void sendMessage(Message message) {
-        siteWebSocket.sendMessage(message);
+    void setHasCode(boolean hasCode) {
+        siteWebSocket.setHasCode(hasCode);
     }
 
     private ChangeFile getChangeFile() {

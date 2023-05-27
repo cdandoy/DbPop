@@ -9,8 +9,6 @@ import io.micronaut.websocket.annotation.ServerWebSocket;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Supplier;
 
 @Slf4j
@@ -18,7 +16,8 @@ import java.util.function.Supplier;
 @ServerWebSocket("/ws/site")
 public class SiteWebSocket {
     private final WebSocketBroadcaster broadcaster;
-    private final List<Message> delayedMessages = new ArrayList<>();
+    private final SiteStatus siteStatus = new SiteStatus();
+    private SiteStatus siteStatusBeforeDelay;
     private int delayed = 0;
 
     public SiteWebSocket(WebSocketBroadcaster broadcaster) {
@@ -28,6 +27,7 @@ public class SiteWebSocket {
     @OnOpen
     public void onOpen(WebSocketSession ignore) {
         log.debug("SiteWebSocket.onOpen");
+        sendSiteStatus();
     }
 
     @OnMessage
@@ -40,12 +40,22 @@ public class SiteWebSocket {
         log.debug("SiteWebSocket.onClose");
     }
 
-    public synchronized void sendMessage(Message message) {
+    public void setHasCode(boolean hasCode) {
+        siteStatus.setHasCode(hasCode);
         if (delayed == 0) {
-            broadcaster.broadcastSync(message);
-        } else {
-            delayedMessages.add(message);
+            sendSiteStatus();
         }
+    }
+
+    public void codeChanged() {
+        siteStatus.setCodeChanged();
+        if (delayed == 0) {
+            sendSiteStatus();
+        }
+    }
+
+    private void sendSiteStatus() {
+        broadcaster.broadcastSync(siteStatus);
     }
 
     public <T> T holdChanges(Supplier<T> supplier) {
@@ -58,10 +68,14 @@ public class SiteWebSocket {
     }
 
     private synchronized void setDelayed(boolean delayed) {
+        if (this.delayed == 0) {
+            siteStatusBeforeDelay = new SiteStatus(siteStatus);
+        }
         this.delayed += delayed ? 1 : -1;
         if (this.delayed == 0) {
-            delayedMessages.stream().distinct().forEach(this::sendMessage);
-            delayedMessages.clear();
+            if (!siteStatus.equals(siteStatusBeforeDelay)) {
+                sendSiteStatus();
+            }
         } else if (this.delayed < 0 || this.delayed > 3) {
             throw new RuntimeException("Unexpected delayed value: " + this.delayed);
         }

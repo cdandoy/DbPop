@@ -7,6 +7,14 @@ import {ObjectIdentifier} from "../../models/ObjectIdentifier";
 import {WebSocketStateContext} from "../ws/useWebSocketState";
 import {NavLink} from "react-router-dom";
 
+function Message({message}: { message: string }) {
+    return <>
+        <h5 className={"text-center"}>
+            {message}
+        </h5>
+    </>
+}
+
 export default function CodeChanges() {
     const messageState = useContext(WebSocketStateContext);
 
@@ -134,10 +142,27 @@ export default function CodeChanges() {
                                 </>}
                             </td>
                         </tr>)}
+                        {messageState.codeChanges.length >= 100 && <tr>
+                            <td colSpan={2}><Message message={"Too many changes to display"}/></td>
+                        </tr>
+                        }
                         </tbody>
                     </table>
                 </div>
             </div>
+        </>
+    }
+
+    function Content() {
+        if (!messageState.hasCode) return <Message message={"No Code Downloaded"}/>
+        if (messageState.codeChanges.length === 0) return <Message message={"No Changes Detected"}/>;
+        return <>
+            <div className={"row"}>
+                <div className={"col-6"}>
+                    <ApplyAllBox/>
+                </div>
+            </div>
+            <ChangesBox/>
         </>
     }
 
@@ -148,19 +173,6 @@ export default function CodeChanges() {
                 Experimental
             </div>}
         />
-
-        {messageState.codeChanges.length > 0 && <>
-            <div className={"row"}>
-                <div className={"col-6"}>
-                    <ApplyAllBox/>
-                </div>
-            </div>
-            <ChangesBox/>
-        </>}
-        {messageState.codeChanges.length === 0 && <>
-            <h5 className={"text-center"}>
-                No Changes Detected
-            </h5>
-        </>}
+        <Content/>
     </div>
 }
