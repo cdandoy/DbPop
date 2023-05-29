@@ -1,3 +1,3 @@
 package org.dandoy.dbpopd.deploy;
 
-record SnapshotInfo(long snapshot, DeltaType deltaType) {}
+public record SnapshotInfo(long snapshot, DeltaType deltaType) {}
