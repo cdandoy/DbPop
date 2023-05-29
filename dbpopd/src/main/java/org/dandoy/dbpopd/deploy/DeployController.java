@@ -41,7 +41,7 @@ public class DeployController {
 
         SnapshotInfo snapshotInfo = deployService.getSnapshotInfo();
         if (snapshotInfo != null) {
-            boolean hasChanges = deployService.hasChanges() || true;
+            boolean hasChanges = deployService.hasChanges();
             return new GetDeployResponse(true, hasChanges, snapshotInfo.snapshot(), snapshotFilename, snapshotInfo.deltaType());
         }
         return new GetDeployResponse(snapshotFilename);

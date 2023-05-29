@@ -123,21 +123,23 @@ public class DeployService {
 
     @SneakyThrows
     private Collection<Path> getPathsByPriority() {
-        Path codeDirectoryPath = codeDirectory.toPath();
         Map<Integer, Path> pathsByPriority = new TreeMap<>();
-        Files.walkFileTree(codeDirectoryPath, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
-                ObjectIdentifier objectIdentifier = fileToObjectIdentifierResolver.getObjectIdentifier(path);
-                if (objectIdentifier != null) {
-                    int priority = CodeService.CODE_TYPES.indexOf(objectIdentifier.getType());
-                    if (priority >= 0) {
-                        pathsByPriority.put(priority, path);
+        if (codeDirectory.isDirectory()) {
+            Path codeDirectoryPath = codeDirectory.toPath();
+            Files.walkFileTree(codeDirectoryPath, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
+                    ObjectIdentifier objectIdentifier = fileToObjectIdentifierResolver.getObjectIdentifier(path);
+                    if (objectIdentifier != null) {
+                        int priority = CodeService.CODE_TYPES.indexOf(objectIdentifier.getType());
+                        if (priority >= 0) {
+                            pathsByPriority.put(priority, path);
+                        }
                     }
+                    return FileVisitResult.CONTINUE;
                 }
-                return FileVisitResult.CONTINUE;
-            }
-        });
+            });
+        }
         return pathsByPriority.values();
     }
 

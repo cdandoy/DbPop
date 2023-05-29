@@ -14,7 +14,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 import static java.nio.file.StandardWatchEventKinds.*;
 
@@ -46,16 +45,10 @@ public class FileChangeDetector {
             thread.start();
             if (Files.isDirectory(codePath)) {
                 checkHasCodeDirectory();
-                try (Stream<Path> stream = Files.walk(codePath)) {
-                    stream
-                            .filter(Files::isDirectory)
-                            .forEach(this::watch);
-                }
+                watchPathAndSubPaths(codePath);
             }
             for (Path path = codePath.getParent(); path != null; path = path.getParent()) {
-                if (Files.isDirectory(path)) {
-                    watch(path);
-                }
+                watch(path);
             }
         } catch (IOException e) {
             log.error("Cannot watch the directory " + codePath, e);
@@ -99,6 +92,12 @@ public class FileChangeDetector {
                     watch(path);
                     return FileVisitResult.CONTINUE;
                 }
+
+                @Override
+                public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
+                    addKnownFile(path);
+                    return FileVisitResult.CONTINUE;
+                }
             });
         } catch (IOException e) {
             log.error("registerAll failed", e);
@@ -136,16 +135,18 @@ public class FileChangeDetector {
                                 if (Files.isDirectory(path)) {
                                     watchPathAndSubPaths(path);
                                 } else {
-                                    knownFiles.add(path);
+                                    addKnownFile(path);
                                     handlePathChanged(path);
                                 }
                             } else if (pollEvent.kind() == ENTRY_DELETE) {
-                                if (knownFiles.remove(path)) {
+                                if (removeKnownFile(path)) {
                                     handlePathDeleted(path);
                                 }
                             } else if (pollEvent.kind() == ENTRY_MODIFY) {
                                 if (knownFiles.contains(path)) {
                                     handlePathChanged(path);
+                                } else {
+                                    log.debug("Unknown file modified: {}", path);
                                 }
                             }
                         }
@@ -169,6 +170,16 @@ public class FileChangeDetector {
             }
         }
         log.debug("FileChangeDetector thread stopped");
+    }
+
+    private void addKnownFile(Path path) {
+        log.debug("addKnownFile: {}", path);
+        knownFiles.add(path);
+    }
+
+    private boolean removeKnownFile(Path path) {
+        log.debug("removeKnownFile: {}", path);
+        return knownFiles.remove(path);
     }
 
     private WatchKey getWatchKey() throws InterruptedException {

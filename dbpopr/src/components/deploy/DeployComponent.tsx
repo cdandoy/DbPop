@@ -52,6 +52,23 @@ export default function DeployComponent() {
             .finally(() => setLoading(false));
     }
 
+    function Content() {
+        if (!hasSnapshot) return <NoSnapshotContent handleCreateSnapshot={handleCreateSnapshot}/>
+        if (!hasChanges) return <NoChangesContent/>
+        if (state === "input") return <DeployInput setLoading={setLoading}
+                                                   codeChanges={messageState.codeChanges}
+                                                   setState={setState}
+                                                   setFlywayGeneratedFilename={setFlywayGeneratedFilename}
+                                                   defaultType={defaultType}/>
+        if (state === "sql-downloaded") return <SqlDownloaded snapshotFilename={snapshotFilename}
+                                                              onCancel={() => setState("input")}
+                                                              onOk={handleSqlSnapshot}/>
+        if (state === "snapshot-created") return <div>Snapshot Created</div>
+        if (state === "flyway-created") return <FlywayCreated flywayGeneratedFilename={flywayGeneratedFilename}
+                                                              snapshotFilename={snapshotFilename}/>
+        return <>Unknown State: hasSnapshot: {state}</>
+    }
+
     return <div id={"deployment-component"}>
         <LoadingOverlay active={loading}/>
 
@@ -59,15 +76,7 @@ export default function DeployComponent() {
             <PageHeader title={"Deployment"}/>
             {loading || <>
                 <div className={"container"}>
-                    {hasSnapshot && hasChanges && <>
-                        {state === "input" && <DeployInput setLoading={setLoading} setState={setState} setFlywayGeneratedFilename={setFlywayGeneratedFilename} defaultType={defaultType}/>}
-                        {state === "sql-downloaded" && <SqlDownloaded snapshotFilename={snapshotFilename} onCancel={() => setState("input")} onOk={handleSqlSnapshot}/>}
-                        {state === "snapshot-created" && <div>Snapshot Created</div>}
-                        {state === "flyway-created" && <FlywayCreated flywayGeneratedFilename={flywayGeneratedFilename} snapshotFilename={snapshotFilename}/>}
-                    </>
-                    }
-                    {(!hasSnapshot) && <NoSnapshotContent handleCreateSnapshot={handleCreateSnapshot}/>}
-                    {(!hasChanges) && <NoChangesContent/>}
+                    <Content/>
                 </div>
             </>}
         </div>
