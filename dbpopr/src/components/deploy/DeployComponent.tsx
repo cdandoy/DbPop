@@ -72,7 +72,7 @@ export default function DeployComponent() {
     return <div id={"deployment-component"}>
         <LoadingOverlay active={loading}/>
 
-        <div className={"deploy-right"}>
+        <div className={"container"}>
             <PageHeader title={"Deployment"}/>
             {loading || <>
                 <div className={"container"}>

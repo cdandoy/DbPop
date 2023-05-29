@@ -19,6 +19,12 @@ import DownloadTargetFullComponent from "./tools/data/target_full/DownloadTarget
 import CodeChanges from "./codechanges/CodeChanges";
 import {CodeCompare} from "./codecompare/CodeCompare";
 import DeployComponent from "./deploy/DeployComponent";
+import SourceTools from "./tools/SourceTools";
+import TargetTools from "./tools/TargetTools";
+import TargetDataTools from "./tools/TargetDataTools";
+import TargetCodeTools from "./tools/TargetCodeTools";
+import SourceCodeTools from "./tools/SourceCodeTools";
+import SourceDataTools from "./tools/SourceDataTools";
 
 export default function RoutesComponent() {
     const siteResponse = useContext(SiteContext);
@@ -30,6 +36,9 @@ export default function RoutesComponent() {
 
             <Route path="/tools" element=<ToolsComponent/>/>
             {siteResponse.hasSource && <>
+                <Route path="/tools/source/" element=<SourceTools/>/>
+                <Route path="/tools/source/data" element=<SourceDataTools/>/>
+                <Route path="/tools/source/code" element=<SourceCodeTools/>/>
                 <Route path="/tools/source/structured" element=<StructuredDownloadComponent/>/>
                 <Route path="/tools/source/bulk" element=<DownloadBulkComponent/>/>
                 <Route path="/tools/source/full" element=<DownloadSourceFullComponent/>/>
@@ -37,6 +46,9 @@ export default function RoutesComponent() {
                 <Route path="/tools/source/download" element=<CodeSourceDownload/>/>
             </>}
             {siteResponse.hasTarget && <>
+                <Route path="/tools/target/" element=<TargetTools/>/>
+                <Route path="/tools/target/data" element=<TargetDataTools/>/>
+                <Route path="/tools/target/code" element=<TargetCodeTools/>/>
                 <Route path="/tools/target/full" element=<DownloadTargetFullComponent/>/>
                 <Route path="/tools/target/compare" element=<CodeTargetCompare/>/>
                 <Route path="/tools/target/upload" element=<CodeTargetUload/>/>

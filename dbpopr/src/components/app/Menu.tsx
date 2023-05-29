@@ -40,9 +40,9 @@ export default function Menu() {
             </li>
 
             <li className="nav-link">
-                <NavLink to={"/tools"}>
-                    <SidebarMenu text="Tools" icons="fa fa-cogs"/>
-                </NavLink>
+                {siteResponse.hasSource && siteResponse.hasTarget && <NavLink to={"/tools"}><SidebarMenu text="Tools" icons="fa fa-cogs"/></NavLink>}
+                {siteResponse.hasSource && !siteResponse.hasTarget && <NavLink to={"/tools/source"}><SidebarMenu text="Tools" icons="fa fa-cogs"/></NavLink>}
+                {!siteResponse.hasSource && siteResponse.hasTarget && <NavLink to={"/tools/target"}><SidebarMenu text="Tools" icons="fa fa-cogs"/></NavLink>}
             </li>
 
             {siteResponse.hasSource && (

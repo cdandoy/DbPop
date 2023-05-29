@@ -167,12 +167,7 @@ export default function CodeChanges() {
     }
 
     return <div className={"code-changes-component container"}>
-        <PageHeader title={"Code Changes"} subtitle={"Track modified database code"} tool={
-            <div title={"This section is still under construction"}>
-                <i className={"fa fa-warning"}/>
-                Experimental
-            </div>}
-        />
+        <PageHeader title={"Code Changes"} subtitle={"Track modified database code"}/>
         <Content/>
     </div>
 }
