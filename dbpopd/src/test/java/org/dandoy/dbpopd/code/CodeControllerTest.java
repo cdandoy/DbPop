@@ -44,7 +44,7 @@ class CodeControllerTest {
         boolean codeAutoSave = configurationService.isCodeAutoSave();
         configurationService.setCodeAutoSave(false);
         try {
-            {   // Download from the source
+            {   // Download the code from the source database
                 DownloadResult downloadResult = codeController.downloadSourceToFile();
                 assertTrue(downloadResult.getCodeTypeCount("Stored Procedures") > 0);
 
@@ -80,6 +80,7 @@ class CodeControllerTest {
 
             {   // Change the code verify it gets downloaded
                 changeDetector.getDatabaseChangeDetector().captureObjectSignatures();
+                int sizeBefore = codeController.targetChanges().toList().size();
                 try (Connection targetConnection = configurationService.createTargetConnection()) {
                     try (Statement statement = targetConnection.createStatement()) {
                         statement.execute("USE dbpop");
@@ -96,8 +97,9 @@ class CodeControllerTest {
                 }
                 changeDetector.getDatabaseChangeDetector().compareObjectSignatures();
                 List<CodeController.ChangeResponse> list = codeController.targetChanges().toList();
-                assertEquals(1, list.size());
-                CodeController.ChangeResponse changeResponse = list.get(0);
+                int sizeAfter = list.size();
+                assertEquals(sizeBefore + 1, sizeAfter);
+                CodeController.ChangeResponse changeResponse = list.stream().filter(it -> it.objectIdentifier().tableName().getTable().equals("GetCustomers")).findFirst().orElseThrow();
                 codeController.applyToFile(new CodeController.ObjectIdentifierResponse[]{
                         new CodeController.ObjectIdentifierResponse(
                                 changeResponse.objectIdentifier().type(),

@@ -1,22 +1,30 @@
 DROP PROCEDURE IF EXISTS GetInvoices
-DROP TABLE IF EXISTS master.dbo.invoice_details;
-DROP TABLE IF EXISTS master.dbo.invoices;
-DROP TABLE IF EXISTS master.dbo.products;
-DROP TABLE IF EXISTS master.dbo.customers;
-DROP TABLE IF EXISTS master.dbo.test_binary;
+GO
+DROP TABLE IF EXISTS master.dbo.invoice_details
+GO
+DROP TABLE IF EXISTS master.dbo.invoices
+GO
+DROP TABLE IF EXISTS master.dbo.products
+GO
+DROP TABLE IF EXISTS master.dbo.customers
+GO
+DROP TABLE IF EXISTS master.dbo.test_binary
+GO
 
 CREATE TABLE master.dbo.customers
 (
     customer_id INT PRIMARY KEY IDENTITY,
     name        VARCHAR(32)
-);
+)
+GO
 
 CREATE TABLE master.dbo.products
 (
     product_id INT PRIMARY KEY IDENTITY,
     part_no    VARCHAR(32)  NOT NULL,
     part_desc  VARCHAR(255) NOT NULL
-);
+)
+GO
 
 CREATE TABLE master.dbo.invoices
 (
@@ -24,7 +32,8 @@ CREATE TABLE master.dbo.invoices
     customer_id  INT      NOT NULL,
     invoice_date DATETIME NOT NULL,
     CONSTRAINT invoices_customers_fk FOREIGN KEY (customer_id) REFERENCES master.dbo.customers
-);
+)
+GO
 
 CREATE TABLE master.dbo.invoice_details
 (
@@ -33,48 +42,64 @@ CREATE TABLE master.dbo.invoice_details
     product_id        INT NOT NULL,
     CONSTRAINT invoice_details_invoices_fk FOREIGN KEY (invoice_id) REFERENCES master.dbo.invoices,
     CONSTRAINT invoice_details_products_fk FOREIGN KEY (product_id) REFERENCES master.dbo.products
-);
+)
+GO
 
 CREATE TABLE master.dbo.test_binary
 (
     id          INT PRIMARY KEY IDENTITY,
     test_binary BINARY(11),
     test_blob   VARBINARY(MAX)
-);
+)
+GO
 
-USE master;
+USE master
+GO
 
 IF SCHEMA_ID('advanced') IS NULL
     EXEC ('create schema advanced')
 
-DROP TABLE IF EXISTS master.advanced.order_details;
-DROP TABLE IF EXISTS master.advanced.orders;
-DROP TABLE IF EXISTS master.advanced.deliveries;
-DROP TABLE IF EXISTS master.advanced.invoice_details;
-DROP TABLE IF EXISTS master.advanced.invoices;
-DROP TABLE IF EXISTS master.advanced.products;
-DROP TABLE IF EXISTS master.advanced.customers;
-DROP TABLE IF EXISTS master.advanced.order_types;
-DROP TABLE IF EXISTS master.advanced.product_categories;
-DROP TABLE IF EXISTS master.advanced.customer_types;
+DROP TABLE IF EXISTS master.advanced.order_details
+GO
+DROP TABLE IF EXISTS master.advanced.orders
+GO
+DROP TABLE IF EXISTS master.advanced.deliveries
+GO
+DROP TABLE IF EXISTS master.advanced.invoice_details
+GO
+DROP TABLE IF EXISTS master.advanced.invoices
+GO
+DROP TABLE IF EXISTS master.advanced.products
+GO
+DROP TABLE IF EXISTS master.advanced.customers
+GO
+DROP TABLE IF EXISTS master.advanced.order_types
+GO
+DROP TABLE IF EXISTS master.advanced.product_categories
+GO
+DROP TABLE IF EXISTS master.advanced.customer_types
+GO
 
 CREATE TABLE master.advanced.customer_types
 (
     customer_type_id INT PRIMARY KEY IDENTITY,
     name             VARCHAR(32)
-);
+)
+GO
 
 CREATE TABLE master.advanced.product_categories
 (
     product_category_id INT PRIMARY KEY IDENTITY,
     name                VARCHAR(32)
-);
+)
+GO
 
 CREATE TABLE master.advanced.order_types
 (
     order_type_id INT PRIMARY KEY IDENTITY,
     name          VARCHAR(32)
-);
+)
+GO
 
 CREATE TABLE master.advanced.customers
 (
@@ -82,7 +107,8 @@ CREATE TABLE master.advanced.customers
     customer_type_id INT,
     name             VARCHAR(32),
     CONSTRAINT customers_customer_types_fk FOREIGN KEY (customer_type_id) REFERENCES master.advanced.customer_types
-);
+)
+GO
 
 CREATE TABLE master.advanced.products
 (
@@ -91,7 +117,8 @@ CREATE TABLE master.advanced.products
     part_no             VARCHAR(32)  NOT NULL,
     part_desc           VARCHAR(255) NOT NULL,
     CONSTRAINT products_product_categories_fk FOREIGN KEY (product_category_id) REFERENCES master.advanced.product_categories
-);
+)
+GO
 
 CREATE TABLE master.advanced.invoices
 (
@@ -99,7 +126,8 @@ CREATE TABLE master.advanced.invoices
     customer_id  INT      NOT NULL,
     invoice_date DATETIME NOT NULL,
     CONSTRAINT invoices_customers_fk FOREIGN KEY (customer_id) REFERENCES master.advanced.customers
-);
+)
+GO
 
 CREATE TABLE master.advanced.invoice_details
 (
@@ -108,7 +136,8 @@ CREATE TABLE master.advanced.invoice_details
     product_id        INT NOT NULL,
     CONSTRAINT invoice_details_invoices_fk FOREIGN KEY (invoice_id) REFERENCES master.advanced.invoices,
     CONSTRAINT invoice_details_products_fk FOREIGN KEY (product_id) REFERENCES master.advanced.products
-);
+)
+GO
 
 CREATE TABLE master.advanced.deliveries
 (
@@ -116,7 +145,8 @@ CREATE TABLE master.advanced.deliveries
     invoice_detail_id INT,
     delivery_date     DATETIME NOT NULL,
     CONSTRAINT deliveries_invoice_details_fk FOREIGN KEY (invoice_detail_id) REFERENCES master.advanced.invoice_details
-);
+)
+GO
 
 CREATE TABLE master.advanced.orders
 (
@@ -126,7 +156,8 @@ CREATE TABLE master.advanced.orders
     order_date    DATETIME NOT NULL,
     CONSTRAINT orders_customers_fk FOREIGN KEY (customer_id) REFERENCES master.advanced.customers,
     CONSTRAINT orders_order_types_fk FOREIGN KEY (order_type_id) REFERENCES master.advanced.order_types
-);
+)
+GO
 
 CREATE TABLE master.advanced.order_details
 (

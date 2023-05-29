@@ -27,7 +27,7 @@ public class DbPopTestUtils {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        ConfigurationService configurationService = new ConfigurationService("../files/temp", null, null, null, null, false);
+        ConfigurationService configurationService = new ConfigurationService("../files/temp", null, null, null, null, null, null, false);
 
         try {
             try (Connection connection = configurationService.getSourceConnectionBuilder().createConnection()) {
@@ -59,7 +59,7 @@ public class DbPopTestUtils {
     }
 
     public static void createTargetTables() {
-        ConfigurationService configurationService = new ConfigurationService("../files/temp", null, null, null, null, false);
+        ConfigurationService configurationService = new ConfigurationService("../files/temp", null, null, null, null, null, null, false);
         try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
             SqlExecutor.execute(
                     connection,
