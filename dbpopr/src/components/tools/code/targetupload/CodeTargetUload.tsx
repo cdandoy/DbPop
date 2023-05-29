@@ -26,7 +26,7 @@ export default function CodeTargetUload() {
             .finally(() => setLoading(false));
     }, [])
 
-    return <div id={"code-source-download"}>
+    return <div id={"code-source-download"} className={"container"}>
         <PageHeader title={"Upload to Target"} subtitle={"Upload the tables and sprocs from the SQL files to the Target database"} tool={<img src={upload_target} style={{width: "20em"}} alt={"Upload to Target"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}

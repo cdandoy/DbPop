@@ -73,7 +73,7 @@ public class ChangeDetector {
         });
     }
 
-    static String cleanSql(String sql) {
+    public static String cleanSql(String sql) {
         sql = sql
                 .replace("\r\n", "\n")  // Windows
                 .replace("\r", "\n");   // Mac

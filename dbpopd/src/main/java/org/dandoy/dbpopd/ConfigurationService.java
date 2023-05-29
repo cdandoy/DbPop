@@ -39,6 +39,10 @@ public class ConfigurationService {
     private final File codeDirectory;
     @Getter
     private final File extensionsDirectory;
+    @Getter
+    private final File snapshotFile;
+    @Getter
+    private final File flywayDirectory;
     private DatabaseCache sourceDatabaseCache;
     private DatabaseCache targetDatabaseCache;
     @Getter
@@ -54,6 +58,8 @@ public class ConfigurationService {
             @Property(name = "dbpopd.configuration.setup") @Nullable String setupDirectory,
             @Property(name = "dbpopd.configuration.code") @Nullable String codeDirectory,
             @Property(name = "dbpopd.configuration.extensions") @Nullable String extensionsDirectory,
+            @Property(name = "dbpopd.configuration.snapshot") @Nullable String snapshotFile,
+            @Property(name = "dbpopd.configuration.flyway.path") @Nullable String flywayDirectory,
             @Property(name = "dbpopd.configuration.codeAutoSave", defaultValue = "false") boolean codeAutoSave
     ) {
         configurationDir = toCanonical(new File(configurationPath));
@@ -69,6 +75,8 @@ public class ConfigurationService {
         this.setupDirectory = setupDirectory != null ? toCanonical(new File(setupDirectory)) : new File(configurationDir, "setup");
         this.codeDirectory = codeDirectory != null ? toCanonical(new File(codeDirectory)) : new File(configurationDir, "code");
         this.extensionsDirectory = extensionsDirectory != null ? toCanonical(new File(extensionsDirectory)) : new File(configurationDir, "extensions");
+        this.snapshotFile = snapshotFile != null ? toCanonical(new File(snapshotFile)) : new File(configurationDir, "snapshot");
+        this.flywayDirectory = flywayDirectory != null ? toCanonical(new File(flywayDirectory)) : new File(configurationDir, "flyway");
         this.codeAutoSave = codeAutoSave;
 
         log.info("Configuration directory: {}", toCanonical(this.configurationDir));

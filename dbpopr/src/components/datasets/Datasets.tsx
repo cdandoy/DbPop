@@ -71,7 +71,7 @@ export default function Datasets() {
     }
 
     return (
-        <div id={"datasets-component"}>
+        <div id={"datasets-component"} className={"container"}>
             <LoadingOverlay active={loading}/>
             <PageHeader title={"Datasets"} error={error}/>
             {datasetContentResponse && (

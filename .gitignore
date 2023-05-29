@@ -50,3 +50,4 @@ bin/
 ### Files generated when running DbPop
 /doc/demo/datasets/performance
 /doc/demo/setup/install-complete.txt
+/files/config/.dbpop/baseline

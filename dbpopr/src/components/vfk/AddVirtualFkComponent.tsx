@@ -64,7 +64,7 @@ export default function AddVirtualFkComponent() {
     }
 
     return (
-        <>
+        <div className={"container"}>
             <LoadingOverlay active={saving}/>
             <PageHeader title={"Virtual Foreign Keys"}/>
             <form onSubmit={event => whenSave(event)}>
@@ -120,6 +120,6 @@ export default function AddVirtualFkComponent() {
                     </div>
                 </div>
             </form>
-        </>
+        </div>
     )
 }

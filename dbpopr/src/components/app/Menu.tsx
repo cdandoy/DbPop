@@ -34,6 +34,12 @@ export default function Menu() {
             </li>
 
             <li className="nav-link">
+                <NavLink to={"/deployment"}>
+                    <SidebarMenu text="Deployment" icons="fa fa-rocket"/>
+                </NavLink>
+            </li>
+
+            <li className="nav-link">
                 <NavLink to={"/tools"}>
                     <SidebarMenu text="Tools" icons="fa fa-cogs"/>
                 </NavLink>

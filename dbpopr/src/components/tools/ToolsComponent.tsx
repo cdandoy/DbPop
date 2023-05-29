@@ -43,7 +43,7 @@ function Section({title, description, to, img, disabled}: {
 export default function ToolsComponent() {
     const siteResponse = useContext(SiteContext);
 
-    return <div id={"tools-component"}>
+    return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"} subtitle={"Download and upload code and data"}/>
 

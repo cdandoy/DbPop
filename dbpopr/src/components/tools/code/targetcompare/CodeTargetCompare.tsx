@@ -50,7 +50,7 @@ export default function CodeTargetCompare() {
         return new Date(databaseTime).toLocaleString();
     }
 
-    return <div id={"code-target-compare"}>
+    return <div id={"code-target-compare"} className={"container"}>
         <PageHeader title={"Compare Target"} subtitle={"Compare the tables and sprocs in the Target database with the local SQL files"} tool={<img src={compare_target} style={{width: "20em"}} alt={"Compare Target"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}

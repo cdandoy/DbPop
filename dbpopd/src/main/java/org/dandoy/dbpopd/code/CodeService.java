@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @Singleton
 @Slf4j
 public class CodeService {
-    static final List<String> CODE_TYPES = List.of(
+    public static final List<String> CODE_TYPES = List.of(
             "USER_TABLE", "INDEX", "FOREIGN_KEY_CONSTRAINT", "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER", "VIEW"
     );
 

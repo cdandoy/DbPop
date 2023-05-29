@@ -1,35 +1,16 @@
 package org.dandoy.dbpopd.utils;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import lombok.SneakyThrows;
+import org.apache.commons.io.FileUtils;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 public class IOUtils {
-    public static String toString(File file)  {
-        Path path = file.toPath();
-        try (BufferedReader bufferedReader = Files.newBufferedReader(path)) {
-            StringBuilder sb = new StringBuilder();
-            char[] buffer = new char[8 * 1024];
-            while (true) {
-                int read = bufferedReader.read(buffer, 0, buffer.length);
-                if (read <= 0) break;
-                sb.append(buffer, 0, read);
-            }
-            return sb.toString();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static byte[] toBytes(File file)  {
-        try (InputStream inputStream = new FileInputStream(file)) {
-            byte[] ret = new byte[(int) file.length()];
-            int read = inputStream.read(ret, 0, ret.length);
-            if (read != ret.length) throw new RuntimeException("I did not expect that: Expected to read %d, but read %d".formatted(ret.length, read));
-            return ret;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    @SneakyThrows
+    public static String toString(File file) {
+        return FileUtils.readFileToString(file, StandardCharsets.UTF_8);
     }
 
     public static File toCanonical(File file) {

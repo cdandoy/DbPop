@@ -69,7 +69,7 @@ export function CodeCompare() {
 
     if (!codeDiff) return <div>Loading...</div>
     let lineNo = 0;
-    return <>
+    return <div className={"container"}>
         <PageHeader title={codeDiff.rightName} tool={<Tool/>}/>
         <div id={"code-compare-component"}>
             <div className={"code-compare-col"}>
@@ -89,5 +89,5 @@ export function CodeCompare() {
                 </div>
             </div>
         </div>
-    </>
+    </div>
 }

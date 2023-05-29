@@ -20,7 +20,7 @@ export default function DownloadBulkComponent() {
     const [downloadResponse, setDownloadResponse] = useState<DownloadResponse | null>(null);
     const [dataset, setDataset] = useState("static")
 
-    return <>
+    return <div className={"container"}>
         <PageHeader title={"Bulk Download"}
                     tool={<img src={bulk_download} style={{width: "20em"}} alt={"bulk download"}/>}
                     subtitle={"Download Individual Tables"}
@@ -41,5 +41,5 @@ export default function DownloadBulkComponent() {
             />
         )}
         {downloadResponse == null || <DownloadResultComponent downloadResponse={downloadResponse} setDownloadResponse={setDownloadResponse}/>}
-    </>
+    </div>
 }

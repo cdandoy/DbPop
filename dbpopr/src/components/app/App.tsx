@@ -36,7 +36,7 @@ export default function App() {
                         <WebSocketStateContext.Provider value={messageState}>
                             <Sidebar title1={"DbPop"} title2={`v${process.env.REACT_APP_VERSION}`} menu=<Menu/> bottomMenu=<BottomMenu/> >
                                 <Header/>
-                                <div className="container">
+                                <div id="content-container">
                                     <RoutesComponent/>
                                 </div>
                             </Sidebar>

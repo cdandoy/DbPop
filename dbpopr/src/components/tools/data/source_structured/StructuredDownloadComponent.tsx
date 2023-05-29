@@ -149,7 +149,7 @@ export default function StructuredDownloadComponent() {
         }
     }
 
-    return <>
+    return <div className={"container"}>
         <LoadingOverlay active={loadingDatasets || loadingContent || loadingDependencies || loadingDataFilter || loadingCsv}/>
         <PageHeader title={"Structured Download"}
                     subtitle={"Select the root table"}
@@ -224,5 +224,5 @@ export default function StructuredDownloadComponent() {
         {page === "download-result" && (
             <DownloadResultsComponent downloadResponse={downloadResponse!}/>
         )}
-    </>
+    </div>
 }

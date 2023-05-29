@@ -41,7 +41,7 @@ export default function CodeSourceCompare() {
         return "Same"
     }
 
-    return <div id={"code-source-compare"}>
+    return <div id={"code-source-compare"} className={"container"}>
         <PageHeader title={"Compare Source"} subtitle={"Compare the tables and sprocs in the source database with the local SQL files"} tool={<img src={compare_source} style={{width: "20em"}} alt={"Compare Source"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}

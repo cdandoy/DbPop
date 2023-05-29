@@ -122,6 +122,10 @@ public class DbPopdFileUtils {
         Path directoryPath = directory.toPath();
         Path path = file.toPath();
         Path relativePath = directoryPath.relativize(path);
+        return toObjectIdentifier(relativePath);
+    }
+
+    public static ObjectIdentifier toObjectIdentifier(Path relativePath) {
         if (relativePath.getNameCount() == 4 || relativePath.getNameCount() == 5) {
             String catalog = decodeFileName(relativePath.getName(0).toString());
             String schema = decodeFileName(relativePath.getName(1).toString());

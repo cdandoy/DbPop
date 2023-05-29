@@ -37,7 +37,7 @@ export default function VirtualFksComponent() {
     }
 
     return (
-        <>
+        <div className={"container"}>
             <LoadingOverlay active={loading}/>
             <PageHeader title={"Virtual Foreign Keys"}/>
 
@@ -80,6 +80,6 @@ export default function VirtualFksComponent() {
                     Add Foreign Key
                 </NavLink>
             </div>
-        </>
+        </div>
     )
 }

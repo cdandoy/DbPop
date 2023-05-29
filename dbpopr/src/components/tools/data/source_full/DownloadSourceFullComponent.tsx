@@ -68,12 +68,12 @@ export default function DownloadSourceFullComponent() {
         </>
     }
 
-    return <>
+    return <div className={"container"}>
         <LoadingOverlay active={loading || loadingDatasets}/>
         <PageHeader title={"Full Download"}
                     subtitle={"Download a complete database."}
                     tool={<img src={source_full} style={{width: "20em"}} alt={"full download"}/>}/>
         {downloadResponse === undefined && <DownloadFullInput error={error}/>}
         {downloadResponse !== undefined && <DownloadResultsComponent downloadResponse={downloadResponse}/>}
-    </>
+    </div>
 }

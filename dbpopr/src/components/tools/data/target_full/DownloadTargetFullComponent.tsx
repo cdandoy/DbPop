@@ -66,7 +66,7 @@ export default function DownloadTargetFullComponent() {
         </>
     }
 
-    return <div id={"download-target"}>
+    return <div id={"download-target"} className={"container"}>
         <LoadingOverlay active={loading || loadingDatasets}/>
         <PageHeader title={"Full Target Download"}
                     subtitle={"Download the target database."}

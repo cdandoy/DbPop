@@ -20,7 +20,7 @@ export default function CodeTargetDownload() {
             .finally(() => setLoading(false));
     }, [])
 
-    return <div id={"code-target-download"}>
+    return <div id={"code-target-download"} className={"container"}>
         <PageHeader title={"Download from Target"} subtitle={"Download the tables and sprocs from the Target database to the SQL files"} tool={<img src={download_target} style={{width: "20em"}} alt={"Download from Target"}/>}/>
         <LoadingOverlay active={loading}/>
         {error && <Alert variant={"danger"}>{error}</Alert>}

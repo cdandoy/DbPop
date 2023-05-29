@@ -34,7 +34,7 @@ export default function Dashboard() {
     }
 
     return (
-        <div id={"dashboard"}>
+        <div id={"dashboard"} className={"container"}>
             <LoadingOverlay active={loading}/>
             <div className="text-center m-5">
                 <div style={{display: "flex", justifyContent: "center"}}>
