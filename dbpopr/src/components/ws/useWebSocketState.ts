@@ -2,8 +2,6 @@ import useWebSocket, {ReadyState} from "react-use-websocket";
 import React, {useEffect, useState} from "react";
 import {Change, DefaultChanges, targetChanges} from "../../api/changeApi";
 
-const WS_URL = 'ws://localhost:8080/ws/site';
-
 interface SiteStatus {
     hasCode: boolean;
     codeChanges: number;
@@ -26,17 +24,29 @@ export const WebSocketStateContext = React.createContext<WebSocketState>({
     hasCode: false,
 });
 
+function getWebsocketUrl(): string {
+    const documentUrl = document.URL;
+    const url = new URL(documentUrl);
+    const hostname = url.hostname;
+    const port = url.port;
+    if (hostname === 'localhost' && port === '3000') {
+        return 'ws://localhost:8080/ws/site'
+    } else {
+        return `ws://${hostname}:${port}/ws/site`
+    }
+}
+
 export function useWebSocketState(): WebSocketState {
     const [codeChanged, setCodeChanged] = useState(0);
     const [connected, setConnected] = useState(false);
     const [codeChanges, setCodeChanges] = useState<Change[]>(DefaultChanges);
     const [hasCode, setHasCode] = useState(false);
     const {lastJsonMessage, readyState} = useWebSocket(
-        WS_URL,
+        getWebsocketUrl(),
         {
             shouldReconnect: () => true,
             // reconnectAttempts: 10,
-            reconnectInterval: (attemptNumber) =>
+            reconnectInterval: (attemptNumber: number) =>
                 Math.min(Math.pow(2, attemptNumber) * 1000, 10000),
         }
     );
