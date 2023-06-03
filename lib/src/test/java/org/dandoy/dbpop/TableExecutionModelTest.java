@@ -1,6 +1,7 @@
-package org.dandoy.dbpop.download;
+package org.dandoy.dbpop;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.dandoy.dbpop.download.TableExecutionModel;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -12,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class TableExecutionModelTest {
     @Test
     void name() throws IOException {
-        URL url = getClass().getResource("fullTableExecutionModel1.json");
+        URL url = getClass().getClassLoader().getResource("org/dandoy/dbpop/mssql/fullTableExecutionModel1.json");
         TableExecutionModel tableExecutionModel = new ObjectMapper().readValue(url, TableExecutionModel.class);
         assertNotNull(tableExecutionModel);
         assertEquals(2, tableExecutionModel.constraints().size());

@@ -1,4 +1,4 @@
-package org.dandoy.dbpop.datasets;
+package org.dandoy.dbpop;
 
 import org.junit.jupiter.api.Test;
 

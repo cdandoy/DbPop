@@ -1,5 +1,6 @@
-package org.dandoy.dbpop.database;
+package org.dandoy.dbpop;
 
+import org.dandoy.dbpop.database.ExpressionParser;
 import org.junit.jupiter.api.Test;
 
 class ExpressionParserTest {

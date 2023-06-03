@@ -1,36 +1,56 @@
-package org.dandoy.dbpop.download;
+package org.dandoy.dbpop.mssql;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.dandoy.LocalCredentials;
-import org.dandoy.DbPopUtils;
+import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.database.UrlConnectionBuilder;
+import org.dandoy.dbpop.download.ExecutionContext;
+import org.dandoy.dbpop.download.ExecutionMode;
+import org.dandoy.dbpop.download.ExecutionPlan;
+import org.dandoy.dbpop.download.TableExecutionModel;
+import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.tests.TestUtils;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.condition.EnabledIf;
+import org.testcontainers.containers.MSSQLServerContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Map;
 
-import static org.dandoy.DbPopUtils.*;
+import static org.dandoy.dbpop.mssql.MsSqlTestUtils.*;
 
-@EnabledIf("org.dandoy.DbPopUtils#hasSourceMssql")
+@Testcontainers
 class ExecutionPlanTest {
+    @Container
+    @SuppressWarnings({"rawtypes", "resource"})
+    public static MSSQLServerContainer mssql = new MSSQLServerContainer<>("mcr.microsoft.com/mssql/server:latest").acceptLicense();
 
     public static final File DATASETS_DIRECTORY = new File(TestUtils.TEMP_DIR, "datasets");
-    public static final LocalCredentials LOCAL_CREDENTIALS = LocalCredentials.from("mssql");
     private static Database sourceDatabase;
 
-
     @BeforeAll
-    static void beforeAll() {
-        DbPopUtils.prepareMssqlSource();
-        sourceDatabase = Database.createDatabase(LOCAL_CREDENTIALS.sourceConnectionBuilder());
+    static void beforeAll() throws SQLException {
+        ConnectionBuilder connectionBuilder = new UrlConnectionBuilder(
+                mssql.getJdbcUrl(),
+                mssql.getUsername(),
+                mssql.getPassword()
+        );
+
+        sourceDatabase = Database.createDatabase(connectionBuilder);
+        SqlExecutor.execute(sourceDatabase.getConnection(),
+                "/mssql/createdb.sql",
+                "/mssql/create.sql",
+                "/mssql/insert_data.sql"
+        );
+
         TestUtils.prepareTempConfigDir();
     }
 

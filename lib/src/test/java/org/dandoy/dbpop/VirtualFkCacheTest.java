@@ -1,13 +1,15 @@
-package org.dandoy.dbpop.database;
+package org.dandoy.dbpop;
 
+import org.dandoy.dbpop.database.ForeignKey;
+import org.dandoy.dbpop.database.VirtualFkCache;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import static org.dandoy.DbPopUtils.invoiceDetails;
-import static org.dandoy.DbPopUtils.invoices;
+import static org.dandoy.dbpop.mssql.MsSqlTestUtils.invoiceDetails;
+import static org.dandoy.dbpop.mssql.MsSqlTestUtils.invoices;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
