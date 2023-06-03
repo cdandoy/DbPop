@@ -1,6 +1,5 @@
 package org.dandoy.dbpop.tests.mssql;
 
-import org.apache.commons.io.FileUtils;
 import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.tests.TestUtils;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -71,10 +70,8 @@ public class DbPopContainerSetup implements BeforeAllCallback, BeforeEachCallbac
 
     private void setupConfigDirectory() throws IOException {
         TestUtils.delete(TEMP_DIR);
-        try {
-            FileUtils.copyDirectory(new File("../files/config"), new File("../files/temp"));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if (!TEMP_DIR.mkdirs() && !TEMP_DIR.isDirectory()) {
+            throw new RuntimeException("Failed to create " + TEMP_DIR);
         }
 
         File file = new File(TEMP_DIR, "dbpop.properties");
