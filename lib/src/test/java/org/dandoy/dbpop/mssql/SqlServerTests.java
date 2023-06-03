@@ -112,18 +112,20 @@ public class SqlServerTests {
         populator = Populator.createPopulator(targetDatabase, new File("src/test/resources/mssql"));
         populator.load("base");
         assertCount(targetConnection, "products", 3);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        // A few more tests that can run with the same container
+        testDatasetNotFound();
+        testTableDoesNotExist();
+        testExpressions();
     }
 
-    @Test
-    void datasetNotFound() {
-        assertThrows(RuntimeException.class, () -> {
-            Populator populator = Populator.createPopulator(targetDatabase, new File("src/test/resources/tests/"));
-            populator.load("test_1_1");
-        });
+    private void testExpressions() {
+        Populator populator = Populator.createPopulator(targetDatabase, new File("src/test/resources/test_expressions"));
+        populator.load("base");
     }
 
-    @Test
-    void tableDoesNotExist() {
+    private void testTableDoesNotExist() {
         RuntimeException runtimeException = assertThrows(RuntimeException.class, () -> {
             Populator ignored = Populator.createPopulator(targetDatabase, new File("src/test/resources/test_bad_table"));
             System.out.println("I should not be here");
@@ -132,11 +134,13 @@ public class SqlServerTests {
         assertTrue(runtimeException.getMessage().contains("bad_table.csv"));
     }
 
-    @Test
-    void testExpressions() {
-        Populator populator = Populator.createPopulator(targetDatabase, new File("src/test/resources/test_expressions"));
-        populator.load("base");
+    private void testDatasetNotFound() {
+        assertThrows(RuntimeException.class, () -> {
+            Populator populator = Populator.createPopulator(targetDatabase, new File("src/test/resources/tests/"));
+            populator.load("test_1_1");
+        });
     }
+
 
     @Test
     void testDatabaseFunctionality() {

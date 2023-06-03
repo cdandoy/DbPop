@@ -1,19 +1,19 @@
-package org.dandoy.dbpopd;
+package org.dandoy.dbpopd.mssql;
 
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
 import org.apache.commons.io.IOUtils;
 import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.tests.SqlExecutor;
+import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.CsvAssertionService;
 import org.dandoy.dbpopd.download.DownloadController;
 import org.dandoy.dbpopd.download.DownloadRequest;
 import org.dandoy.dbpopd.download.DownloadResponse;
+import org.dandoy.dbpopd.junit.DbPopTest;
 import org.dandoy.dbpopd.populate.PopulateResult;
 import org.dandoy.dbpopd.populate.PopulateService;
-import org.dandoy.dbpopd.utils.DbPopTestUtils;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.FileOutputStream;
@@ -29,6 +29,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@DbPopTest(withTargetTables = true)
 @MicronautTest(environments = "temp-test")
 public class FullDownloadTest {
     @Inject
@@ -40,22 +41,9 @@ public class FullDownloadTest {
     @Inject
     CsvAssertionService csvAssertionService;
 
-    @BeforeEach
-    void setUp() {
-        DbPopTestUtils.setUp();
-    }
-
     @Test
     @SuppressWarnings("SqlResolve")
     void test() throws SQLException {
-        try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
-            SqlExecutor.execute(
-                    connection,
-                    "/mssql/drop.sql",
-                    "/mssql/create.sql"
-            );
-        }
-
         // source -> dataset
         DownloadResponse bulkStaticResponse = downloadController.bulkDownload(
                 new DownloadController.DownloadBulkBody(
@@ -186,15 +174,7 @@ public class FullDownloadTest {
     }
 
     @Test
-    void downloadTargetTest() throws SQLException, IOException {
-        try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
-            SqlExecutor.execute(
-                    connection,
-                    "/mssql/drop.sql",
-                    "/mssql/create.sql"
-            );
-        }
-
+    void downloadTargetTest() throws IOException {
         downloadController.bulkDownload(
                 new DownloadController.DownloadBulkBody(
                         "static",

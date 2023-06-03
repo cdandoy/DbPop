@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd.data;
+package org.dandoy.dbpopd.mssql;
 
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
@@ -12,6 +12,7 @@ import org.dandoy.dbpopd.CsvAssertionService;
 import org.dandoy.dbpopd.download.DownloadController;
 import org.dandoy.dbpopd.download.DownloadRequest;
 import org.dandoy.dbpopd.download.DownloadResponse;
+import org.dandoy.dbpopd.junit.DbPopTest;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopTestUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@DbPopTest(withTargetTables = true)
 @MicronautTest(environments = "temp-test")
 public class TestOtherDataset {
     @Inject
@@ -37,12 +39,6 @@ public class TestOtherDataset {
     CsvAssertionService csvAssertionService;
     @Inject
     ConfigurationService configurationService;
-
-    @BeforeEach
-    void setUp() {
-        DbPopTestUtils.setUp();
-        DbPopTestUtils.createTargetTables();
-    }
 
     @Test
     void testBulk() throws IOException, SQLException {

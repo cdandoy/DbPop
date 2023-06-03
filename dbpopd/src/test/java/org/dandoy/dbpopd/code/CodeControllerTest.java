@@ -6,6 +6,7 @@ import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.download.DownloadController;
 import org.dandoy.dbpopd.download.DownloadResponse;
+import org.dandoy.dbpopd.junit.DbPopTest;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopTestUtils;
 import org.dandoy.dbpopd.utils.IOUtils;
@@ -20,6 +21,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * This test uses package private classes, so we can't move it out of this package.
+ */
+@DbPopTest
 @MicronautTest(environments = "temp-test")
 class CodeControllerTest {
     @Inject
@@ -32,11 +37,6 @@ class CodeControllerTest {
     ChangeDetector changeDetector;
     @Inject
     PopulateService populateService;
-
-    @BeforeAll
-    static void setUp() {
-        DbPopTestUtils.setUp();
-    }
 
     @SuppressWarnings("SqlResolve")
     @Test
