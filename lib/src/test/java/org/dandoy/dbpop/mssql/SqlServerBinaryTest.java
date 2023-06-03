@@ -1,16 +1,13 @@
 package org.dandoy.dbpop.mssql;
 
-import org.dandoy.dbpop.database.ConnectionBuilder;
-import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.download.TableDownloader;
-import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.tests.TestUtils;
+import org.dandoy.dbpop.tests.mssql.DbPopContainerTest;
 import org.dandoy.dbpop.upload.Populator;
 import org.dandoy.dbpop.utils.FileUtils;
 import org.junit.jupiter.api.*;
-import org.testcontainers.containers.MSSQLServerContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,56 +23,20 @@ import static org.dandoy.dbpop.mssql.MsSqlTestUtils.customers;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Testcontainers
+@DbPopContainerTest(source = true, target = true, withTargetTables = true)
 public class SqlServerBinaryTest {
-    @Container
-    @SuppressWarnings({"rawtypes", "resource"})
-    public static MSSQLServerContainer sourceMssql = new MSSQLServerContainer<>("mcr.microsoft.com/mssql/server:latest").acceptLicense();
-    private static DatabaseProxy sourceDatabase;
-    @Container
-    @SuppressWarnings({"rawtypes", "resource"})
-    public MSSQLServerContainer targetMssql = new MSSQLServerContainer<>("mcr.microsoft.com/mssql/server:latest").acceptLicense();
-    private DatabaseProxy targetDatabase;
-
-    @BeforeAll
-    static void beforeAll() throws SQLException {
-        ConnectionBuilder connectionBuilder = new UrlConnectionBuilder(
-                sourceMssql.getJdbcUrl(),
-                sourceMssql.getUsername(),
-                sourceMssql.getPassword()
-        );
-        sourceDatabase = Database.createDatabase(connectionBuilder);
-        Connection sourceConnection = sourceDatabase.getConnection();
-        SqlExecutor.execute(sourceConnection,
-                "/mssql/createdb.sql",
-                "/mssql/create.sql",
-                "/mssql/insert_data.sql"
-        );
-    }
-
-    @AfterAll
-    static void afterAll() {
-        sourceDatabase.close();
-    }
+    private  Database sourceDatabase;
+    private  Database targetDatabase;
 
     @BeforeEach
-    void setUp() throws SQLException {
-        ConnectionBuilder connectionBuilder = new UrlConnectionBuilder(
-                targetMssql.getJdbcUrl(),
-                targetMssql.getUsername(),
-                targetMssql.getPassword()
-        );
-        targetDatabase = Database.createDatabase(connectionBuilder);
-        Connection targetConnection = targetDatabase.getConnection();
-        SqlExecutor.execute(targetConnection,
-                "/mssql/createdb.sql",
-                "/mssql/create.sql",
-                "/mssql/insert_data.sql"
-        );
+    void setUp() {
+        sourceDatabase = DbPopDatabaseSetup.getSourceDatabase();
+        targetDatabase = DbPopDatabaseSetup.getTargetDatabase();
     }
 
     @AfterEach
     void tearDown() {
+        sourceDatabase.close();
         targetDatabase.close();
     }
 

@@ -1,50 +1,34 @@
 package org.dandoy.dbpop.mssql;
 
-import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.Table;
 import org.dandoy.dbpop.download.ExecutionMode;
 import org.dandoy.dbpop.download.TableDownloader;
-import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.tests.TestUtils;
-import org.junit.jupiter.api.*;
-import org.testcontainers.containers.MSSQLServerContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.dandoy.dbpop.tests.mssql.DbPopContainerTest;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
 
 import static org.dandoy.dbpop.mssql.MsSqlTestUtils.invoiceDetails;
 import static org.dandoy.dbpop.mssql.MsSqlTestUtils.invoices;
 
-@Testcontainers
+@DbPopContainerTest(source = true, target = false)
 class TableDownloaderTest {
     private static final File TEST_DIR = new File("src/test/resources/mssql/download");
-    @Container
-    @SuppressWarnings({"rawtypes", "resource"})
-    public static MSSQLServerContainer mssqlSource = new MSSQLServerContainer<>("mcr.microsoft.com/mssql/server:latest").acceptLicense();
-    private static DatabaseProxy sourceDatabase;
+    private static Database sourceDatabase;
 
-    @BeforeAll
-    static void beforeAll() throws SQLException {
-        ConnectionBuilder sourceConnectionBuilder = new UrlConnectionBuilder(
-                mssqlSource.getJdbcUrl(),
-                mssqlSource.getUsername(),
-                mssqlSource.getPassword()
-        );
-        sourceDatabase = Database.createDatabase(sourceConnectionBuilder);
-        Connection connection = sourceDatabase.getConnection();
-        SqlExecutor.execute(connection,
-                "/mssql/createdb.sql",
-                "/mssql/create.sql",
-                "/mssql/insert_data.sql"
-        );
+    @BeforeEach
+    void setUp() {
+        sourceDatabase = DbPopDatabaseSetup.getSourceDatabase();
     }
 
-    @AfterAll
-    static void afterAll() {
+    @AfterEach
+    void tearDown() {
         sourceDatabase.close();
     }
 

@@ -2,71 +2,41 @@ package org.dandoy.dbpop.mssql;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpop.database.UrlConnectionBuilder;
 import org.dandoy.dbpop.download.ExecutionContext;
 import org.dandoy.dbpop.download.ExecutionMode;
 import org.dandoy.dbpop.download.ExecutionPlan;
 import org.dandoy.dbpop.download.TableExecutionModel;
-import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.tests.TestUtils;
+import org.dandoy.dbpop.tests.mssql.DbPopContainerTest;
 import org.intellij.lang.annotations.Language;
-import org.junit.jupiter.api.*;
-import org.testcontainers.containers.MSSQLServerContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Map;
 
 import static org.dandoy.dbpop.mssql.MsSqlTestUtils.*;
 
-@Testcontainers
+@DbPopContainerTest(source = true, target = false)
 class ExecutionPlanTest {
-    @Container
-    @SuppressWarnings({"rawtypes", "resource"})
-    public static MSSQLServerContainer mssql = new MSSQLServerContainer<>("mcr.microsoft.com/mssql/server:latest").acceptLicense();
-
     public static final File DATASETS_DIRECTORY = new File(TestUtils.TEMP_DIR, "datasets");
     private static Database sourceDatabase;
 
     @BeforeAll
-    static void beforeAll() throws SQLException {
-        ConnectionBuilder connectionBuilder = new UrlConnectionBuilder(
-                mssql.getJdbcUrl(),
-                mssql.getUsername(),
-                mssql.getPassword()
-        );
-
-        sourceDatabase = Database.createDatabase(connectionBuilder);
-        SqlExecutor.execute(sourceDatabase.getConnection(),
-                "/mssql/createdb.sql",
-                "/mssql/create.sql",
-                "/mssql/insert_data.sql"
-        );
-
-        TestUtils.prepareTempConfigDir();
+    static void beforeAll() {
+        sourceDatabase = DbPopDatabaseSetup.getSourceDatabase();
     }
 
     @AfterAll
     static void afterAll() {
         sourceDatabase.close();
-    }
-
-    @BeforeEach
-    void setUp() {
-        TestUtils.delete(new File(DATASETS_DIRECTORY, "download"));
-    }
-
-    @AfterEach
-    void tearDown() {
-        TestUtils.delete(new File(DATASETS_DIRECTORY, "download"));
     }
 
     @Test

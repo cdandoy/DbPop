@@ -8,16 +8,15 @@ import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.DatabaseVfksController;
 import org.dandoy.dbpopd.database.DatabaseController;
 import org.dandoy.dbpopd.download.DownloadController;
-import org.dandoy.dbpopd.junit.DbPopTest;
+import org.dandoy.dbpop.tests.mssql.DbPopContainerTest;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@DbPopTest
+@DbPopContainerTest(source = true, target = true)
 @MicronautTest(environments = "temp-test")
 class VfkTest {
     @Inject

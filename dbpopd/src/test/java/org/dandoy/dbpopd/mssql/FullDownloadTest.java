@@ -5,12 +5,12 @@ import jakarta.inject.Inject;
 import org.apache.commons.io.IOUtils;
 import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.tests.mssql.DbPopContainerTest;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.CsvAssertionService;
 import org.dandoy.dbpopd.download.DownloadController;
 import org.dandoy.dbpopd.download.DownloadRequest;
 import org.dandoy.dbpopd.download.DownloadResponse;
-import org.dandoy.dbpopd.junit.DbPopTest;
 import org.dandoy.dbpopd.populate.PopulateResult;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.junit.jupiter.api.Assertions;
@@ -29,7 +29,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@DbPopTest(withTargetTables = true)
+@DbPopContainerTest(source = true, target = true, withTargetTables = true)
 @MicronautTest(environments = "temp-test")
 public class FullDownloadTest {
     @Inject

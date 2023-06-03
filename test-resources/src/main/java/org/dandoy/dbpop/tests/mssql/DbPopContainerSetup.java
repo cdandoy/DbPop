@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd.junit;
+package org.dandoy.dbpop.tests.mssql;
 
 import org.apache.commons.io.FileUtils;
 import org.dandoy.dbpop.tests.SqlExecutor;
@@ -18,22 +18,27 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 @SuppressWarnings("rawtypes")
-public class DbPopSetup implements BeforeAllCallback, BeforeEachCallback, ExtensionContext.Store.CloseableResource {
+public class DbPopContainerSetup implements BeforeAllCallback, BeforeEachCallback, ExtensionContext.Store.CloseableResource {
     public static final File TEMP_DIR = new File("../files/temp");
-    static MSSQLServerContainer sourceContainer;
-    static MSSQLServerContainer targetContainer;
+    private static MSSQLServerContainer sourceContainer;
+    private static MSSQLServerContainer targetContainer;
 
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
-        if (sourceContainer == null) {
-            sourceContainer = new MSSQLServerContainer("mcr.microsoft.com/mssql/server:latest").acceptLicense();
-            sourceContainer.start();
-            resetSourceDatabase();
+        DbPopContainerTest dbPopContainerTest = context.getTestClass().orElse(Object.class).getAnnotation(DbPopContainerTest.class);
+        if (dbPopContainerTest != null && dbPopContainerTest.source()) {
+            if (sourceContainer == null) {
+                sourceContainer = new MSSQLServerContainer("mcr.microsoft.com/mssql/server:latest").acceptLicense();
+                sourceContainer.start();
+                resetSourceDatabase();
+            }
         }
 
-        if (targetContainer == null) {
-            targetContainer = new MSSQLServerContainer("mcr.microsoft.com/mssql/server:latest").acceptLicense();
-            targetContainer.start();
+        if (dbPopContainerTest != null && dbPopContainerTest.target()) {
+            if (targetContainer == null) {
+                targetContainer = new MSSQLServerContainer("mcr.microsoft.com/mssql/server:latest").acceptLicense();
+                targetContainer.start();
+            }
         }
 
         setupConfigDirectory();
@@ -55,10 +60,12 @@ public class DbPopSetup implements BeforeAllCallback, BeforeEachCallback, Extens
     public void beforeEach(ExtensionContext context) throws Exception {
         setupConfigDirectory();
 
-        resetTargetDatabase();
-        DbPopTest dbPopTest = context.getTestClass().orElse(Object.class).getAnnotation(DbPopTest.class);
-        if (dbPopTest != null && dbPopTest.withTargetTables()) {
-            createTargetTables();
+        if (targetContainer != null) {
+            resetTargetDatabase();
+            DbPopContainerTest dbPopContainerTest = context.getTestClass().orElse(Object.class).getAnnotation(DbPopContainerTest.class);
+            if (dbPopContainerTest != null && dbPopContainerTest.withTargetTables()) {
+                createTargetTables();
+            }
         }
     }
 
@@ -77,12 +84,24 @@ public class DbPopSetup implements BeforeAllCallback, BeforeEachCallback, Extens
                 properties.load(fileInputStream);
             }
         }
-        properties.setProperty("SOURCE_JDBCURL", sourceContainer == null ? null : sourceContainer.getJdbcUrl());
-        properties.setProperty("SOURCE_USERNAME", sourceContainer == null ? null : sourceContainer.getUsername());
-        properties.setProperty("SOURCE_PASSWORD", sourceContainer == null ? null : sourceContainer.getPassword());
-        properties.setProperty("TARGET_JDBCURL", targetContainer == null ? null : targetContainer.getJdbcUrl());
-        properties.setProperty("TARGET_USERNAME", targetContainer == null ? null : targetContainer.getUsername());
-        properties.setProperty("TARGET_PASSWORD", targetContainer == null ? null : targetContainer.getPassword());
+        if (sourceContainer != null) {
+            properties.setProperty("SOURCE_JDBCURL", sourceContainer.getJdbcUrl());
+            properties.setProperty("SOURCE_USERNAME", sourceContainer.getUsername());
+            properties.setProperty("SOURCE_PASSWORD", sourceContainer.getPassword());
+        } else {
+            properties.remove("SOURCE_JDBCURL");
+            properties.remove("SOURCE_USERNAME");
+            properties.remove("SOURCE_PASSWORD");
+        }
+        if (targetContainer != null) {
+            properties.setProperty("TARGET_JDBCURL", targetContainer.getJdbcUrl());
+            properties.setProperty("TARGET_USERNAME", targetContainer.getUsername());
+            properties.setProperty("TARGET_PASSWORD", targetContainer.getPassword());
+        } else {
+            properties.remove("TARGET_JDBCURL");
+            properties.remove("TARGET_USERNAME");
+            properties.remove("TARGET_PASSWORD");
+        }
         try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
             properties.store(fileOutputStream, null);
         }
@@ -101,7 +120,7 @@ public class DbPopSetup implements BeforeAllCallback, BeforeEachCallback, Extens
         }
     }
 
-    public void resetTargetDatabase() throws SQLException {
+    private void resetTargetDatabase() throws SQLException {
         try (Connection connection = targetContainer.createConnection("")) {
             execute(connection, "DROP DATABASE IF EXISTS dbpop");
             execute(connection, "CREATE DATABASE dbpop");
@@ -120,12 +139,19 @@ public class DbPopSetup implements BeforeAllCallback, BeforeEachCallback, Extens
         }
     }
 
-
     private static void execute(Connection connection, String stmt) {
         try (PreparedStatement preparedStatement = connection.prepareStatement(stmt)) {
             preparedStatement.execute();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to execute " + stmt, e);
         }
+    }
+
+    public static MSSQLServerContainer<?> getSourceContainer() {
+        return sourceContainer;
+    }
+
+    public static MSSQLServerContainer<?> getTargetContainer() {
+        return targetContainer;
     }
 }

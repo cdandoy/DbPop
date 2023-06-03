@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd.junit;
+package org.dandoy.dbpop.tests.mssql;
 
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -9,7 +9,11 @@ import java.lang.annotation.Target;
 
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
-@ExtendWith({DbPopSetup.class})
-public @interface DbPopTest {
+@ExtendWith({DbPopContainerSetup.class})
+public @interface DbPopContainerTest {
+    boolean source();
+
+    boolean target();
+
     boolean withTargetTables() default false;
 }

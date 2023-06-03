@@ -1,14 +1,10 @@
 package org.dandoy.dbpop.mssql;
 
 import org.dandoy.dbpop.database.*;
-import org.dandoy.dbpop.tests.SqlExecutor;
+import org.dandoy.dbpop.tests.mssql.DbPopContainerTest;
 import org.dandoy.dbpop.upload.Populator;
 import org.jetbrains.annotations.Nullable;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.MSSQLServerContainer;
-import org.testcontainers.junit.jupiter.Container;
+import org.junit.jupiter.api.*;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.File;
@@ -25,29 +21,16 @@ import static org.dandoy.dbpop.mssql.MsSqlTestUtils.customers;
 import static org.dandoy.dbpop.mssql.MsSqlTestUtils.invoices;
 import static org.junit.jupiter.api.Assertions.*;
 
+@DbPopContainerTest(source = false, target = true, withTargetTables = true)
 @Testcontainers
 public class SqlServerTests {
-
-    @Container
-    @SuppressWarnings({"rawtypes", "resource"})
-    public MSSQLServerContainer targetMssql = new MSSQLServerContainer<>("mcr.microsoft.com/mssql/server:latest").acceptLicense();
-    private DatabaseProxy targetDatabase;
+    private Database targetDatabase;
     private Connection targetConnection;
 
     @BeforeEach
     void setUp() throws SQLException {
-        ConnectionBuilder connectionBuilder = new UrlConnectionBuilder(
-                targetMssql.getJdbcUrl(),
-                targetMssql.getUsername(),
-                targetMssql.getPassword()
-        );
-        targetDatabase = Database.createDatabase(connectionBuilder);
+        targetDatabase = DbPopDatabaseSetup.getTargetDatabase();
         targetConnection = targetDatabase.getConnection();
-        SqlExecutor.execute(targetConnection,
-                "/mssql/createdb.sql",
-                "/mssql/create.sql",
-                "/mssql/insert_data.sql"
-        );
     }
 
     @AfterEach
