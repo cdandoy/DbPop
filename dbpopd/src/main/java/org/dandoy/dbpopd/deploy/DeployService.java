@@ -236,14 +236,23 @@ public class DeployService {
         try {
             Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier = new HashMap<>();
             Database targetDatabase = configurationService.getTargetDatabaseCache();
-            try (BufferedWriter deployWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(deployFile), StandardCharsets.UTF_8))) {
-                try (BufferedWriter undeployWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(undeployFile), StandardCharsets.UTF_8))) {
-                    consumeChanges((objectIdentifier, snapshotSql, fileSql) -> {
-                        boolean succeeded = appendSql(targetDatabase, deployWriter, objectIdentifier, snapshotSql, fileSql) &&
-                                            appendSql(targetDatabase, undeployWriter, objectIdentifier, fileSql, snapshotSql);
-                        transitionedObjectIdentifier.put(objectIdentifier, succeeded);
-                        return true;
-                    });
+            List<String> deploySqls = new ArrayList<>();
+            List<String> undeploySqls = new ArrayList<>();
+            consumeChanges((objectIdentifier, snapshotSql, fileSql) -> {
+                boolean succeeded = appendSql(targetDatabase, deploySqls, objectIdentifier, snapshotSql, fileSql) &&
+                                    appendSql(targetDatabase, undeploySqls, objectIdentifier, fileSql, snapshotSql);
+                transitionedObjectIdentifier.put(objectIdentifier, succeeded);
+                return true;
+            });
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(deployFile), StandardCharsets.UTF_8))) {
+                for (String sql : deploySqls) {
+                    writer.append(sql);
+                }
+            }
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(undeployFile), StandardCharsets.UTF_8))) {
+                Collections.reverse(undeploySqls);
+                for (String sql : undeploySqls) {
+                    writer.append(sql);
                 }
             }
             return transitionedObjectIdentifier;
@@ -256,16 +265,21 @@ public class DeployService {
 
     public GenerateFlywayScriptsResult generateFlywayScripts(String name) {
         File flywayFile = getNextFlywayFile(name);
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(flywayFile), StandardCharsets.UTF_8))) {
-            Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier = new HashMap<>();
-            Database targetDatabase = configurationService.getTargetDatabaseCache();
-            consumeChanges((objectIdentifier, snapshotSql, fileSql) -> {
-                boolean succeeded = appendSql(targetDatabase, writer, objectIdentifier, snapshotSql, fileSql);
-                transitionedObjectIdentifier.put(objectIdentifier, succeeded);
-                return true;
-            });
-            createSnapshot(DeltaType.FLYWAY);
+        List<String> sqls = new ArrayList<>();
+        Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier = new HashMap<>();
+        Database targetDatabase = configurationService.getTargetDatabaseCache();
+        consumeChanges((objectIdentifier, snapshotSql, fileSql) -> {
+            boolean succeeded = appendSql(targetDatabase, sqls, objectIdentifier, snapshotSql, fileSql);
+            transitionedObjectIdentifier.put(objectIdentifier, succeeded);
+            return true;
+        });
 
+        createSnapshot(DeltaType.FLYWAY);
+
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(flywayFile), StandardCharsets.UTF_8))) {
+            for (String sql : sqls) {
+                writer.append(sql);
+            }
             String filename = flywayFile.toString();
             if (filename.startsWith("/var/opt/dbpop/")) {
                 filename = filename.substring("/var/opt/dbpop/".length());
@@ -279,17 +293,16 @@ public class DeployService {
         return null;
     }
 
-    private static boolean appendSql(Database database, Writer writer, ObjectIdentifier objectIdentifier, String fromSql, String toSql) throws IOException {
+    private static boolean appendSql(Database database, List<String> sqls, ObjectIdentifier objectIdentifier, String fromSql, String toSql) throws IOException {
         TransitionGenerator transitionGenerator = database.getTransitionGenerator(objectIdentifier.getType());
         Transition transition = transitionGenerator.generateTransition(objectIdentifier, fromSql, toSql);
         if (transition.getError() == null) {
             for (String sql : transition.getSqls()) {
-                writer.append(sql)
-                        .append("\nGO\n");
+                sqls.add(sql + "\nGO\n");
             }
             return true;
         } else {
-            writer.append("""
+            sqls.add("""
                     /*
                         ERROR: %s
                     %s

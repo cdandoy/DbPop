@@ -17,7 +17,7 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 @SuppressWarnings("rawtypes")
-public class DbPopContainerSetup implements BeforeAllCallback, BeforeEachCallback, ExtensionContext.Store.CloseableResource {
+public class DbPopContainerSetup implements BeforeAllCallback, BeforeEachCallback {
     public static final File TEMP_DIR = new File("../files/temp");
     private static MSSQLServerContainer sourceContainer;
     private static MSSQLServerContainer targetContainer;
@@ -41,18 +41,6 @@ public class DbPopContainerSetup implements BeforeAllCallback, BeforeEachCallbac
         }
 
         setupConfigDirectory();
-    }
-
-    @Override
-    public void close() {
-        if (sourceContainer != null) {
-            sourceContainer.stop();
-            sourceContainer = null;
-        }
-        if (targetContainer != null) {
-            targetContainer.stop();
-            targetContainer = null;
-        }
     }
 
     @Override

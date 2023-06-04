@@ -1,6 +1,5 @@
 package org.dandoy.dbpop.database.mssql;
 
-import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.Transition;
 import org.dandoy.dbpop.database.TransitionGenerator;
@@ -8,10 +7,10 @@ import org.dandoy.dbpop.database.TransitionGenerator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class ChangeCreateToAlterTransitionGenerator extends TransitionGenerator {
+public class ChangeCreateToAlterTransitionGenerator extends TransitionGenerator {
     private static final Pattern CREATE_PATTERN = Pattern.compile("(.*)\\bCREATE(\\s+(?:FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b.*)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
-    public ChangeCreateToAlterTransitionGenerator(Database database) {
+    public ChangeCreateToAlterTransitionGenerator(SqlServerDatabase database) {
         super(database);
     }
 

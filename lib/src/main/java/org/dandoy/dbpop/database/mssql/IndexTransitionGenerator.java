@@ -4,7 +4,7 @@ import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.Transition;
 import org.dandoy.dbpop.database.TransitionGenerator;
 
-class IndexTransitionGenerator extends TransitionGenerator {
+public class IndexTransitionGenerator extends TransitionGenerator {
     public IndexTransitionGenerator(SqlServerDatabase database) {
         super(database);
     }
@@ -13,12 +13,8 @@ class IndexTransitionGenerator extends TransitionGenerator {
     protected void drop(ObjectIdentifier objectIdentifier, String fromSql, Transition transition) {
         ObjectIdentifier parent = objectIdentifier.getParent();
         transition.addSql("DROP INDEX %s ON %s".formatted(
-                objectIdentifier.getName(),
-                database.quote(".",
-                        parent.getCatalog(),
-                        parent.getSchema(),
-                        objectIdentifier.getName()
-                )
+                database.quote(objectIdentifier.getName()),
+                database.quote(parent)
         ));
     }
 }
