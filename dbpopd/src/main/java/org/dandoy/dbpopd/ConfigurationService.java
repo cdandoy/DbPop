@@ -75,7 +75,7 @@ public class ConfigurationService {
         this.setupDirectory = setupDirectory != null ? toCanonical(new File(setupDirectory)) : new File(configurationDir, "setup");
         this.codeDirectory = codeDirectory != null ? toCanonical(new File(codeDirectory)) : new File(configurationDir, "code");
         this.extensionsDirectory = extensionsDirectory != null ? toCanonical(new File(extensionsDirectory)) : new File(configurationDir, "extensions");
-        this.snapshotFile = snapshotFile != null ? toCanonical(new File(snapshotFile)) : new File(configurationDir, "snapshot");
+        this.snapshotFile = snapshotFile != null ? toCanonical(new File(snapshotFile)) : new File(configurationDir, "snapshot.zip");
         this.flywayDirectory = flywayDirectory != null ? toCanonical(new File(flywayDirectory)) : new File(configurationDir, "flyway");
         this.codeAutoSave = codeAutoSave;
 
