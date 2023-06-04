@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 public class SqlServerDatabase extends DefaultDatabase {
     private static final Set<String> SYS_SCHEMAS = new HashSet<>(Arrays.asList("guest", "INFORMATION_SCHEMA", "sys", "db_owner", "db_accessadmin", "db_securityadmin", "db_ddladmin", "db_backupoperator", "db_datareader", "db_datawriter", "db_denydatareader", "db_denydatawriter"));
     private static final boolean QUOTE_WITH_BRACKETS = true;
+    private final Transitions transitions = new Transitions(this);
 
     public SqlServerDatabase(ConnectionBuilder connectionBuilder) {
         super(connectionBuilder);
@@ -760,6 +761,22 @@ public class SqlServerDatabase extends DefaultDatabase {
                 quote(foreignKey.getFkTableName()),
                 quote(foreignKey.getName())
         ));
+    }
+
+    @Override
+    public TransitionGenerator getTransitionGenerator(String objectType) {
+        return switch (objectType) {
+            case "USER_TABLE" -> transitions.tableTransitionGenerator;
+            case "INDEX" -> transitions.indexTransitionGenerator;
+            case "FOREIGN_KEY_CONSTRAINT" -> transitions.foreignKeyTransitionGenerator;
+            case "SQL_INLINE_TABLE_VALUED_FUNCTION",
+                    "SQL_SCALAR_FUNCTION",
+                    "SQL_STORED_PROCEDURE",
+                    "SQL_TABLE_VALUED_FUNCTION",
+                    "SQL_TRIGGER",
+                    "VIEW" -> transitions.changeCreateToAlterTransitionGenerator;
+            default -> super.getTransitionGenerator(objectType);
+        };
     }
 
     @Override

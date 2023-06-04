@@ -13,8 +13,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.zalando.problem.Problem;
 
-import java.io.File;
-
 @Controller("/deploy/")
 @Slf4j
 public class DeployController {
@@ -64,9 +62,9 @@ public class DeployController {
 
     @Post("/script/sql")
     public SystemFile scriptSql() {
-        File zipFile = deployService.generateSqlScripts();
+        DeployService.GenerateSqlScriptsResult result = deployService.generateSqlScripts();
 
-        return new SystemFile(zipFile)
+        return new SystemFile(result.zipFile())
                 .attach("deployment.zip");
     }
 
@@ -76,7 +74,7 @@ public class DeployController {
 
     @Post("/script/flyway")
     public ScriptFlywayResponse scriptFlyway(@Body ScriptFlywayRequest request) {
-        String flywayPath = deployService.generateFlywayScripts(StringUtils.isBlank(request.name()) ? "generated" : request.name());
-        return new ScriptFlywayResponse(flywayPath);
+        DeployService.GenerateFlywayScriptsResult result = deployService.generateFlywayScripts(StringUtils.isBlank(request.name()) ? "generated" : request.name());
+        return new ScriptFlywayResponse(result.filename());
     }
 }

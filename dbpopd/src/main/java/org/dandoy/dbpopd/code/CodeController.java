@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.TableName;
+import org.dandoy.dbpop.utils.StringUtils;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.IOUtils;
@@ -174,7 +175,7 @@ public class CodeController {
     private String getFileDefinition(ObjectIdentifier objectIdentifier) {
         File file = DbPopdFileUtils.toFile(configurationService.getCodeDirectory(), objectIdentifier);
         if (file != null && file.isFile()) {
-            return normalizeEOL(IOUtils.toString(file));
+            return StringUtils.normalizeEOL(IOUtils.toString(file));
         }
         return "";
     }
@@ -183,12 +184,6 @@ public class CodeController {
         Database targetDatabase = configurationService.getTargetDatabaseCache();
         String definition = targetDatabase.getDefinition(objectIdentifier);
         if (definition == null) return "";
-        return normalizeEOL(definition);
-    }
-
-    private static String normalizeEOL(String s) {
-        return s
-                .replace("\r\n", "\n")  // Windows
-                .replace("\r", "\n");   // Mac
+        return StringUtils.normalizeEOL(definition);
     }
 }

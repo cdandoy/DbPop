@@ -227,6 +227,11 @@ public class DatabaseCache extends Database {
     }
 
     @Override
+    public TransitionGenerator getTransitionGenerator(String objectType) {
+        return delegate.getTransitionGenerator(objectType);
+    }
+
+    @Override
     public void createCatalog(String catalog) {
         delegate.createCatalog(catalog);
     }

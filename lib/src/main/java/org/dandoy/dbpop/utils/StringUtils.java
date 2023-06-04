@@ -33,4 +33,11 @@ public class StringUtils {
                 .mapToObj(it -> s)
                 .collect(Collectors.joining(separator));
     }
+
+    public static String normalizeEOL(String s) {
+        if (s == null) return null;
+        return s
+                .replace("\r\n", "\n")  // Windows
+                .replace("\r", "\n");   // Mac
+    }
 }

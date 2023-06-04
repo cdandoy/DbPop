@@ -14,6 +14,16 @@ import java.util.*;
 public abstract class Database implements AutoCloseable {
 
     public static final int ROW_COUNT_MAX = 1000;
+    private final TransitionGenerator INVALID_TRANSITION_GENERATOR;
+
+    protected Database() {
+        INVALID_TRANSITION_GENERATOR = new TransitionGenerator(this) {
+            @Override
+            protected void generateTransition(ObjectIdentifier objectIdentifier, String fromSql, String toSql, Transition transition) {
+                transition.setError("%s Cannot generate the transition of %s", Database.this.getClass().getSimpleName(), objectIdentifier.toQualifiedName());
+            }
+        };
+    }
 
     public static DatabaseProxy createDatabase(ConnectionBuilder connectionBuilder) {
         return createDatabase(connectionBuilder, VirtualFkCache.createVirtualFkCache());
@@ -101,6 +111,10 @@ public abstract class Database implements AutoCloseable {
     public abstract void enableForeignKey(ForeignKey foreignKey);
 
     public abstract void disableForeignKey(ForeignKey foreignKey);
+
+    public TransitionGenerator getTransitionGenerator(String objectType) {
+        return INVALID_TRANSITION_GENERATOR;
+    }
 
     public void createCatalog(String catalog) {
         throw new NotImplementedException();

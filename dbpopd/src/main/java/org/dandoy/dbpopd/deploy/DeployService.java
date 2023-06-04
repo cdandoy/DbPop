@@ -11,6 +11,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.CloseShieldOutputStream;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.ObjectIdentifier;
+import org.dandoy.dbpop.database.Transition;
+import org.dandoy.dbpop.database.TransitionGenerator;
 import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.code.ChangeDetector;
 import org.dandoy.dbpopd.code.CodeService;
@@ -34,8 +36,6 @@ import java.util.zip.ZipOutputStream;
 @Singleton
 @Slf4j
 public class DeployService {
-    // We do not support altering tables for example.
-    public static final List<String> CAN_MODIFY = List.of("SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER", "VIEW");
     private final ConfigurationService configurationService;
     private final File codeDirectory;
     private final DbPopdFileUtils.FileToObjectIdentifierResolver fileToObjectIdentifierResolver;
@@ -123,7 +123,7 @@ public class DeployService {
 
     @SneakyThrows
     private Collection<Path> getPathsByPriority() {
-        Map<Integer, Path> pathsByPriority = new TreeMap<>();
+        Map<Integer, List<Path>> pathsByPriority = new TreeMap<>();
         if (codeDirectory.isDirectory()) {
             Path codeDirectoryPath = codeDirectory.toPath();
             Files.walkFileTree(codeDirectoryPath, new SimpleFileVisitor<>() {
@@ -133,14 +133,15 @@ public class DeployService {
                     if (objectIdentifier != null) {
                         int priority = CodeService.CODE_TYPES.indexOf(objectIdentifier.getType());
                         if (priority >= 0) {
-                            pathsByPriority.put(priority, path);
+                            pathsByPriority.computeIfAbsent(priority, integer -> new ArrayList<>())
+                                    .add(path);
                         }
                     }
                     return FileVisitResult.CONTINUE;
                 }
             });
         }
-        return pathsByPriority.values();
+        return pathsByPriority.values().stream().flatMap(Collection::stream).toList();
     }
 
     interface ChangeConsumer {
@@ -163,18 +164,18 @@ public class DeployService {
                     File file = new File(codeDirectory, entryName);
                     ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(codeDirectory, file);
                     if (objectIdentifier != null) {
-                        if (CAN_MODIFY.contains(objectIdentifier.getType())) {
-                            if (file.exists()) {
-                                pathsByPriority.remove(file.toPath());
-                                String fileSql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
-                                String cleanSnapshotSql = ChangeDetector.cleanSql(snapshotSql);
-                                String cleanFileSql = ChangeDetector.cleanSql(fileSql);
-                                if (!cleanSnapshotSql.equals(cleanFileSql)) {
-                                    keepRunning = changeConsumer.accept(objectIdentifier, snapshotSql, fileSql);
-                                }
-                            } else {
-                                keepRunning = changeConsumer.accept(objectIdentifier, snapshotSql, null);
+                        if (file.exists()) {
+                            // Object CHANGED: it exists in the code directory but is different from the snapshot
+                            pathsByPriority.remove(file.toPath());
+                            String fileSql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
+                            String cleanSnapshotSql = ChangeDetector.cleanSql(snapshotSql);
+                            String cleanFileSql = ChangeDetector.cleanSql(fileSql);
+                            if (!cleanSnapshotSql.equals(cleanFileSql)) {
+                                keepRunning = changeConsumer.accept(objectIdentifier, snapshotSql, fileSql);
                             }
+                        } else {
+                            // Object DELETED: it exists in snapshot, but not in the code directory
+                            keepRunning = changeConsumer.accept(objectIdentifier, snapshotSql, null);
                         }
                     } else {
                         log.warn("Unexpected file in {}: {}", snapshotFile, entryName);
@@ -182,25 +183,27 @@ public class DeployService {
                 }
             }
         }
+
         DbPopdFileUtils.FileToObjectIdentifierResolver resolver = DbPopdFileUtils.createFileToObjectIdentifierResolver(codeDirectory);
         Iterator<Path> iterator = pathsByPriority.iterator();
         while (keepRunning && iterator.hasNext()) {
             Path path = iterator.next();
             File file = codeDirectory.toPath().resolve(path).toFile();
             ObjectIdentifier objectIdentifier = resolver.getObjectIdentifier(path);
-            if (CAN_MODIFY.contains(objectIdentifier.getType())) {
-                String fileSql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
-                keepRunning = changeConsumer.accept(objectIdentifier, null, fileSql);
-            }
+            // Object ADDED: it exists in the code directory, but not in the snapshot
+            String fileSql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
+            keepRunning = changeConsumer.accept(objectIdentifier, null, fileSql);
         }
     }
 
-    public File generateSqlScripts() {
+    public record GenerateSqlScriptsResult(File zipFile, Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier) {}
+
+    public GenerateSqlScriptsResult generateSqlScripts() {
         try {
             File deployFile = File.createTempFile("deploy", ".sql");
             File undeployFile = File.createTempFile("undeploy", ".sql");
             try {
-                generateSqlScripts(deployFile, undeployFile);
+                Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier = generateSqlScripts(deployFile, undeployFile);
                 File zipFile = File.createTempFile("deployment", ".zip");
                 try (ZipOutputStream zipOutputStream = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zipFile)), StandardCharsets.UTF_8)) {
 
@@ -210,7 +213,7 @@ public class DeployService {
                     zipOutputStream.putNextEntry(new ZipEntry("undeploy.sql"));
                     FileUtils.copyFile(undeployFile, zipOutputStream);
                 }
-                return zipFile;
+                return new GenerateSqlScriptsResult(zipFile, transitionedObjectIdentifier);
             } finally {
                 if (deployFile.delete() && deployFile.isFile()) log.error("Failed to delete " + deployFile);
                 if (undeployFile.delete() && undeployFile.isFile()) log.error("Failed to delete " + undeployFile);
@@ -229,42 +232,36 @@ public class DeployService {
         return ret.get();
     }
 
-    private void generateSqlScripts(File deployFile, File undeployFile) {
+    private Map<ObjectIdentifier, Boolean> generateSqlScripts(File deployFile, File undeployFile) {
         try {
+            Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier = new HashMap<>();
             Database targetDatabase = configurationService.getTargetDatabaseCache();
             try (BufferedWriter deployWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(deployFile), StandardCharsets.UTF_8))) {
                 try (BufferedWriter undeployWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(undeployFile), StandardCharsets.UTF_8))) {
                     consumeChanges((objectIdentifier, snapshotSql, fileSql) -> {
-                        appendSql(targetDatabase, deployWriter, objectIdentifier, fileSql);
-                        appendSql(targetDatabase, undeployWriter, objectIdentifier, snapshotSql);
+                        boolean succeeded = appendSql(targetDatabase, deployWriter, objectIdentifier, snapshotSql, fileSql) &&
+                                            appendSql(targetDatabase, undeployWriter, objectIdentifier, fileSql, snapshotSql);
+                        transitionedObjectIdentifier.put(objectIdentifier, succeeded);
                         return true;
                     });
                 }
             }
+            return transitionedObjectIdentifier;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static void appendSql(Database database, Writer writer, ObjectIdentifier objectIdentifier, String sql) throws IOException {
-        if (sql == null) {
-            sql = switch (objectIdentifier.getType()) {
-                case "SQL_STORED_PROCEDURE" -> "DROP PROCEDURE IF EXISTS " + database.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
-                case "SQL_INLINE_TABLE_VALUED_FUNCTION" -> "DROP FUNCTION IF EXISTS " + database.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName());
-                default -> null;
-            };
-        }
-        if (sql != null) {
-            writer.append(sql).append("\nGO\n");
-        }
-    }
+    public record GenerateFlywayScriptsResult(String filename, Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier) {}
 
-    public String generateFlywayScripts(String name) {
+    public GenerateFlywayScriptsResult generateFlywayScripts(String name) {
         File flywayFile = getNextFlywayFile(name);
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(flywayFile), StandardCharsets.UTF_8))) {
+            Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier = new HashMap<>();
             Database targetDatabase = configurationService.getTargetDatabaseCache();
             consumeChanges((objectIdentifier, snapshotSql, fileSql) -> {
-                appendSql(targetDatabase, writer, objectIdentifier, fileSql);
+                boolean succeeded = appendSql(targetDatabase, writer, objectIdentifier, snapshotSql, fileSql);
+                transitionedObjectIdentifier.put(objectIdentifier, succeeded);
                 return true;
             });
             createSnapshot(DeltaType.FLYWAY);
@@ -273,13 +270,36 @@ public class DeployService {
             if (filename.startsWith("/var/opt/dbpop/")) {
                 filename = filename.substring("/var/opt/dbpop/".length());
             }
-            return filename;
+            return new GenerateFlywayScriptsResult(filename, transitionedObjectIdentifier);
         } catch (Exception e) {
             if (!flywayFile.delete() && flywayFile.isFile()) {
                 log.error("Failed to delete " + flywayFile);
             }
         }
         return null;
+    }
+
+    private static boolean appendSql(Database database, Writer writer, ObjectIdentifier objectIdentifier, String fromSql, String toSql) throws IOException {
+        TransitionGenerator transitionGenerator = database.getTransitionGenerator(objectIdentifier.getType());
+        Transition transition = transitionGenerator.generateTransition(objectIdentifier, fromSql, toSql);
+        if (transition.getError() == null) {
+            for (String sql : transition.getSqls()) {
+                writer.append(sql)
+                        .append("\nGO\n");
+            }
+            return true;
+        } else {
+            writer.append("""
+                    /*
+                        ERROR: %s
+                    %s
+                    */
+                    """.formatted(
+                    transition.getError(),
+                    toSql)
+            );
+            return false;
+        }
     }
 
     private static final Pattern FLYWAY_PATTERN = Pattern.compile("V(\\d+)__(.*).sql");
