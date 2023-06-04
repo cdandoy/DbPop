@@ -1,8 +1,8 @@
 import React, {useContext} from "react";
 import PageHeader from "../pageheader/PageHeader";
 import {Section} from "./Section";
-import target_full from "./data/target_full/target_full.png"
-import download_target from "./code/targetdownload/download_target.png"
+import target_data from "./target_data.png"
+import target_code from "./target_code.png"
 import {SiteContext} from "../app/App";
 
 export default function TargetTools() {
@@ -23,12 +23,12 @@ export default function TargetTools() {
                 <Section title={"Data"}
                          description={"Tools that apply data"}
                          to={"/tools/target/data"}
-                         img={target_full}/>
+                         img={target_data}/>
 
                 <Section title={"Code"}
                          description={"Tools that apply to code"}
                          to={"/tools/target/code"}
-                         img={download_target}/>
+                         img={target_code}/>
             </div>
         </div>
     </div>

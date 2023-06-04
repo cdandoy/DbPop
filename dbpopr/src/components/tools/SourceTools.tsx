@@ -1,8 +1,8 @@
 import React, {useContext} from "react";
 import PageHeader from "../pageheader/PageHeader";
 import {Section} from "./Section";
-import source_full from "./data/source_full/source_full.png"
-import download_source from "./code/sourcedownload/download_source.png"
+import source_data from "./source_data.png"
+import source_code from "./source_code.png"
 import {SiteContext} from "../app/App";
 
 export default function SourceTools() {
@@ -23,12 +23,12 @@ export default function SourceTools() {
                 <Section title={"Data"}
                          description={"Tools that apply data"}
                          to={"/tools/source/data"}
-                         img={source_full}/>
+                         img={source_data}/>
 
                 <Section title={"Code"}
                          description={"Tools that apply to code"}
                          to={"/tools/source/code"}
-                         img={download_source}/>
+                         img={source_code}/>
             </div>
         </div>
     </div>
