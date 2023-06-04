@@ -1,0 +1,1 @@
+CREATE UNIQUE CLUSTERED INDEX [PK__customer__CD65CB85C71F76DD] ON [master].[dbo].[customers] ([customer_id])

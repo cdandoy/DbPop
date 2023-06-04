@@ -1,0 +1,1 @@
+ALTER TABLE [master].[advanced].[order_details] ADD CONSTRAINT [order_details_orders_fk] FOREIGN KEY ([order_id]) REFERENCES [master].[advanced].[orders] ([order_id])

@@ -1,0 +1,1 @@
+CREATE UNIQUE CLUSTERED INDEX [PK__test_bin__3213E83F4DF8AEC7] ON [master].[dbo].[test_binary] ([id])

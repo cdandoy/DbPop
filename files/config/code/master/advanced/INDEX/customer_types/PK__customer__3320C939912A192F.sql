@@ -1,0 +1,1 @@
+CREATE UNIQUE CLUSTERED INDEX [PK__customer__3320C939912A192F] ON [master].[advanced].[customer_types] ([customer_type_id])

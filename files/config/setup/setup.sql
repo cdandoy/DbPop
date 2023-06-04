@@ -1,3 +1,5 @@
+--------------------------------------------------------------------------------
+-- DROP
 DROP PROCEDURE IF EXISTS GetInvoices
 GO
 DROP TABLE IF EXISTS master.dbo.invoice_details
@@ -11,6 +13,8 @@ GO
 DROP TABLE IF EXISTS master.dbo.test_binary
 GO
 
+--------------------------------------------------------------------------------
+-- CREATE master.dbo
 CREATE TABLE master.dbo.customers
 (
     customer_id INT PRIMARY KEY IDENTITY,
@@ -53,6 +57,46 @@ CREATE TABLE master.dbo.test_binary
 )
 GO
 
+--------------------------------------------------------------------------------
+-- INSERT master.advanced
+
+SET IDENTITY_INSERT master.dbo.customers ON;
+INSERT INTO master.dbo.customers (customer_id, name)
+VALUES (101, 'AirMethod'),
+       (102, 'Crown Beauty Filters'),
+       (103, 'Salon Creatives');
+SET IDENTITY_INSERT master.dbo.customers OFF;
+
+SET IDENTITY_INSERT master.dbo.products ON;
+INSERT INTO master.dbo.products (product_id, part_no, part_desc)
+VALUES (11, '3000', 'Circuit Playground Classic'),
+       (12, '4561', 'High Quality HQ Camera'),
+       (13, '5433', 'Pogo Pin Probe Clip');
+SET IDENTITY_INSERT master.dbo.products OFF;
+
+SET IDENTITY_INSERT master.dbo.invoices ON;
+INSERT INTO master.dbo.invoices (invoice_id, customer_id, invoice_date)
+VALUES (1001, 101, '2022-01-01'),
+       (1002, 102, '2022-01-01'),
+       (1003, 101, '2022-01-01'),
+       (1004, 102, '2022-01-01');
+SET IDENTITY_INSERT master.dbo.invoices OFF;
+
+SET IDENTITY_INSERT master.dbo.invoice_details ON;
+INSERT INTO master.dbo.invoice_details (invoice_detail_id, invoice_id, product_id)
+VALUES (10001, 1001, 11),
+       (10002, 1001, 12),
+       (10003, 1002, 12),
+       (10004, 1002, 13),
+       (10005, 1003, 11),
+       (10006, 1003, 12),
+       (10007, 1003, 13);
+SET IDENTITY_INSERT master.dbo.invoice_details OFF;
+GO
+
+--------------------------------------------------------------------------------
+-- DROP master.advanced
+
 USE master
 GO
 
@@ -80,6 +124,8 @@ GO
 DROP TABLE IF EXISTS master.advanced.customer_types
 GO
 
+--------------------------------------------------------------------------------
+-- CREATE master.advanced
 CREATE TABLE master.advanced.customer_types
 (
     customer_type_id INT PRIMARY KEY IDENTITY,
@@ -178,3 +224,52 @@ BEGIN
              JOIN products p ON id.product_id = p.product_id
     WHERE i.invoice_id = @invoiceId
 END
+GO
+--------------------------------------------------------------------------------
+-- INSERT master.advanced
+
+SET IDENTITY_INSERT master.advanced.customer_types ON
+INSERT INTO master.advanced.customer_types (customer_type_id, name)
+VALUES (1, 'Wholesale'),
+       (2, 'Retail');
+SET IDENTITY_INSERT master.advanced.customer_types OFF;
+
+SET IDENTITY_INSERT master.advanced.product_categories ON;
+INSERT INTO master.advanced.product_categories (product_category_id, name)
+VALUES (1, 'Electronic'),
+       (2, 'Health');
+SET IDENTITY_INSERT master.advanced.product_categories OFF;
+
+SET IDENTITY_INSERT master.advanced.customers ON;
+INSERT INTO master.advanced.customers (customer_id, customer_type_id, name)
+VALUES (101, 1, 'AirMethod'),
+       (102, 2, 'Crown Beauty Filters'),
+       (103, 1, 'Salon Creatives');
+SET IDENTITY_INSERT master.advanced.customers OFF;
+
+SET IDENTITY_INSERT master.advanced.products ON;
+INSERT INTO master.advanced.products (product_id, product_category_id, part_no, part_desc)
+VALUES (11, 1, '3000', 'Circuit Playground Classic'),
+       (12, 2, '4561', 'High Quality HQ Camera'),
+       (13, 1, '5433', 'Pogo Pin Probe Clip');
+SET IDENTITY_INSERT master.advanced.products OFF;
+
+SET IDENTITY_INSERT master.advanced.invoices ON;
+INSERT INTO master.advanced.invoices (invoice_id, customer_id, invoice_date)
+VALUES (1001, 101, '2022-01-01'),
+       (1002, 102, '2022-01-01'),
+       (1003, 101, '2022-01-01'),
+       (1004, 102, '2022-01-01');
+SET IDENTITY_INSERT master.advanced.invoices OFF;
+
+SET IDENTITY_INSERT master.advanced.invoice_details ON;
+INSERT INTO master.advanced.invoice_details (invoice_detail_id, invoice_id, product_id)
+VALUES (10001, 1001, 11),
+       (10002, 1001, 12),
+       (10003, 1002, 12),
+       (10004, 1002, 13),
+       (10005, 1003, 11),
+       (10006, 1003, 12),
+       (10007, 1003, 13);
+SET IDENTITY_INSERT master.advanced.invoice_details OFF;
+GO

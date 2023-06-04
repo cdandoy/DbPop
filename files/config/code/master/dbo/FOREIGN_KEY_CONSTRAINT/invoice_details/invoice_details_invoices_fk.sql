@@ -1,0 +1,1 @@
+ALTER TABLE [master].[dbo].[invoice_details] ADD CONSTRAINT [invoice_details_invoices_fk] FOREIGN KEY ([invoice_id]) REFERENCES [master].[dbo].[invoices] ([invoice_id])

@@ -1,0 +1,1 @@
+ALTER TABLE [master].[advanced].[deliveries] ADD CONSTRAINT [deliveries_invoice_details_fk] FOREIGN KEY ([invoice_detail_id]) REFERENCES [master].[advanced].[invoice_details] ([invoice_detail_id])
