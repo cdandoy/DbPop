@@ -1,1 +1,0 @@
-CREATE UNIQUE CLUSTERED INDEX [PK__product___1F8847F9026770FD] ON [master].[advanced].[product_categories] ([product_category_id])

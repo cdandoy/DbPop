@@ -21,9 +21,8 @@ public class TableTransitionGenerator extends TransitionGenerator {
     }
 
     @Override
-    protected void drop(ObjectIdentifier objectIdentifier, String fromSql, Transition transition) {
-        String sql = "DROP TABLE %s".formatted(database.quote(objectIdentifier));
-        transition.addSql(sql);
+    public String drop(ObjectIdentifier objectIdentifier) {
+        return "DROP TABLE %s".formatted(database.quote(objectIdentifier));
     }
 
     @Override

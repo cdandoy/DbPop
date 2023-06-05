@@ -1,1 +1,0 @@
-CREATE UNIQUE CLUSTERED INDEX [PK__products__47027DF5DB81148D] ON [master].[dbo].[products] ([product_id])

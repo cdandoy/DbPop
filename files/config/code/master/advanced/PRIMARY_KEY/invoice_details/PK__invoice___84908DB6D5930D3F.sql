@@ -1,0 +1,1 @@
+ALTER TABLE [master].[advanced].[invoice_details] ADD CONSTRAINT [PK__invoice___84908DB6D5930D3F] PRIMARY KEY ([invoice_detail_id])

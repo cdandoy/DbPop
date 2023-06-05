@@ -1,1 +1,0 @@
-CREATE UNIQUE CLUSTERED INDEX [PK__deliveri__1C5CF4F539AA11E9] ON [master].[advanced].[deliveries] ([delivery_id])

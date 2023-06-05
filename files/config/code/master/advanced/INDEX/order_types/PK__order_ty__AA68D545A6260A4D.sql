@@ -1,1 +1,0 @@
-CREATE UNIQUE CLUSTERED INDEX [PK__order_ty__AA68D545A6260A4D] ON [master].[advanced].[order_types] ([order_type_id])

@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -232,25 +233,27 @@ public class DeployService {
         return ret.get();
     }
 
+    record ChangeWithSource(ObjectIdentifier objectIdentifier, String snapshotSql, String fileSql) {}
+
     private Map<ObjectIdentifier, Boolean> generateSqlScripts(File deployFile, File undeployFile) {
         try {
+            List<ChangeWithSource> changeWithSources = new ArrayList<>();
+            consumeChanges((objectIdentifier, snapshotSql, fileSql) -> changeWithSources.add(new ChangeWithSource(objectIdentifier, snapshotSql, fileSql)));
+
             Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier = new HashMap<>();
-            Database targetDatabase = configurationService.getTargetDatabaseCache();
-            List<String> deploySqls = new ArrayList<>();
-            List<String> undeploySqls = new ArrayList<>();
-            consumeChanges((objectIdentifier, snapshotSql, fileSql) -> {
-                boolean succeeded = appendSql(targetDatabase, deploySqls, objectIdentifier, snapshotSql, fileSql) &&
-                                    appendSql(targetDatabase, undeploySqls, objectIdentifier, fileSql, snapshotSql);
-                transitionedObjectIdentifier.put(objectIdentifier, succeeded);
-                return true;
-            });
+            List<String> deploySqls = generateSqls(transitionedObjectIdentifier, changeWithSources);
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(deployFile), StandardCharsets.UTF_8))) {
                 for (String sql : deploySqls) {
                     writer.append(sql);
                 }
             }
+
+            List<ChangeWithSource> reversedChangeWithSources = changeWithSources.stream()
+                    .map(it -> new ChangeWithSource(it.objectIdentifier(), it.fileSql(), it.snapshotSql()))
+                    .collect(Collectors.toCollection(ArrayList::new));
+            Collections.reverse(reversedChangeWithSources);
+            List<String> undeploySqls = generateSqls(transitionedObjectIdentifier, changeWithSources);
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(undeployFile), StandardCharsets.UTF_8))) {
-                Collections.reverse(undeploySqls);
                 for (String sql : undeploySqls) {
                     writer.append(sql);
                 }
@@ -259,6 +262,28 @@ public class DeployService {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private List<String> generateSqls(Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier, List<ChangeWithSource> changeWithSources) {
+        List<String> sqls = new ArrayList<>();
+        Set<ObjectIdentifier> droppedObjectIdentifiers = new HashSet<>();
+        Database targetDatabase = configurationService.getTargetDatabaseCache();
+        for (ChangeWithSource changeWithSource : changeWithSources) {
+            ObjectIdentifier objectIdentifier = changeWithSource.objectIdentifier();
+            boolean alreadyDropped = objectIdentifier.getParent() != null && droppedObjectIdentifiers.contains(objectIdentifier.getParent());
+            boolean succeeded;
+            if (!alreadyDropped) {
+                succeeded = appendSql(targetDatabase, sqls,
+                        objectIdentifier,
+                        changeWithSource.snapshotSql(),
+                        changeWithSource.fileSql());
+            } else {
+                succeeded = true;
+            }
+            transitionedObjectIdentifier.compute(objectIdentifier, (oi, x) -> x == null ? succeeded : x && succeeded);
+            droppedObjectIdentifiers.add(objectIdentifier);
+        }
+        return sqls;
     }
 
     public record GenerateFlywayScriptsResult(String filename, Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier) {}
@@ -293,7 +318,7 @@ public class DeployService {
         return null;
     }
 
-    private static boolean appendSql(Database database, List<String> sqls, ObjectIdentifier objectIdentifier, String fromSql, String toSql) throws IOException {
+    private static boolean appendSql(Database database, List<String> sqls, ObjectIdentifier objectIdentifier, String fromSql, String toSql) {
         TransitionGenerator transitionGenerator = database.getTransitionGenerator(objectIdentifier.getType());
         Transition transition = transitionGenerator.generateTransition(objectIdentifier, fromSql, toSql);
         if (transition.getError() == null) {

@@ -1,7 +1,6 @@
 package org.dandoy.dbpop.database.mssql;
 
 import org.dandoy.dbpop.database.ObjectIdentifier;
-import org.dandoy.dbpop.database.Transition;
 import org.dandoy.dbpop.database.TransitionGenerator;
 
 public class IndexTransitionGenerator extends TransitionGenerator {
@@ -10,11 +9,11 @@ public class IndexTransitionGenerator extends TransitionGenerator {
     }
 
     @Override
-    protected void drop(ObjectIdentifier objectIdentifier, String fromSql, Transition transition) {
+    public String drop(ObjectIdentifier objectIdentifier) {
         ObjectIdentifier parent = objectIdentifier.getParent();
-        transition.addSql("DROP INDEX %s ON %s".formatted(
+        return "DROP INDEX %s ON %s".formatted(
                 database.quote(objectIdentifier.getName()),
                 database.quote(parent)
-        ));
+        );
     }
 }

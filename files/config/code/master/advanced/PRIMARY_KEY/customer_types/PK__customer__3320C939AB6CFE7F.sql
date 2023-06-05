@@ -1,0 +1,1 @@
+ALTER TABLE [master].[advanced].[customer_types] ADD CONSTRAINT [PK__customer__3320C939AB6CFE7F] PRIMARY KEY ([customer_type_id])

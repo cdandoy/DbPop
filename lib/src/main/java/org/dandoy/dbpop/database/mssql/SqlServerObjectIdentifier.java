@@ -15,7 +15,7 @@ public class SqlServerObjectIdentifier extends ObjectIdentifier {
 
     public SqlServerObjectIdentifier(Integer objectId, String type, String catalog, String schema, String name) {
         super(type, catalog, schema, name);
-        if ("FOREIGN_KEY_CONSTRAINT".equals(type) || "INDEX".equals(type)) throw new RuntimeException("Foreign Keys and Indexes must have a parent");
+        if ("FOREIGN_KEY_CONSTRAINT".equals(type) || "PRIMARY_KEY".equals(type) || "INDEX".equals(type)) throw new RuntimeException("Foreign Keys and Indexes must have a parent");
 
         this.objectId = objectId;
     }

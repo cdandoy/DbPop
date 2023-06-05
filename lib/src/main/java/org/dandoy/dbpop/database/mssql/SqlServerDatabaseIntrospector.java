@@ -334,7 +334,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
 
                     String definition = sqlServerIndex.toDDL(database);
                     ObjectIdentifier indexIdentifier = new SqlServerObjectIdentifier(
-                            null, "INDEX", catalog, schemaName, indexName,
+                            null, isPrimaryKey ? "PRIMARY_KEY" : "INDEX", catalog, schemaName, indexName,
                             new SqlServerObjectIdentifier(tableId, "USER_TABLE", catalog, schemaName, tableName, null)
                     );
                     databaseVisitor.moduleDefinition(indexIdentifier, modifyDate, definition);
@@ -385,7 +385,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             switch (sqlServerObjectIdentifier.getType()) {
                 case "USER_TABLE" -> tableIdentifiers.add(sqlServerObjectIdentifier);
                 case "FOREIGN_KEY_CONSTRAINT" -> fkIdentifiers.add(sqlServerObjectIdentifier);
-                case "INDEX" -> indexIdentifiers.add(sqlServerObjectIdentifier);
+                case "PRIMARY_KEY", "INDEX" -> indexIdentifiers.add(sqlServerObjectIdentifier);
                 default -> regularIdentifiers.add(sqlServerObjectIdentifier);
             }
         }

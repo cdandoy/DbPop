@@ -82,7 +82,7 @@ public class DbPopdFileUtils {
 
     public static File toFile(File directory, ObjectIdentifier objectIdentifier) {
         return switch (objectIdentifier.getType()) {
-            case "INDEX", "FOREIGN_KEY_CONSTRAINT" -> toFile(directory,
+            case "INDEX", "PRIMARY_KEY", "FOREIGN_KEY_CONSTRAINT" -> toFile(directory,
                     objectIdentifier.getCatalog(),
                     objectIdentifier.getSchema(),
                     objectIdentifier.getType(),
@@ -104,7 +104,7 @@ public class DbPopdFileUtils {
 
     public static String encodeFileName(ObjectIdentifier objectIdentifier) {
         return switch (objectIdentifier.getType()) {
-            case "INDEX", "FOREIGN_KEY_CONSTRAINT" -> encodeFileName(
+            case "PRIMARY_KEY", "INDEX", "FOREIGN_KEY_CONSTRAINT" -> encodeFileName(
                     objectIdentifier.getCatalog(),
                     objectIdentifier.getSchema(),
                     objectIdentifier.getType(),

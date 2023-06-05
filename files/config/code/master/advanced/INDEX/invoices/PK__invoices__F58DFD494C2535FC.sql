@@ -1,1 +1,0 @@
-CREATE UNIQUE CLUSTERED INDEX [PK__invoices__F58DFD494C2535FC] ON [master].[advanced].[invoices] ([invoice_id])

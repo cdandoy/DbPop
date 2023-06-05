@@ -31,15 +31,23 @@ public class SqlServerIndex extends Index {
                 .filter(SqlServerIndexColumn::included)
                 .map(it -> database.quote(it.name))
                 .toList();
-        return "CREATE%s %s INDEX %s ON %s (%s)%s"
-                .formatted(
-                        isUnique() ? " UNIQUE" : "",
-                        typeDesc,
-                        database.quote(getName()),
-                        database.quote(getTableName()),
-                        super.getColumns().stream().map(database::quote).collect(Collectors.joining(", ")),
-                        includedColumnNames.isEmpty() ? "" : " INCLUDE (" + String.join(", ", includedColumnNames) + ")"
-                );
+        if (!isPrimaryKey()) {
+            return "CREATE%s %s INDEX %s ON %s (%s)%s"
+                    .formatted(
+                            isUnique() ? " UNIQUE" : "",
+                            typeDesc,
+                            database.quote(getName()),
+                            database.quote(getTableName()),
+                            super.getColumns().stream().map(database::quote).collect(Collectors.joining(", ")),
+                            includedColumnNames.isEmpty() ? "" : " INCLUDE (" + String.join(", ", includedColumnNames) + ")"
+                    );
+        } else {
+            return "ALTER TABLE %s ADD CONSTRAINT %s PRIMARY KEY (%s)".formatted(
+                    database.quote(getTableName()),
+                    database.quote(getName()),
+                    super.getColumns().stream().map(database::quote).collect(Collectors.joining(", "))
+            );
+        }
     }
 
     public record SqlServerIndexColumn(String name, boolean included) {}

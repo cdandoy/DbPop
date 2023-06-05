@@ -21,31 +21,23 @@ public abstract class TransitionGenerator {
     protected void generateTransition(ObjectIdentifier objectIdentifier, String fromSql, String toSql, Transition transition) {
         before(objectIdentifier, transition);
         if (fromSql == null) {
-            create(objectIdentifier, toSql, transition);
+            transition.addSql(toSql);
         } else if (toSql == null) {
-            drop(objectIdentifier, fromSql, transition);
+            transition.addSql(drop(objectIdentifier));
         } else {
             update(objectIdentifier, fromSql, toSql, transition);
         }
-        after(objectIdentifier, transition);
     }
 
     protected void before(ObjectIdentifier objectIdentifier, Transition transition) {
     }
 
-    protected void after(ObjectIdentifier objectIdentifier, Transition transition) {
-    }
-
-    protected void create(ObjectIdentifier objectIdentifier, String toSql, Transition transition) {
-        transition.addSql(toSql);
-    }
-
-    protected void drop(ObjectIdentifier objectIdentifier, String fromSql, Transition transition) {
+    public String drop(ObjectIdentifier objectIdentifier) {
         throw new RuntimeException("Missing drop implementation in " + getClass().getSimpleName());
     }
 
     protected void update(ObjectIdentifier objectIdentifier, String fromSql, String toSql, Transition transition) {
-        drop(objectIdentifier, fromSql, transition);
-        create(objectIdentifier, toSql, transition);
+        transition.addSql(drop(objectIdentifier));
+        transition.addSql(toSql);
     }
 }

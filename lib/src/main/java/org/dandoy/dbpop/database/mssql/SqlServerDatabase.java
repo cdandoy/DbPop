@@ -767,6 +767,7 @@ public class SqlServerDatabase extends DefaultDatabase {
     public TransitionGenerator getTransitionGenerator(String objectType) {
         return switch (objectType) {
             case "USER_TABLE" -> transitions.tableTransitionGenerator;
+            case "PRIMARY_KEY" -> transitions.primaryKeyTransitionGenerator;
             case "INDEX" -> transitions.indexTransitionGenerator;
             case "FOREIGN_KEY_CONSTRAINT" -> transitions.foreignKeyTransitionGenerator;
             case "SQL_INLINE_TABLE_VALUED_FUNCTION",
@@ -809,24 +810,7 @@ public class SqlServerDatabase extends DefaultDatabase {
 
     @Override
     public void dropObject(ObjectIdentifier objectIdentifier) {
-        String sql = switch (objectIdentifier.getType()) {
-            case "USER_TABLE" -> "DROP TABLE %s".formatted(quote(objectIdentifier));
-            case "INDEX" -> "DROP INDEX %s on %s".formatted(
-                    quote(".", objectIdentifier.getSchema(), objectIdentifier.getName()),
-                    quote(".", objectIdentifier.getParent().getSchema(), objectIdentifier.getName())
-            );
-            case "FOREIGN_KEY_CONSTRAINT" -> "ALTER TABLE %s DROP CONSTRAINT %s".formatted(
-                    quote(".", objectIdentifier.getSchema(), objectIdentifier.getName()),
-                    objectIdentifier.getName()
-            );
-            case "SQL_STORED_PROCEDURE" -> "DROP PROCEDURE %s".formatted(
-                    quote(".", objectIdentifier.getSchema(), objectIdentifier.getName())
-            );
-            case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_TABLE_VALUED_FUNCTION" -> "DROP FUNCTION %s".formatted(
-                    quote(".", objectIdentifier.getSchema(), objectIdentifier.getName())
-            );
-            default -> throw new RuntimeException("Unexpected type: " + objectIdentifier.getType());
-        };
+        String sql = getTransitionGenerator(objectIdentifier.getType()).drop(objectIdentifier);
         use(objectIdentifier.getCatalog());
         executeSql(sql);
     }

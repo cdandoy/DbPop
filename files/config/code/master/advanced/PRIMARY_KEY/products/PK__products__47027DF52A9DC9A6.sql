@@ -1,0 +1,1 @@
+ALTER TABLE [master].[advanced].[products] ADD CONSTRAINT [PK__products__47027DF52A9DC9A6] PRIMARY KEY ([product_id])

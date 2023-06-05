@@ -20,8 +20,23 @@ public class ChangeCreateToAlterTransitionGenerator extends TransitionGenerator 
     }
 
     @Override
-    protected void drop(ObjectIdentifier objectIdentifier, String fromSql, Transition transition) {
-        transition.addSql("DROP PROCEDURE IF EXISTS " + database.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName()));
+    public String drop(ObjectIdentifier objectIdentifier) {
+        return "DROP %s IF EXISTS %s".formatted(
+                getKeyword(objectIdentifier.getType()),
+                database.quote(".", objectIdentifier.getSchema(), objectIdentifier.getName())
+        );
+    }
+
+    private static String getKeyword(String objectType) {
+        return switch (objectType) {
+            case "SQL_INLINE_TABLE_VALUED_FUNCTION",
+                    "SQL_SCALAR_FUNCTION",
+                    "SQL_TABLE_VALUED_FUNCTION" -> "FUNCTION";
+            case "SQL_STORED_PROCEDURE" -> "PROCEDURE";
+            case "SQL_TRIGGER" -> "TRIGGER";
+            case "VIEW" -> "VIEW";
+            default -> throw new RuntimeException("Unexpected object type: " + objectType);
+        };
     }
 
     @Override
