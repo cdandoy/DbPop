@@ -62,7 +62,7 @@ public class DeployController {
 
     @Post("/script/sql")
     public SystemFile scriptSql() {
-        DeployService.GenerateSqlScriptsResult result = deployService.generateSqlScripts();
+        SnapshotSqlScriptGenerator.GenerateSqlScriptsResult  result = deployService.generateSqlScripts();
 
         return new SystemFile(result.zipFile())
                 .attach("deployment.zip");
@@ -74,7 +74,7 @@ public class DeployController {
 
     @Post("/script/flyway")
     public ScriptFlywayResponse scriptFlyway(@Body ScriptFlywayRequest request) {
-        DeployService.GenerateFlywayScriptsResult result = deployService.generateFlywayScripts(StringUtils.isBlank(request.name()) ? "generated" : request.name());
+        SnapshotFlywayScriptGenerator.GenerateFlywayScriptsResult result = deployService.generateFlywayScripts(StringUtils.isBlank(request.name()) ? "generated" : request.name());
         return new ScriptFlywayResponse(result.filename());
     }
 }

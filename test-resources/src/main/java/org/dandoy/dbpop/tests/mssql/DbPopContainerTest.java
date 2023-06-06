@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @ExtendWith({DbPopContainerSetup.class})
 public @interface DbPopContainerTest {
-    boolean source();
+    boolean source() default false;
 
     boolean target();
 

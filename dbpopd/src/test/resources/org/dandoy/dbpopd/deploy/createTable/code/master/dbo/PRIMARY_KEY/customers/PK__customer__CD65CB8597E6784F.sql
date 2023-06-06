@@ -1,0 +1,1 @@
+ALTER TABLE [master].[dbo].[customers] ADD CONSTRAINT [PK__customer__CD65CB8597E6784F] PRIMARY KEY ([customer_id])

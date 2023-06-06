@@ -1,0 +1,1 @@
+ALTER TABLE [master].[dbo].[invoices] ADD CONSTRAINT [PK__invoices__F58DFD497F8126FB] PRIMARY KEY ([invoice_id])
