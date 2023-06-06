@@ -1,1 +1,0 @@
-ALTER TABLE [master].[advanced].[customers] ADD CONSTRAINT [customers_customer_types_fk] FOREIGN KEY ([customer_type_id]) REFERENCES [master].[advanced].[customer_types] ([customer_type_id])

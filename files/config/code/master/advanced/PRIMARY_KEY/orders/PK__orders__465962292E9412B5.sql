@@ -1,1 +1,0 @@
-ALTER TABLE [master].[advanced].[orders] ADD CONSTRAINT [PK__orders__465962292E9412B5] PRIMARY KEY ([order_id])

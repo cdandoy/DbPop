@@ -1,1 +1,0 @@
-ALTER TABLE [master].[advanced].[deliveries] ADD CONSTRAINT [PK__deliveri__1C5CF4F5CB1854D4] PRIMARY KEY ([delivery_id])

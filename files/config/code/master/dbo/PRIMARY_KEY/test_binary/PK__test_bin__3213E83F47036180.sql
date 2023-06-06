@@ -1,1 +1,0 @@
-ALTER TABLE [master].[dbo].[test_binary] ADD CONSTRAINT [PK__test_bin__3213E83F47036180] PRIMARY KEY ([id])

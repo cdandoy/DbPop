@@ -1,1 +1,0 @@
-ALTER TABLE [master].[advanced].[invoice_details] ADD CONSTRAINT [invoice_details_invoices_fk] FOREIGN KEY ([invoice_id]) REFERENCES [master].[advanced].[invoices] ([invoice_id])
