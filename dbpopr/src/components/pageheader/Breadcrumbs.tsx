@@ -14,9 +14,9 @@ export function Breadcrumbs({breadcrumbs}: {
         <ol className="breadcrumb">
             {breadcrumbs.map(bc => {
                 if (bc.to) {
-                    return <li className="breadcrumb-item"><NavLink to={bc.to}>{bc.label}</NavLink></li>;
+                    return <li key={bc.label} className="breadcrumb-item"><NavLink to={bc.to}>{bc.label}</NavLink></li>;
                 } else {
-                    return <li className="breadcrumb-item active" aria-current="page">{bc.label}</li>
+                    return <li key={bc.label} className="breadcrumb-item active" aria-current="page">{bc.label}</li>
                 }
             })}
         </ol>
