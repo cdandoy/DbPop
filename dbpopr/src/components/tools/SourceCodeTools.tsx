@@ -3,10 +3,10 @@ import PageHeader from "../pageheader/PageHeader";
 import {Section} from "./Section";
 import download_source from "./code/sourcedownload/download_source.png"
 import compare_source from "./code/sourcecompare/compare_source.png"
-import {SiteStatusContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function SourceCodeTools() {
-    const siteStatus = useContext(SiteStatusContext);
+    const siteStatus = useContext(WebSocketStateContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}

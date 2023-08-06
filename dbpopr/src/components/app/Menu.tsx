@@ -2,11 +2,9 @@ import {NavLink} from "react-router-dom";
 import SidebarMenu from "../sidebar/SidebarMenu";
 import React, {useContext} from "react";
 import {WebSocketStateContext} from "../ws/useWebSocketState";
-import {SiteStatusContext} from "./App";
 
 export default function Menu() {
-    const siteStatus = useContext(SiteStatusContext);
-    const messageState = useContext(WebSocketStateContext);
+    const siteStatus = useContext(WebSocketStateContext);
 
     return (
         <ul className="menu-links">
@@ -25,7 +23,7 @@ export default function Menu() {
             <li className="nav-link">
                 <NavLink to={"/codechanges"}>
                     <SidebarMenu text="Code Changes" icons="fa fa-code"/>
-                    {(messageState.hasCode && messageState.codeChanges && messageState.codeChanges.length > 0) &&
+                    {(siteStatus.hasCode && siteStatus.codeChanges && siteStatus.codeChanges.length > 0) &&
                         <span style={{position: "absolute", right: "20px"}} title={"Code Change Detected"}>
                             <i className={"fa fa-circle"} style={{color: "#ffb000"}}></i>
                         </span>
@@ -39,11 +37,13 @@ export default function Menu() {
                 </NavLink>
             </li>
 
-            <li className="nav-link">
-                {siteStatus.hasSource && siteStatus.hasTarget && <NavLink to={"/tools"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>}
-                {siteStatus.hasSource && !siteStatus.hasTarget && <NavLink to={"/tools/source"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>}
-                {!siteStatus.hasSource && siteStatus.hasTarget && <NavLink to={"/tools/target"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>}
-            </li>
+            {(siteStatus.hasSource || siteStatus.hasTarget) &&
+                <li className="nav-link">
+                    {siteStatus.hasSource && siteStatus.hasTarget && <NavLink to={"/tools"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>}
+                    {siteStatus.hasSource && !siteStatus.hasTarget && <NavLink to={"/tools/source"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>}
+                    {!siteStatus.hasSource && siteStatus.hasTarget && <NavLink to={"/tools/target"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>}
+                </li>
+            }
 
             {siteStatus.hasSource && (
                 <li className="nav-link">

@@ -1,7 +1,7 @@
 import {Plural, toHumanReadableSize} from "../../utils/DbPopUtils";
 import React, {useContext} from "react";
 import {DatasetContent} from "../../api/datasetContent";
-import {SiteStatusContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export function Dataset({
                             datasetContent,
@@ -13,7 +13,7 @@ export function Dataset({
     loadDataset: (p: string) => void,
 }) {
     const datasetName = datasetContent.name;
-    const siteStatus = useContext(SiteStatusContext);
+    const siteStatus = useContext(WebSocketStateContext);
 
     function RefreshButton({disabled, title, hidden, loading, onClick}: {
         title: string;

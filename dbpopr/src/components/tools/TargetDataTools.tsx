@@ -2,10 +2,10 @@ import React, {useContext} from "react";
 import PageHeader from "../pageheader/PageHeader";
 import {Section} from "./Section";
 import target_full from "./data/target_full/target_full.png"
-import {SiteStatusContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function TargetDataTools() {
-    const siteStatus = useContext(SiteStatusContext);
+    const siteStatus = useContext(WebSocketStateContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}

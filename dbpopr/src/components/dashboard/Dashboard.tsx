@@ -4,10 +4,10 @@ import {datasetContent, DatasetContentResponse} from "../../api/datasetContent";
 import LoadingOverlay from "../utils/LoadingOverlay";
 import './Dashboard.scss'
 import {populate} from "../../api/Populate";
-import {SiteStatusContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function Dashboard() {
-    const siteStatus = useContext(SiteStatusContext);
+    const siteStatus = useContext(WebSocketStateContext);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [contentResponse, setContentResponse] = useState<DatasetContentResponse | null>(null);

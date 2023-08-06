@@ -4,10 +4,10 @@ import {Section} from "./Section";
 import source_full from "./data/source_full/source_full.png"
 import structured_download from "./data/source_structured/source_structured.png";
 import bulk_download from "./data/source_bulk/source_bulk.png";
-import {SiteStatusContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function SourceDataTools() {
-    const siteStatus = useContext(SiteStatusContext);
+    const siteStatus = useContext(WebSocketStateContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}

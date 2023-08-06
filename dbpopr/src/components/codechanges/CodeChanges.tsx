@@ -16,28 +16,28 @@ function Message({message}: { message: string }) {
 }
 
 export default function CodeChanges() {
-    const messageState = useContext(WebSocketStateContext);
+    const siteStatus = useContext(WebSocketStateContext);
 
     function onApplyFileChanges(path: string, objectIdentifier: ObjectIdentifier) {
         uploadFileChangeToTarget([objectIdentifier])
-            .then(() => messageState.refreshCodeChanges());
+            .then(() => siteStatus.refreshCodeChanges());
     }
 
     function onApplyDbChanges(path: string, objectIdentifier: ObjectIdentifier) {
         uploadDbChangeToTarget([objectIdentifier])
-            .then(() => messageState.refreshCodeChanges());
+            .then(() => siteStatus.refreshCodeChanges());
     }
 
     function onApplyAllFileChanges() {
-        const applyChanges = messageState.codeChanges.map(value => value.objectIdentifier);
+        const applyChanges = siteStatus.codeChanges.map(value => value.objectIdentifier);
         uploadFileChangeToTarget(applyChanges)
-            .then(() => messageState.refreshCodeChanges());
+            .then(() => siteStatus.refreshCodeChanges());
     }
 
     function onApplyAllDbChanges() {
-        const applyChanges = messageState.codeChanges.map(value => value.objectIdentifier);
+        const applyChanges = siteStatus.codeChanges.map(value => value.objectIdentifier);
         uploadDbChangeToTarget(applyChanges)
-            .then(() => messageState.refreshCodeChanges());
+            .then(() => siteStatus.refreshCodeChanges());
     }
 
     function ObjectIdentifierIcon({objectIdentifier}: { objectIdentifier: ObjectIdentifier }) {
@@ -64,7 +64,7 @@ export default function CodeChanges() {
                 <div className="card-body">
                     <table>
                         <tbody>
-                        {messageState.codeChanges.filter(it => it.databaseChanged || it.databaseDeleted).length > 0 &&
+                        {siteStatus.codeChanges.filter(it => it.databaseChanged || it.databaseDeleted).length > 0 &&
                             <tr>
                                 <td>
                                     <Button variant={"primary"}
@@ -80,7 +80,7 @@ export default function CodeChanges() {
                                 <td><strong>Apply All Database Changes</strong></td>
                             </tr>
                         }
-                        {messageState.codeChanges.filter(it => it.fileChanged || it.fileDeleted).length > 0 &&
+                        {siteStatus.codeChanges.filter(it => it.fileChanged || it.fileDeleted).length > 0 &&
                             <tr>
                                 <td>
                                     <Button variant={"outline-primary"}
@@ -109,7 +109,7 @@ export default function CodeChanges() {
                 <div className="card-body">
                     <table className={"table table-hover"}>
                         <tbody>
-                        {messageState.codeChanges.map(change => <tr key={change.objectIdentifier.type + '-' + change.dbname}>
+                        {siteStatus.codeChanges.map(change => <tr key={change.objectIdentifier.type + '-' + change.dbname}>
                             <td width={"100%"}>
                                 <NavLink to={"/codechanges/diff"} state={change.objectIdentifier}>
                                     <ObjectIdentifierIcon objectIdentifier={change.objectIdentifier}/>
@@ -142,7 +142,7 @@ export default function CodeChanges() {
                                 </>}
                             </td>
                         </tr>)}
-                        {messageState.codeChanges.length >= 100 && <tr>
+                        {siteStatus.codeChanges.length >= 100 && <tr>
                             <td colSpan={2}><Message message={"Too many changes to display"}/></td>
                         </tr>
                         }
@@ -154,8 +154,8 @@ export default function CodeChanges() {
     }
 
     function Content() {
-        if (!messageState.hasCode) return <Message message={"No Code Downloaded"}/>
-        if (messageState.codeChanges.length === 0) return <Message message={"No Changes Detected"}/>;
+        if (!siteStatus.hasCode) return <Message message={"No Code Downloaded"}/>
+        if (siteStatus.codeChanges.length === 0) return <Message message={"No Changes Detected"}/>;
         return <>
             <div className={"row"}>
                 <div className={"col-6"}>

@@ -42,7 +42,7 @@ export function CodeCompare() {
     let location = useLocation();
     let objectIdentifier: ObjectIdentifier = location.state;
     let navigate = useNavigate();
-    const messageState = useContext(WebSocketStateContext);
+    const siteStatus = useContext(WebSocketStateContext);
     const [codeDiff, setCodeDiff] = useState<CodeDiff | undefined>()
 
     useEffect(() => {
@@ -50,7 +50,7 @@ export function CodeCompare() {
             .then(result => {
                 setCodeDiff(result.data);
             });
-    }, [messageState.codeChanged]);
+    }, [siteStatus.codeChanged]);
 
     useEffect(() => {
         const ESCAPE_KEYS = ['27', 'Escape'];

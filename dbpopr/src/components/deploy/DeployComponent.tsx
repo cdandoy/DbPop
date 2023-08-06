@@ -18,14 +18,14 @@ export default function DeployComponent() {
     const [snapshotFilename, setSnapshotFilename] = useState("");
     const [defaultType, setDefaultType] = useState("SQL");
     const [flywayGeneratedFilename, setFlywayGeneratedFilename] = useState("");
-    const messageState = useContext(WebSocketStateContext);
+    const siteStatus = useContext(WebSocketStateContext);
 
     useEffect(() => {
         setLoading(true);
         getDeploy()
             .then(result => setDeployResult(result.data))
             .finally(() => setLoading(false));
-    }, [messageState.codeChanged]);
+    }, [siteStatus.codeChanged]);
 
     function setDeployResult(getDeployResponse: GetDeployResponse) {
         setHasSnapshot(getDeployResponse.hasSnapshot);
@@ -56,7 +56,7 @@ export default function DeployComponent() {
         if (!hasSnapshot) return <NoSnapshotContent handleCreateSnapshot={handleCreateSnapshot}/>
         if (!hasChanges) return <NoChangesContent/>
         if (state === "input") return <DeployInput setLoading={setLoading}
-                                                   codeChanges={messageState.codeChanges}
+                                                   codeChanges={siteStatus.codeChanges}
                                                    setState={setState}
                                                    setFlywayGeneratedFilename={setFlywayGeneratedFilename}
                                                    defaultType={defaultType}/>

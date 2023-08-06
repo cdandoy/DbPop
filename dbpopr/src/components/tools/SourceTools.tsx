@@ -3,10 +3,10 @@ import PageHeader from "../pageheader/PageHeader";
 import {Section} from "./Section";
 import source_data from "./source_data.png"
 import source_code from "./source_code.png"
-import {SiteStatusContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function SourceTools() {
-    const siteStatus = useContext(SiteStatusContext);
+    const siteStatus = useContext(WebSocketStateContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}

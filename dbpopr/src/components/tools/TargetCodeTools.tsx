@@ -4,10 +4,10 @@ import {Section} from "./Section";
 import upload_target from "./code/targetupload/upload_target.png"
 import download_target from "./code/targetdownload/download_target.png"
 import compare_target from "./code/targetcompare/compare_target.png"
-import {SiteStatusContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function TargetCodeTools() {
-    const siteStatus = useContext(SiteStatusContext);
+    const siteStatus = useContext(WebSocketStateContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}

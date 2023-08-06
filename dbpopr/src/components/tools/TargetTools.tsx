@@ -3,10 +3,10 @@ import PageHeader from "../pageheader/PageHeader";
 import {Section} from "./Section";
 import target_data from "./target_data.png"
 import target_code from "./target_code.png"
-import {SiteStatusContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function TargetTools() {
-    const siteStatus = useContext(SiteStatusContext);
+    const siteStatus = useContext(WebSocketStateContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}

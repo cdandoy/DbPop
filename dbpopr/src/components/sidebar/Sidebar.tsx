@@ -11,9 +11,9 @@ export default function Sidebar({title1, title2, search, children, menu, bottomM
     menu?: React.ReactNode;
     bottomMenu?: React.ReactNode;
 }) {
-    const webSocketState = useContext(WebSocketStateContext);
+    const siteStatus = useContext(WebSocketStateContext);
     const [closed, setClosed] = useState(false);
-    console.log(`webSocketState: ${webSocketState.hasSource} / ${webSocketState.hasTarget}`)
+
     return <>
         <div id={"sidebar-root"}>
             <nav className={`sidebar ${closed ? 'close' : ''}`}>
@@ -26,15 +26,33 @@ export default function Sidebar({title1, title2, search, children, menu, bottomM
                             <span className="title1">{title1}</span>
                             <span className="title2">{title2}</span>
                             <span className="db-status">
-                                <i className={"fa fa-circle fa-xs"}
-                                   style={{color: webSocketState.hasSource ? 'green' : 'default'}}
-                                   title={"Source Database"}
-                                ></i>
+                                {siteStatus.hasSource ?
+                                    <i
+                                        className={"fa fa-circle fa-xs"}
+                                        style={{color: 'green'}}
+                                        title={`Source Database Connected`}
+                                    />
+                                    :
+                                    <i
+                                        className={"fa fa-circle fa-xs"}
+                                        title={"Source Database Disconnected"}
+                                    />
+
+                                }
                                 &nbsp;
-                                <i className={"fa fa-circle fa-xs"}
-                                   style={{color: webSocketState.hasTarget ? 'green' : 'default'}}
-                                   title={"Target Database"}
-                                ></i>
+                                {siteStatus.hasTarget ?
+                                    <i
+                                        className={"fa fa-circle fa-xs"}
+                                        style={{color: 'green'}}
+                                        title={`Target Database Connected`}
+                                    />
+                                    :
+                                    <i
+                                        className={"fa fa-circle fa-xs"}
+                                        title={"Target Database Disconnected"}
+                                    />
+
+                                }
                             </span>
                         </div>
                     </div>

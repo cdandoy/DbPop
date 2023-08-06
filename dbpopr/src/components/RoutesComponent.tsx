@@ -24,12 +24,12 @@ import TargetDataTools from "./tools/TargetDataTools";
 import TargetCodeTools from "./tools/TargetCodeTools";
 import SourceCodeTools from "./tools/SourceCodeTools";
 import SourceDataTools from "./tools/SourceDataTools";
-import {SiteStatusContext} from "./app/App";
 import SettingsComponent from "./settings/SettingsComponent";
 import EditDatabaseSettingsComponent from "./settings/EditDatabaseSettingsComponent";
+import {WebSocketStateContext} from "./ws/useWebSocketState";
 
 export default function RoutesComponent() {
-    const siteStatus = useContext(SiteStatusContext);
+    const siteStatus = useContext(WebSocketStateContext);
     return <>
         <Routes>
             <Route path="/datasets" element=<Datasets/>/>
