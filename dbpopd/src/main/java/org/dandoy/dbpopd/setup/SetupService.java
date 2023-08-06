@@ -2,13 +2,16 @@ package org.dandoy.dbpopd.setup;
 
 import io.micronaut.context.annotation.Context;
 import io.micronaut.context.annotation.Property;
+import io.micronaut.context.event.ApplicationEventListener;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
 import org.dandoy.dbpop.datasets.Datasets;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
+import org.dandoy.dbpopd.config.ConnectionBuilderChangedEvent;
+import org.dandoy.dbpopd.config.ConnectionType;
 import org.dandoy.dbpopd.datasets.DatasetsService;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.status.StatusService;
@@ -19,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -30,15 +34,16 @@ import java.util.Map;
 @Singleton
 @Context
 @Slf4j
-public class SetupService {
+public class SetupService implements ApplicationEventListener<ConnectionBuilderChangedEvent> {
     private final ConfigurationService configurationService;
     private final PopulateService populateService;
     private final DatasetsService datasetsService;
     private final StatusService statusService;
     // When running the tests, we don't want the data to be preloaded
     private final boolean loadDatasets;
-    // When running the tests, we do not want the setup to run in a background thread
-    private final boolean parallel;
+
+    private boolean hasExecutedStartup;
+    private ConnectionBuilder targetConnectionBuilder;
 
     @SuppressWarnings("MnInjectionPoints")
     public SetupService(
@@ -46,34 +51,29 @@ public class SetupService {
             PopulateService populateService,
             DatasetsService datasetsService,
             StatusService statusService,
-            @Property(name = "dbpopd.startup.loadDatasets", defaultValue = "true") boolean loadDatasets,
-            @Property(name = "dbpopd.startup.parallel", defaultValue = "true") boolean parallel
+            @Property(name = "dbpopd.startup.loadDatasets", defaultValue = "true") boolean loadDatasets
     ) {
         this.configurationService = configurationService;
         this.populateService = populateService;
         this.datasetsService = datasetsService;
         this.statusService = statusService;
         this.loadDatasets = loadDatasets;
-        this.parallel = parallel;
     }
 
-    @PostConstruct
-    public void loadSetup() {
-        if (parallel) {
-            new Thread(this::doit).start();
-        } else {
-            doit();
+    @Override
+    public void onApplicationEvent(ConnectionBuilderChangedEvent event) {
+        if (event.type() == ConnectionType.TARGET) {
+            targetConnectionBuilder = event.connectionBuilder();
         }
-    }
-
-    private void doit() {
-        try {
-            checkDatasetDirectory();
-            Connection targetConnection = checkTargetConnection();
-            if (targetConnection != null) {
+        // We only execute the startup scripts if we have received a target connection event
+        if (targetConnectionBuilder != null && !hasExecutedStartup) {
+            try (Connection targetConnection = targetConnectionBuilder.createConnection()) {
+                // Installation scripts are run only once
                 executeInstall(targetConnection);
 
+                // Startup scripts are run every time we start
                 executeStartup();
+
                 if (loadDatasets) {
                     try {
                         checkPopulate();
@@ -82,11 +82,18 @@ public class SetupService {
                         log.error("Failed to load the static and base datasets", e);
                     }
                 }
+
+                hasExecutedStartup = true;
+            } catch (SQLException e) {
+                log.error("Failed to create the connection", e);
             }
+        }
+    }
 
-            checkSourceConnection();
-
-            statusService.setComplete(true);
+    @PostConstruct
+    public void init() {
+        try {
+            checkDatasetDirectory();
         } catch (Exception e) {
             log.error("Failed to setup", e);
         }
@@ -109,11 +116,11 @@ public class SetupService {
                 }
                 executeScript(new File(setupDirectory, "post-install.sh"));
 
-                statusService.run("install-complete.txt", () -> {
-                    try (BufferedWriter writer = Files.newBufferedWriter(installComplete.toPath())) {
-                        writer.write("install executed " + ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
-                    }
-                });
+                try (BufferedWriter writer = Files.newBufferedWriter(installComplete.toPath())) {
+                    writer.write("install executed " + ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to write to " + installComplete, e);
+                }
             }
         }
     }
@@ -132,7 +139,7 @@ public class SetupService {
 
     private void executeScript(File file) {
         if (file.exists()) {
-            statusService.run(file.getName(), () -> {
+            try {
                 String absolutePath = file.getCanonicalPath();
 
                 List<String> args;
@@ -164,7 +171,9 @@ public class SetupService {
                 if (exitValue != 0) {
                     throw new RuntimeException("%s returned %d".formatted(absolutePath, exitValue));
                 }
-            });
+            } catch (IOException | InterruptedException e) {
+                throw new RuntimeException("Failed to execute " + file, e);
+            }
         }
     }
 
@@ -176,16 +185,14 @@ public class SetupService {
     }
 
     private void checkDatasetDirectory() {
-        statusService.run("Verifying the configuration", () -> {
-            File configurationDir = configurationService.getConfigurationDir();
-            String[] paths = {".", "datasets", "datasets/static", "datasets/base"};
-            for (String path : paths) {
-                File dir = new File(configurationDir, path);
-                if (!dir.mkdirs() && !dir.isDirectory()) {
-                    throw new RuntimeException("Invalid directory " + dir);
-                }
+        File configurationDir = configurationService.getConfigurationDir();
+        String[] paths = {".", "datasets", "datasets/static", "datasets/base"};
+        for (String path : paths) {
+            File dir = new File(configurationDir, path);
+            if (!dir.mkdirs() && !dir.isDirectory()) {
+                log.error("Failed to create the directory " + dir);
             }
-        });
+        }
     }
 
     private void checkPopulate() {
@@ -194,28 +201,5 @@ public class SetupService {
                 populateService.populate(List.of(Datasets.STATIC, Datasets.BASE));
             }
         });
-    }
-
-    private Connection checkTargetConnection() {
-        if (configurationService.hasTargetConnection()) {
-            return statusService.run("Connecting to the target database", () -> {
-                ConnectionBuilder targetConnectionBuilder = configurationService.getTargetConnectionBuilder();
-                targetConnectionBuilder.testConnection();
-                return targetConnectionBuilder.createConnection();
-            });
-        } else {
-            return null;
-        }
-    }
-
-    private void checkSourceConnection() {
-        if (configurationService.hasSourceConnection()) {
-            statusService.run("Connecting to the source database", () -> {
-                ConnectionBuilder sourceConnectionBuilder = configurationService.getSourceConnectionBuilder();
-                sourceConnectionBuilder.testConnection();
-                Connection connection = sourceConnectionBuilder.createConnection();
-                connection.close();
-            });
-        }
     }
 }

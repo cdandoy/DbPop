@@ -5,7 +5,7 @@ import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DatabaseIntrospector;
 import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.ObjectIdentifier;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;

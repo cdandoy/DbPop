@@ -10,7 +10,7 @@ import io.micronaut.http.server.types.files.SystemFile;
 import io.micronaut.problem.HttpStatusType;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
 import org.zalando.problem.Problem;
 
 @Controller("/deploy/")
@@ -45,7 +45,7 @@ public class DeployController {
         return new GetDeployResponse(snapshotFilename);
     }
 
-    record CreateSnapshotRequest(@Nullable DeltaType deltaType) {}
+    public record CreateSnapshotRequest(@Nullable DeltaType deltaType) {}
 
     @Post("/snapshot")
     public void createSnapshot(@Body CreateSnapshotRequest createSnapshotRequest) {
@@ -62,15 +62,15 @@ public class DeployController {
 
     @Post("/script/sql")
     public SystemFile scriptSql() {
-        SnapshotSqlScriptGenerator.GenerateSqlScriptsResult  result = deployService.generateSqlScripts();
+        SnapshotSqlScriptGenerator.GenerateSqlScriptsResult result = deployService.generateSqlScripts();
 
         return new SystemFile(result.zipFile())
                 .attach("deployment.zip");
     }
 
-    record ScriptFlywayRequest(String name) {}
+    public record ScriptFlywayRequest(String name) {}
 
-    record ScriptFlywayResponse(String generatedFile) {}
+    public record ScriptFlywayResponse(String generatedFile) {}
 
     @Post("/script/flyway")
     public ScriptFlywayResponse scriptFlyway(@Body ScriptFlywayRequest request) {

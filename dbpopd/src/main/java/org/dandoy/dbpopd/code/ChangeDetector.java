@@ -12,7 +12,8 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.ObjectIdentifier;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
+import org.dandoy.dbpopd.config.DatabaseCacheService;
 import org.dandoy.dbpopd.site.SiteWebSocket;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.IOUtils;
@@ -36,6 +37,7 @@ import java.util.function.Function;
 @Context
 public class ChangeDetector {
     private final ConfigurationService configurationService;
+    private final DatabaseCacheService databaseCacheService;
     private final SiteWebSocket siteWebSocket;
     @Getter
     private final DatabaseChangeDetector databaseChangeDetector;
@@ -45,8 +47,9 @@ public class ChangeDetector {
     private boolean applyChanges = false;
     private final List<Change> changes = new ArrayList<>();
 
-    public ChangeDetector(ConfigurationService configurationService, SiteWebSocket siteWebSocket) {
+    public ChangeDetector(ConfigurationService configurationService, DatabaseCacheService databaseCacheService, SiteWebSocket siteWebSocket) {
         this.configurationService = configurationService;
+        this.databaseCacheService = databaseCacheService;
         this.siteWebSocket = siteWebSocket;
         this.databaseChangeDetector = new DatabaseChangeDetector(configurationService, this);
         this.fileChangeDetector = new FileChangeDetector(configurationService, this);
@@ -243,13 +246,14 @@ public class ChangeDetector {
         }
     }
 
+    @SuppressWarnings("SqlSourceToSinkFlow")
     synchronized void whenFileChanged(@NotNull File file) {
         ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(configurationService.getCodeDirectory(), file);
         if (objectIdentifier == null) return; // Not a DB file
         if (applyChanges) {
             try (ChangeFile changeFile = getChangeFile()) {
                 if (!areSameHash(file, objectIdentifier)) {
-                    try (Database targetDatabase = configurationService.getTargetDatabaseCache()) {
+                    try (Database targetDatabase = databaseCacheService.getTargetDatabaseCache()) {
                         log.info("Executing {}", file);
                         String sql = IOUtils.toString(file);
                         Connection connection = targetDatabase.getConnection();
@@ -280,7 +284,7 @@ public class ChangeDetector {
         if (objectIdentifier == null) return; // Not a SQL file
         if (applyChanges) {
             try (ChangeFile changeFile = getChangeFile()) {
-                try (Database targetDatabase = configurationService.getTargetDatabaseCache()) {
+                try (Database targetDatabase = databaseCacheService.getTargetDatabaseCache()) {
                     log.info("Deleting {}", objectIdentifier);
                     targetDatabase.dropObject(objectIdentifier);
                     changeFile.objectDeleted(objectIdentifier);

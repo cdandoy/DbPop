@@ -9,7 +9,7 @@ import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.upload.DataFile;
 import org.dandoy.dbpop.upload.Dataset;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.database.DatabaseService;
 import org.dandoy.dbpopd.datasets.FileCacheService;
 

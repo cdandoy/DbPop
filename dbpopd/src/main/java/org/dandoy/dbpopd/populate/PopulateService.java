@@ -10,7 +10,8 @@ import org.dandoy.dbpop.upload.Populator;
 import org.dandoy.dbpop.upload.PopulatorListener;
 import org.dandoy.dbpop.utils.ExceptionUtils;
 import org.dandoy.dbpop.utils.MultiCauseException;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
+import org.dandoy.dbpopd.config.DatabaseCacheService;
 import org.dandoy.dbpopd.datasets.DatasetsService;
 import org.dandoy.dbpopd.extensions.ExtensionService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
@@ -25,6 +26,7 @@ import java.util.Optional;
 @Slf4j
 public class PopulateService {
     private final ConfigurationService configurationService;
+    private final DatabaseCacheService databaseCacheService;
     private final DatasetsService datasetsService;
     private final ExtensionService extensionService;
     private Map<File, Long> fileTimestamps = new HashMap<>();
@@ -40,8 +42,9 @@ public class PopulateService {
         }
     };
 
-    public PopulateService(ConfigurationService configurationService, DatasetsService datasetsService, ExtensionService extensionService) {
+    public PopulateService(ConfigurationService configurationService, DatabaseCacheService databaseCacheService, DatasetsService datasetsService, ExtensionService extensionService) {
         this.configurationService = configurationService;
+        this.databaseCacheService = databaseCacheService;
         this.datasetsService = datasetsService;
         this.extensionService = extensionService;
     }
@@ -54,7 +57,7 @@ public class PopulateService {
         if (datasets.isEmpty()) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "No datasets to download");
         try {
             long t0 = System.currentTimeMillis();
-            DatabaseCache databaseCache = configurationService.getTargetDatabaseCache();
+            DatabaseCache databaseCache = databaseCacheService.getTargetDatabaseCache();
             Populator populator = Populator
                     .createPopulator(databaseCache, configurationService.getDatasetsDirectory())
                     .setPopulatorListener(populatorListener);

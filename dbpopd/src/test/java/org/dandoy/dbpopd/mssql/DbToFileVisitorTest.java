@@ -4,7 +4,7 @@ import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DatabaseIntrospector;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.code.DbToFileVisitor;
 import org.dandoy.dbpop.tests.mssql.DbPopContainerTest;
 import org.junit.jupiter.api.Test;

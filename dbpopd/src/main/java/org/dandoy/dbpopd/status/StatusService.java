@@ -15,7 +15,6 @@ import java.util.List;
 public class StatusService {
     @Getter
     static class Status {
-        @Getter
         private final String name;
         private boolean running;
         private String error;

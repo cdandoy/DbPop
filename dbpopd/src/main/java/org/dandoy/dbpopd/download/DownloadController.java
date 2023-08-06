@@ -12,7 +12,7 @@ import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.download.*;
 import org.dandoy.dbpop.upload.DataFile;
 import org.dandoy.dbpop.upload.Dataset;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.datasets.DatasetsService;
 import org.dandoy.dbpopd.populate.PopulateService;
 
@@ -114,7 +114,7 @@ public class DownloadController {
         );
     }
 
-    record FullDownloadRequest(String dataset) {}
+    public record FullDownloadRequest(String dataset) {}
 
     @Post("/source")
     public DownloadResponse downloadSource(@Body FullDownloadRequest request) {

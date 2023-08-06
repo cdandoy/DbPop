@@ -3,7 +3,8 @@ package org.dandoy.dbpopd.extensions;
 import jakarta.inject.Singleton;
 import lombok.SneakyThrows;
 import org.dandoy.dbpop.database.Database;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
+import org.dandoy.dbpopd.config.DatabaseCacheService;
 import org.dandoy.dbpopd.utils.SqlExecuteUtils;
 
 import java.io.File;
@@ -13,9 +14,11 @@ import java.util.Arrays;
 @Singleton
 public class ExtensionService {
     public final ConfigurationService configurationService;
+    public final DatabaseCacheService databaseCacheService;
 
-    public ExtensionService(ConfigurationService configurationService) {
+    public ExtensionService(ConfigurationService configurationService, DatabaseCacheService databaseCacheService) {
         this.configurationService = configurationService;
+        this.databaseCacheService = databaseCacheService;
     }
 
     public void afterPopulate() {
@@ -39,7 +42,7 @@ public class ExtensionService {
 
     @SneakyThrows
     private void execute(File file) {
-        Database targetDatabase = configurationService.getTargetDatabaseCache();
+        Database targetDatabase = databaseCacheService.getTargetDatabaseCache();
         Connection connection = targetDatabase.getConnection();
         SqlExecuteUtils.executeSqlFile(connection, file);
     }

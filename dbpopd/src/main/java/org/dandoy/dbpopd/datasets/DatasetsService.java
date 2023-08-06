@@ -7,7 +7,8 @@ import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpop.upload.DataFile;
 import org.dandoy.dbpop.upload.Dataset;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
+import org.dandoy.dbpopd.config.DatabaseCacheService;
 
 import java.io.File;
 import java.util.Comparator;
@@ -22,6 +23,7 @@ import static org.dandoy.dbpop.datasets.Datasets.DATASET_NAME_COMPARATOR;
 @Slf4j
 public class DatasetsService {
     private final ConfigurationService configurationService;
+    private final DatabaseCacheService databaseCacheService;
     private final FileCacheService fileCacheService;
     private Status lastStatus = Status.NOT;
 
@@ -37,8 +39,9 @@ public class DatasetsService {
         }
     }
 
-    public DatasetsService(ConfigurationService configurationService, FileCacheService fileCacheService) {
+    public DatasetsService(ConfigurationService configurationService, DatabaseCacheService databaseCacheService, FileCacheService fileCacheService) {
         this.configurationService = configurationService;
+        this.databaseCacheService = databaseCacheService;
         this.fileCacheService = fileCacheService;
     }
 
@@ -115,7 +118,7 @@ public class DatasetsService {
                 .flatMap(dataset -> dataset.getDataFiles().stream().map(DataFile::getTableName))
                 .toList();
         // If the target database contains all the tables we have downloaded
-        return configurationService.getTargetDatabaseCache()
+        return databaseCacheService.getTargetDatabaseCache()
                 .getTables().stream()
                 .map(Table::getTableName)
                 .collect(Collectors.toSet())

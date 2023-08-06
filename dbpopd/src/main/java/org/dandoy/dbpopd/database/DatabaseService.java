@@ -6,7 +6,7 @@ import jakarta.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
 
 import java.util.Collection;
 import java.util.HashMap;

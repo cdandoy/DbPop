@@ -8,7 +8,8 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.utils.FileUtils;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
+import org.dandoy.dbpopd.config.DatabaseCacheService;
 import org.dandoy.dbpopd.datasets.DatasetsService;
 import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
@@ -38,12 +39,14 @@ public class CodeService {
     );
 
     private final ConfigurationService configurationService;
+    private final DatabaseCacheService databaseCacheService;
     private final PopulateService populateService;
     private final DatasetsService datasetsService;
     private final ChangeDetector changeDetector;
 
-    public CodeService(ConfigurationService configurationService, PopulateService populateService, DatasetsService datasetsService, ChangeDetector changeDetector) {
+    public CodeService(ConfigurationService configurationService, DatabaseCacheService databaseCacheService, PopulateService populateService, DatasetsService datasetsService, ChangeDetector changeDetector) {
         this.configurationService = configurationService;
+        this.databaseCacheService = databaseCacheService;
         this.populateService = populateService;
         this.datasetsService = datasetsService;
         this.changeDetector = changeDetector;
@@ -235,6 +238,7 @@ public class CodeService {
                                     try {
                                         statement.getConnection().commit();
                                         if (!"dbo".equals(schema)) {
+                                            //noinspection SqlSourceToSinkFlow
                                             statement.execute("CREATE SCHEMA " + schema);
                                         }
                                     } catch (SQLException e) {
@@ -258,7 +262,7 @@ public class CodeService {
                         List<String> datasets = datasetsService.getDatasets();
                         String datasetToLoad = datasets.contains("base") ? "base" : datasets.contains("static") ? "static" : !datasets.isEmpty() ? datasets.get(0) : null;
                         if (datasetToLoad != null) {
-                            configurationService.clearTargetDatabaseCache();
+                            databaseCacheService.clearTargetDatabaseCache();
                             populateService.populate(List.of(datasetToLoad), true);
                         }
                     }
@@ -266,7 +270,7 @@ public class CodeService {
                     long t1 = System.currentTimeMillis();
                     return new UploadResult(fileExecutions, t1 - t0);
                 } finally {
-                    configurationService.clearTargetDatabaseCache();
+                    databaseCacheService.clearTargetDatabaseCache();
                 }
             } catch (SQLException | IOException e) {
                 throw new RuntimeException(e);
@@ -314,7 +318,7 @@ public class CodeService {
                     long t1 = System.currentTimeMillis();
                     return new UploadResult(List.of(fileExecution), t1 - t0);
                 } finally {
-                    configurationService.clearTargetDatabaseCache();
+                    databaseCacheService.clearTargetDatabaseCache();
                 }
             } catch (SQLException | IOException e) {
                 throw new RuntimeException(e);

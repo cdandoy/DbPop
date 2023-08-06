@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dandoy.dbpop.database.Column;
 import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
 
 import java.util.Comparator;
 import java.util.List;
