@@ -3,15 +3,15 @@ import PageHeader from "../pageheader/PageHeader";
 import {Section} from "./Section";
 import download_source from "./code/sourcedownload/download_source.png"
 import compare_source from "./code/sourcecompare/compare_source.png"
-import {SiteContext} from "../app/App";
+import {SiteStatusContext} from "../app/App";
 
 export default function SourceCodeTools() {
-    const siteResponse = useContext(SiteContext);
+    const siteStatus = useContext(SiteStatusContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}
                         breadcrumbs={
-                            siteResponse.hasTarget ? [
+                            siteStatus.hasTarget ? [
                                     {to: "/tools", label: "Tools"},
                                     {to: "/tools/source", label: "Source"},
                                     {label: "Code"},

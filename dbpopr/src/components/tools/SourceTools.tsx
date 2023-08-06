@@ -3,15 +3,15 @@ import PageHeader from "../pageheader/PageHeader";
 import {Section} from "./Section";
 import source_data from "./source_data.png"
 import source_code from "./source_code.png"
-import {SiteContext} from "../app/App";
+import {SiteStatusContext} from "../app/App";
 
 export default function SourceTools() {
-    const siteResponse = useContext(SiteContext);
+    const siteStatus = useContext(SiteStatusContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}
                         breadcrumbs={
-                            siteResponse.hasTarget ? [
+                            siteStatus.hasTarget ? [
                                     {to: "/tools", label: "Tools"},
                                     {label: "Source"},
                                 ] :

@@ -1,12 +1,14 @@
 import axios, {AxiosResponse} from "axios";
 
-export interface SiteResponse {
+export interface SiteStatus {
     hasSource: boolean;
     hasTarget: boolean;
+    hasCode: boolean;
+    codeChanges: number;
 }
 
-export const DefaultSiteResponse = {hasSource: false, hasTarget: false};
+export const DefaultSiteStatus = {hasSource: false, hasTarget: false, hasCode: false, codeChanges: 0};
 
-export function siteApi(): Promise<AxiosResponse<SiteResponse>> {
-    return axios.get<SiteResponse>('/site')
+export function siteStatusApi(): Promise<AxiosResponse<SiteStatus>> {
+    return axios.get<SiteStatus>('/site/status')
 }

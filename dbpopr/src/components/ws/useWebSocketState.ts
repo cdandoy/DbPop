@@ -2,12 +2,16 @@ import useWebSocket, {ReadyState} from "react-use-websocket";
 import React, {useEffect, useState} from "react";
 import {Change, DefaultChanges, targetChanges} from "../../api/changeApi";
 
-interface SiteStatus {
+interface StructuredWebSocketMessage {
+    hasSource: boolean;
+    hasTarget: boolean;
     hasCode: boolean;
     codeChanges: number;
 }
 
 export interface WebSocketState {
+    hasSource: boolean;
+    hasTarget: boolean;
     codeChanged: number;
     connected: boolean;
     codeChanges: Change[];
@@ -16,6 +20,8 @@ export interface WebSocketState {
 }
 
 export const WebSocketStateContext = React.createContext<WebSocketState>({
+    hasSource: false,
+    hasTarget: false,
     codeChanged: 0,
     connected: false,
     codeChanges: [],
@@ -37,6 +43,8 @@ function getWebsocketUrl(): string {
 }
 
 export function useWebSocketState(): WebSocketState {
+    const [hasSource, setHasSource] = useState(false);
+    const [hasTarget, setHasTarget] = useState(false);
     const [codeChanged, setCodeChanged] = useState(0);
     const [connected, setConnected] = useState(false);
     const [codeChanges, setCodeChanges] = useState<Change[]>(DefaultChanges);
@@ -53,15 +61,16 @@ export function useWebSocketState(): WebSocketState {
 
     useEffect(() => {
         if (lastJsonMessage) {
-            const message = lastJsonMessage as any as SiteStatus;
+            const message = lastJsonMessage as any as StructuredWebSocketMessage;
+            setHasSource(message.hasSource);
+            setHasTarget(message.hasTarget);
             setCodeChanged(message.codeChanges);
             setHasCode(message.hasCode);
         }
     }, [lastJsonMessage]);
 
-    useEffect(() => refreshCodeChanges(), [hasCode, codeChanged]);
 
-    function refreshCodeChanges() {
+    const refreshCodeChanges = () => {
         if (hasCode) {
             targetChanges()
                 .then(result => {
@@ -70,7 +79,9 @@ export function useWebSocketState(): WebSocketState {
         } else {
             setCodeChanges([]);
         }
-    }
+    };
+
+    useEffect(() => refreshCodeChanges(), [hasCode, codeChanged]);
 
     const connectionStatus = {
         [ReadyState.CONNECTING]: false,
@@ -85,6 +96,8 @@ export function useWebSocketState(): WebSocketState {
     }, [readyState]);
 
     return {
+        hasSource,
+        hasTarget,
         codeChanged,
         connected,
         codeChanges,

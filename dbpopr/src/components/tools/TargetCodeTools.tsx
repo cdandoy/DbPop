@@ -4,15 +4,15 @@ import {Section} from "./Section";
 import upload_target from "./code/targetupload/upload_target.png"
 import download_target from "./code/targetdownload/download_target.png"
 import compare_target from "./code/targetcompare/compare_target.png"
-import {SiteContext} from "../app/App";
+import {SiteStatusContext} from "../app/App";
 
 export default function TargetCodeTools() {
-    const siteResponse = useContext(SiteContext);
+    const siteStatus = useContext(SiteStatusContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}
                         breadcrumbs={
-                            siteResponse.hasSource ? [
+                            siteStatus.hasSource ? [
                                     {to: "/tools", label: "Tools"},
                                     {to: "/tools/target", label: "Target"},
                                     {label: "Code"},

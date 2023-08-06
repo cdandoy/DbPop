@@ -8,45 +8,36 @@ import Menu from "./Menu";
 import BottomMenu from "./BottomMenu";
 import Sidebar from "../sidebar/Sidebar";
 import RoutesComponent from "../RoutesComponent";
-import {DefaultSiteResponse, siteApi, SiteResponse} from "../../api/siteApi";
-import {SiteStatus, useSetupStatusEffect} from "./sitestatus/useSetupStatusEffect";
-import SiteStatusComponent from "./sitestatus/SiteStatusComponent";
 import {useWebSocketState, WebSocketStateContext} from "../ws/useWebSocketState";
 import {ServerDisconnected} from "./ServerDisconnected";
+import {DefaultSiteStatus, SiteStatus, siteStatusApi} from "../../api/siteApi";
 
-export const SiteContext = React.createContext<SiteResponse>(DefaultSiteResponse);
+export const SiteStatusContext = React.createContext<SiteStatus>(DefaultSiteStatus);
 
 export default function App() {
-    const [siteStatus, setSiteStatus] = useState<SiteStatus>({statuses: [], complete: false});
-    const [siteResponse, setSiteResponse] = useState<SiteResponse>(DefaultSiteResponse);
+    const [siteStatus, setSiteStatus] = useState<SiteStatus>(DefaultSiteStatus);
     const messageState = useWebSocketState();
 
     useEffect(() => {
-        siteApi()
-            .then(result => setSiteResponse(result.data))
+        siteStatusApi()
+            .then(result => setSiteStatus(result.data))
     }, [siteStatus]);
 
-    useSetupStatusEffect(setSiteStatus);
-
-    if (siteStatus.complete) {
-        return (
-            <>
-                <HashRouter>
-                    <SiteContext.Provider value={siteResponse}>
-                        <WebSocketStateContext.Provider value={messageState}>
-                            <Sidebar title1={"DbPop"} title2={`v${process.env.REACT_APP_VERSION}`} menu=<Menu/> bottomMenu=<BottomMenu/> >
-                                <Header/>
-                                <div id="content-container">
-                                    <RoutesComponent/>
-                                </div>
-                            </Sidebar>
-                            {messageState.connected || <ServerDisconnected/>}
-                        </WebSocketStateContext.Provider>
-                    </SiteContext.Provider>
-                </HashRouter>
-            </>
-        );
-    } else {
-        return <SiteStatusComponent siteStatus={siteStatus}/>
-    }
+    return (
+        <>
+            <HashRouter>
+                <SiteStatusContext.Provider value={siteStatus}>
+                    <WebSocketStateContext.Provider value={messageState}>
+                        <Sidebar title1={"DbPop"} title2={`v${process.env.REACT_APP_VERSION}`} menu=<Menu/> bottomMenu=<BottomMenu/> >
+                            <Header/>
+                            <div id="content-container">
+                                <RoutesComponent/>
+                            </div>
+                        </Sidebar>
+                        {messageState.connected || <ServerDisconnected/>}
+                    </WebSocketStateContext.Provider>
+                </SiteStatusContext.Provider>
+            </HashRouter>
+        </>
+    );
 }

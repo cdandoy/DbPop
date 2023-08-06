@@ -1,6 +1,6 @@
 import React, {useContext, useState} from "react";
 import './Sidebar.scss'
-import {SiteContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 // See https://www.codinglabweb.com/2022/01/sidebar-menu-in-html-css-javascript.html
 export default function Sidebar({title1, title2, search, children, menu, bottomMenu}: {
@@ -11,9 +11,9 @@ export default function Sidebar({title1, title2, search, children, menu, bottomM
     menu?: React.ReactNode;
     bottomMenu?: React.ReactNode;
 }) {
-    const siteResponse = useContext(SiteContext);
+    const webSocketState = useContext(WebSocketStateContext);
     const [closed, setClosed] = useState(false);
-
+    console.log(`webSocketState: ${webSocketState.hasSource} / ${webSocketState.hasTarget}`)
     return <>
         <div id={"sidebar-root"}>
             <nav className={`sidebar ${closed ? 'close' : ''}`}>
@@ -27,12 +27,12 @@ export default function Sidebar({title1, title2, search, children, menu, bottomM
                             <span className="title2">{title2}</span>
                             <span className="db-status">
                                 <i className={"fa fa-circle fa-xs"}
-                                   style={{color: siteResponse.hasSource ? 'green' : 'default'}}
+                                   style={{color: webSocketState.hasSource ? 'green' : 'default'}}
                                    title={"Source Database"}
                                 ></i>
                                 &nbsp;
                                 <i className={"fa fa-circle fa-xs"}
-                                   style={{color: siteResponse.hasTarget ? 'green' : 'default'}}
+                                   style={{color: webSocketState.hasTarget ? 'green' : 'default'}}
                                    title={"Target Database"}
                                 ></i>
                             </span>

@@ -13,15 +13,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-public record DatabaseConfiguration(String url, String username, String password, boolean conflict) {
+public record DatabaseConfiguration(boolean disabled, String url, String username, String password, boolean conflict) {
     private static final Pattern JDBC_URL_PARSER = Pattern.compile("jdbc:sqlserver://(\\w+)(:(\\d+))?(;.*)");
 
-    public DatabaseConfiguration(String url, String username, String password) {
-        this(url, username, password, false);
+    public DatabaseConfiguration(boolean disabled, String url, String username, String password) {
+        this(disabled, url, username, password, false);
     }
-
+    
     public DatabaseConfiguration(DatabaseConfiguration that, boolean conflict) {
         this(
+                that.disabled(),
                 that.url(),
                 that.username(),
                 that.password(),
@@ -35,6 +36,7 @@ public record DatabaseConfiguration(String url, String username, String password
         if (!(o instanceof DatabaseConfiguration that)) return false;
 
         if (conflict != that.conflict) return false;
+        if (!Objects.equals(disabled, that.disabled)) return false;
         if (!Objects.equals(url, that.url)) return false;
         if (!Objects.equals(username, that.username)) return false;
         if (!Objects.equals(password, that.password)) return false;
@@ -54,8 +56,8 @@ public record DatabaseConfiguration(String url, String username, String password
     boolean hasInfo() {return url() != null;}
 
     public ConnectionBuilder createConnectionBuilder() {
-        if (hasInfo()) {
-            if (canTcpConnect()) {
+        if (hasInfo() && !disabled()) {
+            if (canTcpConnect(url)) {
                 UrlConnectionBuilder urlConnectionBuilder = new UrlConnectionBuilder(url(), username(), password());
                 try (Connection ignored = urlConnectionBuilder.createConnection()) {
                     return urlConnectionBuilder;
@@ -68,7 +70,7 @@ public record DatabaseConfiguration(String url, String username, String password
         return null;
     }
 
-    private boolean canTcpConnect() {
+    public static boolean canTcpConnect(String url) {
         Matcher matcher = JDBC_URL_PARSER.matcher(url);
         if (!matcher.matches()) {
             log.warn("Could not parse the connection string '{}'", url);

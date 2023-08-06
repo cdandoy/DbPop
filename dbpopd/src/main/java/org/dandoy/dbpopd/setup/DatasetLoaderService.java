@@ -5,6 +5,7 @@ import io.micronaut.context.event.ApplicationEventListener;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.datasets.Datasets;
+import org.dandoy.dbpopd.config.ConnectionType;
 import org.dandoy.dbpopd.config.DatabaseCacheChangedEvent;
 import org.dandoy.dbpopd.datasets.DatasetsService;
 import org.dandoy.dbpopd.populate.PopulateService;
@@ -33,15 +34,17 @@ public class DatasetLoaderService implements ApplicationEventListener<DatabaseCa
 
     @Override
     public void onApplicationEvent(DatabaseCacheChangedEvent event) {
-        if (loadDatasets && !hasLoadedDatasets) {
-            try {
-                if (datasetsService.canPopulate(Datasets.BASE)) {
-                    populateService.populate(List.of(Datasets.STATIC, Datasets.BASE));
+        if (event.type() == ConnectionType.TARGET) {
+            if (loadDatasets && !hasLoadedDatasets) {
+                try {
+                    if (datasetsService.canPopulate(Datasets.BASE)) {
+                        populateService.populate(List.of(Datasets.STATIC, Datasets.BASE));
+                    }
+                    hasLoadedDatasets = true;
+                } catch (Exception e) {
+                    // Do not fail the startup because of a dataset error
+                    log.error("Failed to load the static and base datasets", e);
                 }
-                hasLoadedDatasets = true;
-            } catch (Exception e) {
-                // Do not fail the startup because of a dataset error
-                log.error("Failed to load the static and base datasets", e);
             }
         }
     }
