@@ -1,19 +1,15 @@
 package org.dandoy.dbpopd.setup;
 
 import io.micronaut.context.annotation.Context;
-import io.micronaut.context.annotation.Property;
 import io.micronaut.context.event.ApplicationEventListener;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
-import org.dandoy.dbpop.datasets.Datasets;
 import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.config.ConnectionBuilderChangedEvent;
 import org.dandoy.dbpopd.config.ConnectionType;
-import org.dandoy.dbpopd.datasets.DatasetsService;
-import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.status.StatusService;
 import org.dandoy.dbpopd.utils.SqlExecuteUtils;
 
@@ -36,56 +32,35 @@ import java.util.Map;
 @Slf4j
 public class SetupService implements ApplicationEventListener<ConnectionBuilderChangedEvent> {
     private final ConfigurationService configurationService;
-    private final PopulateService populateService;
-    private final DatasetsService datasetsService;
     private final StatusService statusService;
-    // When running the tests, we don't want the data to be preloaded
-    private final boolean loadDatasets;
 
     private boolean hasExecutedStartup;
-    private ConnectionBuilder targetConnectionBuilder;
 
-    @SuppressWarnings("MnInjectionPoints")
     public SetupService(
             ConfigurationService configurationService,
-            PopulateService populateService,
-            DatasetsService datasetsService,
-            StatusService statusService,
-            @Property(name = "dbpopd.startup.loadDatasets", defaultValue = "true") boolean loadDatasets
+            StatusService statusService
     ) {
         this.configurationService = configurationService;
-        this.populateService = populateService;
-        this.datasetsService = datasetsService;
         this.statusService = statusService;
-        this.loadDatasets = loadDatasets;
     }
 
     @Override
     public void onApplicationEvent(ConnectionBuilderChangedEvent event) {
         if (event.type() == ConnectionType.TARGET) {
-            targetConnectionBuilder = event.connectionBuilder();
-        }
-        // We only execute the startup scripts if we have received a target connection event
-        if (targetConnectionBuilder != null && !hasExecutedStartup) {
-            try (Connection targetConnection = targetConnectionBuilder.createConnection()) {
-                // Installation scripts are run only once
-                executeInstall(targetConnection);
+            ConnectionBuilder targetConnectionBuilder = event.connectionBuilder();
+            // We only execute the startup scripts if we have received a target connection event
+            if (targetConnectionBuilder != null && !hasExecutedStartup) {
+                try (Connection targetConnection = targetConnectionBuilder.createConnection()) {
+                    // Installation scripts are run only once
+                    executeInstall(targetConnection);
 
-                // Startup scripts are run every time we start
-                executeStartup();
+                    // Startup scripts are run every time we start
+                    executeStartup();
 
-                if (loadDatasets) {
-                    try {
-                        checkPopulate();
-                    } catch (Exception e) {
-                        // Do not fail the startup because of a dataset error
-                        log.error("Failed to load the static and base datasets", e);
-                    }
+                    hasExecutedStartup = true;
+                } catch (SQLException e) {
+                    log.error("Failed to create the connection", e);
                 }
-
-                hasExecutedStartup = true;
-            } catch (SQLException e) {
-                log.error("Failed to create the connection", e);
             }
         }
     }
@@ -193,13 +168,5 @@ public class SetupService implements ApplicationEventListener<ConnectionBuilderC
                 log.error("Failed to create the directory " + dir);
             }
         }
-    }
-
-    private void checkPopulate() {
-        statusService.run("Populating static and base datasets", () -> {
-            if (datasetsService.canPopulate(Datasets.BASE)) {
-                populateService.populate(List.of(Datasets.STATIC, Datasets.BASE));
-            }
-        });
     }
 }

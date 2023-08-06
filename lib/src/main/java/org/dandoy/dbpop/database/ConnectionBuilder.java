@@ -5,6 +5,4 @@ import java.sql.SQLException;
 
 public interface ConnectionBuilder {
     Connection createConnection() throws SQLException;
-
-    void testConnection();
 }

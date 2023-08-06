@@ -12,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Objects;
 import java.util.Properties;
 
 import static org.dandoy.dbpopd.utils.IOUtils.toCanonical;
@@ -23,6 +24,8 @@ public class DatabasesConfigurationService {
     private final ApplicationEventPublisher<DatabaseConfigurationChangedEvent> databaseConfigurationChangedPublisher;
     private final File configurationFile;
     private final ApplicationEventPublisher<ConnectionBuilderChangedEvent> connectionBuilderChangedPublisher;
+    private final DatabaseConfiguration[] databaseConfigurations = new DatabaseConfiguration[2];
+    private final ConnectionBuilder[] connectionBuilders = new ConnectionBuilder[2];
 
     public DatabasesConfigurationService(
             @SuppressWarnings("MnInjectionPoints") @Property(name = "dbpopd.configuration.path") String configurationPath,
@@ -53,43 +56,40 @@ public class DatabasesConfigurationService {
     }
 
     private void buildConfigs() {
+        // Deal with configurations
         Properties properties = getConfigurationProperties(configurationFile);
-        DatabaseConfiguration sourceDatabaseConfiguration = getSourceDatabaseConfiguration(properties);
-        databaseConfigurationChangedPublisher.publishEvent(
-                new DatabaseConfigurationChangedEvent(
-                        ConnectionType.SOURCE,
-                        sourceDatabaseConfiguration
-                )
-        );
-
-        DatabaseConfiguration targetDatabaseConfiguration = getTargetDatabaseConfiguration(properties);
-        databaseConfigurationChangedPublisher.publishEvent(
-                new DatabaseConfigurationChangedEvent(
-                        ConnectionType.TARGET,
-                        targetDatabaseConfiguration
-                )
-        );
-
-        connectionBuilderChangedPublisher.publishEvent(
-                new ConnectionBuilderChangedEvent(
-                        ConnectionType.SOURCE,
-                        sourceDatabaseConfiguration.createConnectionBuilder()
-                )
-        );
-        connectionBuilderChangedPublisher.publishEvent(
-                new ConnectionBuilderChangedEvent(
-                        ConnectionType.TARGET,
-                        targetDatabaseConfiguration.createConnectionBuilder()
-                )
-        );
+        buildDatabaseConfig(properties, ConnectionType.SOURCE);
+        buildDatabaseConfig(properties, ConnectionType.TARGET);
     }
 
-    public DatabaseConfiguration getTargetDatabaseConfiguration(Properties properties) {
-        return getDatabaseConfiguration(properties, "TARGET_JDBCURL", "TARGET_USERNAME", "TARGET_PASSWORD");
+    private void buildDatabaseConfig(Properties properties, ConnectionType type) {
+        DatabaseConfiguration databaseConfiguration = getDatabaseConfiguration(properties, type);
+        if (!Objects.equals(databaseConfigurations[type.ordinal()], databaseConfiguration)) {
+            databaseConfigurations[type.ordinal()] = databaseConfiguration;
+            databaseConfigurationChangedPublisher.publishEvent(
+                    new DatabaseConfigurationChangedEvent(
+                            type,
+                            databaseConfiguration
+                    )
+            );
+
+            ConnectionBuilder connectionBuilder = databaseConfiguration.createConnectionBuilder();
+            ConnectionBuilder currentConnectionBuilder = connectionBuilders[type.ordinal()];
+            if (!(connectionBuilder == null && currentConnectionBuilder == null)) { // Don't fire an event if they are both null
+                connectionBuilderChangedPublisher.publishEvent(
+                        new ConnectionBuilderChangedEvent(
+                                type,
+                                connectionBuilder
+                        )
+                );
+                connectionBuilders[type.ordinal()] = connectionBuilder;
+            }
+        }
     }
 
-    public DatabaseConfiguration getSourceDatabaseConfiguration(Properties properties) {
-        return getDatabaseConfiguration(properties, "SOURCE_JDBCURL", "SOURCE_USERNAME", "SOURCE_PASSWORD");
+    public DatabaseConfiguration getDatabaseConfiguration(Properties properties, ConnectionType type) {
+        String name = type.name();
+        return getDatabaseConfiguration(properties, name + "_JDBCURL", name + "_USERNAME", name + "_PASSWORD");
     }
 
     private DatabaseConfiguration getDatabaseConfiguration(Properties properties, String urlName, String usernameName, String passwordName) {
@@ -114,13 +114,14 @@ public class DatabasesConfigurationService {
      */
     public ConnectionBuilder _createSourceConnectionBuilder() {
         Properties properties = getConfigurationProperties(configurationFile);
-        return getSourceDatabaseConfiguration(properties).createConnectionBuilder();
+        return getDatabaseConfiguration(properties, ConnectionType.SOURCE).createConnectionBuilder();
     }
+
     /**
      * For tests only
      */
     public ConnectionBuilder _createTargetConnectionBuilder() {
         Properties properties = getConfigurationProperties(configurationFile);
-        return getTargetDatabaseConfiguration(properties).createConnectionBuilder();
+        return getDatabaseConfiguration(properties, ConnectionType.TARGET).createConnectionBuilder();
     }
 }

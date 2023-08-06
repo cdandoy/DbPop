@@ -2,7 +2,9 @@ package org.dandoy.dbpopd.config;
 
 import io.micronaut.context.annotation.Property;
 import io.micronaut.context.event.ApplicationEventListener;
+import io.micronaut.context.event.ApplicationEventPublisher;
 import jakarta.inject.Singleton;
+import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.DatabaseCache;
 import org.dandoy.dbpop.database.DefaultDatabase;
@@ -13,16 +15,18 @@ import java.io.File;
 import static org.dandoy.dbpopd.utils.IOUtils.toCanonical;
 
 @Singleton
+@Slf4j
 public class DatabaseCacheService implements ApplicationEventListener<ConnectionBuilderChangedEvent> {
-    private ConnectionBuilder sourceConnectionBuilder;
-    private ConnectionBuilder targetConnectionBuilder;
-    private DatabaseCache sourceDatabaseCache;
-    private DatabaseCache targetDatabaseCache;
+    private final ApplicationEventPublisher<DatabaseCacheChangedEvent> databaseCacheChangedPublisher;
+    private final ConnectionBuilder[] connectionBuilders = new ConnectionBuilder[2];
+    private final DatabaseCache[] databaseCaches = new DatabaseCache[2];
     private final VirtualFkCache virtualFkCache;
 
     public DatabaseCacheService(
-            @SuppressWarnings("MnInjectionPoints") @Property(name = "dbpopd.configuration.path") String configurationPath
+            @SuppressWarnings("MnInjectionPoints") @Property(name = "dbpopd.configuration.path") String configurationPath,
+            ApplicationEventPublisher<DatabaseCacheChangedEvent> databaseCacheChangedPublisher
     ) {
+        this.databaseCacheChangedPublisher = databaseCacheChangedPublisher;
         File configurationDir = toCanonical(new File(configurationPath));
         File vfkFile = new File(configurationDir, "vfk.json");
         virtualFkCache = VirtualFkCache.createVirtualFkCache(vfkFile);
@@ -30,52 +34,57 @@ public class DatabaseCacheService implements ApplicationEventListener<Connection
 
     @Override
     public void onApplicationEvent(ConnectionBuilderChangedEvent event) {
-        if (event.type() == ConnectionType.SOURCE) {
-            sourceConnectionBuilder = event.connectionBuilder();
-            sourceDatabaseCache = null;
-        } else if (event.type() == ConnectionType.TARGET) {
-            targetConnectionBuilder = event.connectionBuilder();
-            sourceDatabaseCache = null;
+        ConnectionBuilder connectionBuilder = event.connectionBuilder();
+        setConnectionBuilder(event.type(), connectionBuilder);
+    }
+
+    private void setDatabaseCache(ConnectionType type, DatabaseCache databaseCache) {
+        DatabaseCache oldDatabaseCache = databaseCaches[type.ordinal()];
+        if (oldDatabaseCache != null) {
+            try {
+                oldDatabaseCache.close();
+            } catch (Exception e) {
+                log.error("Failed to close the database cache " + type);
+            }
+        }
+        if (oldDatabaseCache == null && databaseCache == null) return;
+        databaseCaches[type.ordinal()] = databaseCache;
+        databaseCacheChangedPublisher.publishEvent(
+                new DatabaseCacheChangedEvent(
+                        type,
+                        databaseCache
+                )
+        );
+    }
+
+    private void setConnectionBuilder(ConnectionType type, ConnectionBuilder connectionBuilder) {
+        ConnectionBuilder oldConnectionBuilder = connectionBuilders[type.ordinal()];
+        if (connectionBuilder != null || oldConnectionBuilder != null) {
+            connectionBuilders[type.ordinal()] = connectionBuilder;
+
+            DatabaseCache databaseCache;
+            if (connectionBuilder == null) {
+                databaseCache = null;
+            } else {
+                databaseCache = new DatabaseCache(
+                        DefaultDatabase.createDatabase(connectionBuilder),
+                        virtualFkCache
+                );
+            }
+            setDatabaseCache(type, databaseCache);
         }
     }
 
-    public synchronized DatabaseCache getSourceDatabaseCache() {
-        if (sourceDatabaseCache == null) {
-            sourceDatabaseCache = new DatabaseCache(
-                    DefaultDatabase.createDatabase(sourceConnectionBuilder),
-                    virtualFkCache
-            );
-        }
-        // Make sure we have a working connection
-        sourceDatabaseCache.verifyConnection();
-
-        return sourceDatabaseCache;
+    public DatabaseCache getSourceDatabaseCache() {
+        return databaseCaches[ConnectionType.SOURCE.ordinal()];
     }
 
-    public void clearSourceDatabaseCache() {
-        sourceDatabaseCache = null;
+    public DatabaseCache getTargetDatabaseCache() {
+        return databaseCaches[ConnectionType.TARGET.ordinal()];
     }
 
     public void clearTargetDatabaseCache() {
-        targetDatabaseCache = null;
-    }
-
-    public synchronized DatabaseCache getTargetDatabaseCache() {
-        if (targetDatabaseCache == null) {
-            targetDatabaseCache = new DatabaseCache(
-                    DefaultDatabase.createDatabase(targetConnectionBuilder),
-                    virtualFkCache
-            ) {
-                @Override
-                public void close() {
-                    throw new RuntimeException("Do not close me!");
-                }
-            };
-        }
-
-        // Make sure we have a working connection
-        targetDatabaseCache.verifyConnection();
-
-        return targetDatabaseCache;
+        ConnectionBuilder connectionBuilder = connectionBuilders[ConnectionType.TARGET.ordinal()];
+        setConnectionBuilder(ConnectionType.TARGET, connectionBuilder);
     }
 }
