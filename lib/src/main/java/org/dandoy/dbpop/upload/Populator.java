@@ -109,8 +109,8 @@ public class Populator {
         return StopWatch.record("Populator.load()", () -> {
             List<String> adjustedDatasets = adjustDatasets(datasets);
             log.debug("---- Loading {}", String.join(", ", adjustedDatasets));
+            int rowCount = 0;
             try (AutoComitterOff ignored = new AutoComitterOff(database.getConnection())) {
-                int rowCount = 0;
 
                 Set<TableName> allTables = datasetsByName.values().stream()
                         .flatMap(it -> it.getDataFiles().stream())
@@ -146,11 +146,15 @@ public class Populator {
                 } finally {
                     databasePreparationStrategy.afterInserts();
                 }
-                populatorListener.afterPopulate();
-                return rowCount;
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
+            try {
+                populatorListener.afterPopulate();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to afterPopulate()", e);
+            }
+            return rowCount;
         });
     }
 
