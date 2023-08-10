@@ -179,6 +179,7 @@ public class CodeService {
                     .toList();
             long t1 = System.currentTimeMillis();
             return new DownloadResult(
+                    visitor.getDownloadedPath(),
                     typeCounts,
                     t1 - t0
             );

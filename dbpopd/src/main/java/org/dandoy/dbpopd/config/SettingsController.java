@@ -50,7 +50,9 @@ public class SettingsController {
                 body.password().equals("*****") ? oldDatabaseConfiguration.password() : body.password()
         );
         databasesConfigurationService.setDatabaseConfiguration(connectionType, databaseConfiguration);
-        validateDatabaseConfiguration(databaseConfiguration);
+        if (!body.disabled()) {
+            validateDatabaseConfiguration(databaseConfiguration);
+        }
     }
 
     private void validateDatabaseConfiguration(DatabaseConfiguration databaseConfiguration) {

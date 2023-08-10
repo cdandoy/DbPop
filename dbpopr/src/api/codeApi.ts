@@ -19,6 +19,7 @@ export interface UploadResult {
 }
 
 export interface DownloadResult {
+    downloadedPath:string;
     codeTypeCounts: Pair[];
     executionTime: number;
 }

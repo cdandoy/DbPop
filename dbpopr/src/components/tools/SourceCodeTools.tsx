@@ -24,15 +24,15 @@ export default function SourceCodeTools() {
             />
 
             <div className={"ms-8"}>
-                <Section title={"Compare Source"}
-                         description={"Compare the tables and sprocs in the source database with the local SQL files"}
-                         to={"/tools/source/compare"}
-                         img={compare_source}
-                />
                 <Section title={"Download Source"}
                          description={"Download the tables and sprocs from the source database to the local SQL files"}
                          to={"/tools/source/download"}
                          img={download_source}
+                />
+                <Section title={"Compare Source"}
+                         description={"Compare the tables and sprocs in the source database with the local SQL files"}
+                         to={"/tools/source/compare"}
+                         img={compare_source}
                 />
             </div>
         </div>

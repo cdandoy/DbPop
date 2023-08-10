@@ -58,7 +58,10 @@ export default function Dashboard() {
                 </div>
             )}
             {siteStatus.hasTarget || (
-                <h2>No target database defined</h2>
+                <div className={"text-center"} style={{marginTop:"12em"}}>
+                    <h2>No target database defined</h2>
+                    <p>Please go to settings to define your target database </p>
+                </div>
             )}
         </div>
     )

@@ -53,8 +53,24 @@ export default function EditDatabaseSettingsComponent() {
         }
     }
 
+    function getTitle(): JSX.Element | string | undefined {
+        if (type === "source") {
+            return <>
+                <div>
+                    DbPop can copy tables, data, and code from a source database to files.<br/>
+                    The source database is typically a copy of the production database, use your production database at your own risks.
+                </div>
+
+
+            </>
+        } else if (type === "target") {
+            return "DbPop seeds data into the target database."
+        }
+    }
+
     return <>
         <PageHeader title={title}
+                    subtitle={getTitle()}
                     breadcrumbs={
                         [
                             {to: "/settings", label: "Settings"},
