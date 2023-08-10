@@ -1,9 +1,10 @@
 package org.dandoy.dbpopd.utils;
 
+import io.micronaut.context.event.ApplicationEventPublisher;
 import org.apache.commons.io.FileUtils;
 import org.dandoy.dbpop.tests.SqlExecutor;
 import org.dandoy.dbpop.tests.TestUtils;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.DatabasesConfigurationService;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,10 +28,13 @@ public class DbPopTestUtils {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        ConfigurationService configurationService = new ConfigurationService("../files/temp", null, null, null, null, null, null, false);
+        DatabasesConfigurationService databasesConfigurationService = new DatabasesConfigurationService("../files/temp",
+                ApplicationEventPublisher.noOp(),
+                ApplicationEventPublisher.noOp()
+        );
 
         try {
-            try (Connection connection = configurationService.getSourceConnectionBuilder().createConnection()) {
+            try (Connection connection = databasesConfigurationService._createSourceConnectionBuilder().createConnection()) {
                 execute(connection, "DROP DATABASE IF EXISTS dbpop");
                 execute(connection, "CREATE DATABASE dbpop");
                 SqlExecutor.execute(
@@ -41,7 +45,7 @@ public class DbPopTestUtils {
                 );
             }
 
-            try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
+            try (Connection connection = databasesConfigurationService._createTargetConnectionBuilder().createConnection()) {
                 execute(connection, "DROP DATABASE IF EXISTS dbpop");
                 execute(connection, "CREATE DATABASE dbpop");
             }
@@ -55,19 +59,6 @@ public class DbPopTestUtils {
             preparedStatement.execute();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to execute " + stmt, e);
-        }
-    }
-
-    public static void createTargetTables() {
-        ConfigurationService configurationService = new ConfigurationService("../files/temp", null, null, null, null, null, null, false);
-        try (Connection connection = configurationService.getTargetConnectionBuilder().createConnection()) {
-            SqlExecutor.execute(
-                    connection,
-                    "/mssql/drop.sql",
-                    "/mssql/create.sql"
-            );
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
     }
 }

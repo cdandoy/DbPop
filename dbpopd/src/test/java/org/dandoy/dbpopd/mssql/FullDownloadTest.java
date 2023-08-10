@@ -6,8 +6,8 @@ import org.apache.commons.io.IOUtils;
 import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.tests.mssql.DbPopContainerTest;
-import org.dandoy.dbpopd.ConfigurationService;
 import org.dandoy.dbpopd.CsvAssertionService;
+import org.dandoy.dbpopd.config.DatabaseCacheService;
 import org.dandoy.dbpopd.download.DownloadController;
 import org.dandoy.dbpopd.download.DownloadRequest;
 import org.dandoy.dbpopd.download.DownloadResponse;
@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @MicronautTest(environments = "temp-test")
 public class FullDownloadTest {
     @Inject
-    ConfigurationService configurationService;
+    DatabaseCacheService databaseCacheService;
     @Inject
     DownloadController downloadController;
     @Inject
@@ -106,7 +106,7 @@ public class FullDownloadTest {
         assertEquals(20, populateResult.rows());
 
         // Add some data to target
-        Connection connection = configurationService.getTargetDatabaseCache().getConnection();
+        Connection connection = databaseCacheService.getTargetDatabaseCache().getConnection();
         try (PreparedStatement preparedStatement = connection
                 .prepareStatement("""
                         INSERT INTO dbpop.dbo.products(part_no, part_desc)

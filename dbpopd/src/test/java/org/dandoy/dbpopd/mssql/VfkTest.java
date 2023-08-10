@@ -4,7 +4,7 @@ import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
 import org.dandoy.dbpop.database.ForeignKey;
 import org.dandoy.dbpop.database.TableName;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.DatabaseVfksController;
 import org.dandoy.dbpopd.database.DatabaseController;
 import org.dandoy.dbpopd.download.DownloadController;

@@ -8,6 +8,8 @@ import io.micronaut.http.annotation.Post;
 import io.micronaut.problem.HttpStatusType;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpopd.config.ConfigurationService;
+import org.dandoy.dbpopd.config.DatabaseCacheService;
 import org.zalando.problem.Problem;
 
 import java.util.Comparator;
@@ -17,9 +19,11 @@ import java.util.List;
 @Tag(name = "database")
 public class DatabaseVfksController {
     private final ConfigurationService configurationService;
+    private final DatabaseCacheService databaseCacheService;
 
-    public DatabaseVfksController(ConfigurationService configurationService) {
+    public DatabaseVfksController(ConfigurationService configurationService, DatabaseCacheService databaseCacheService) {
         this.configurationService = configurationService;
+        this.databaseCacheService = databaseCacheService;
     }
 
     @Get("/vfks")
@@ -53,7 +57,7 @@ public class DatabaseVfksController {
 
     @Post("/vfks")
     public void postVirtualForeignKey(ForeignKey foreignKey) {
-        DatabaseCache sourceDatabaseCache = configurationService.getSourceDatabaseCache();
+        DatabaseCache sourceDatabaseCache = databaseCacheService.getSourceDatabaseCache();
         Table fkTable = sourceDatabaseCache.getTable(foreignKey.getFkTableName());
         List<ForeignKey> dbForeignKeys = fkTable.getForeignKeys();
 

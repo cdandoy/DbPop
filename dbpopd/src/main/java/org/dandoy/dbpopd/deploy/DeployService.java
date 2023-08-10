@@ -7,7 +7,8 @@ import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.CloseShieldOutputStream;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
+import org.dandoy.dbpopd.config.DatabaseCacheService;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -20,9 +21,11 @@ import java.util.zip.ZipOutputStream;
 @Slf4j
 public class DeployService {
     private final ConfigurationService configurationService;
+    private final DatabaseCacheService databaseCacheService;
     private final File codeDirectory;
 
-    public DeployService(ConfigurationService configurationService) {
+    public DeployService(DatabaseCacheService databaseCacheService, ConfigurationService configurationService) {
+        this.databaseCacheService = databaseCacheService;
         codeDirectory = configurationService.getCodeDirectory();
         this.configurationService = configurationService;
     }
@@ -57,7 +60,7 @@ public class DeployService {
 
     public SnapshotSqlScriptGenerator.GenerateSqlScriptsResult generateSqlScripts() {
         return new SnapshotSqlScriptGenerator(
-                configurationService.getTargetDatabaseCache(),
+                databaseCacheService.getTargetDatabaseCache(),
                 configurationService.getSnapshotFile(),
                 configurationService.getCodeDirectory()
         ).generateSqlScripts();
@@ -67,7 +70,7 @@ public class DeployService {
         SnapshotFlywayScriptGenerator.GenerateFlywayScriptsResult ret;
 
         SnapshotFlywayScriptGenerator generator = new SnapshotFlywayScriptGenerator(
-                configurationService.getTargetDatabaseCache(),
+                databaseCacheService.getTargetDatabaseCache(),
                 configurationService.getSnapshotFile(),
                 configurationService.getCodeDirectory(),
                 configurationService.getFlywayDirectory()

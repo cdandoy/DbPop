@@ -75,6 +75,10 @@
     opacity: 0;
   }
 
+  .sidebar.close .db-status {
+    padding-left: 8px;
+  }
+
   .sidebar header {
     position: relative;
   }
@@ -217,6 +221,10 @@
     background-color: var(--primary-color-light);
     position: relative;
     transition: var(--tran-05);
+  }
+
+  .sidebar .db-status i {
+    cursor: pointer;
   }
 
   .menu-bar .bottom-content {

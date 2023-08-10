@@ -7,4 +7,3 @@ dbpopd:
     path: '../files/temp/'
   startup:
     loadDatasets: false
-    parallel: false

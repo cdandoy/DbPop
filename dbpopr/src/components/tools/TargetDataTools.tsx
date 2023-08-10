@@ -2,15 +2,15 @@ import React, {useContext} from "react";
 import PageHeader from "../pageheader/PageHeader";
 import {Section} from "./Section";
 import target_full from "./data/target_full/target_full.png"
-import {SiteContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function TargetDataTools() {
-    const siteResponse = useContext(SiteContext);
+    const siteStatus = useContext(WebSocketStateContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}
                         breadcrumbs={
-                            siteResponse.hasSource ? [
+                            siteStatus.hasSource ? [
                                     {to: "/tools", label: "Tools"},
                                     {to: "/tools/target", label: "Target"},
                                     {label: "Data"},

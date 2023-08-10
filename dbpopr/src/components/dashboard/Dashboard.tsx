@@ -4,10 +4,10 @@ import {datasetContent, DatasetContentResponse} from "../../api/datasetContent";
 import LoadingOverlay from "../utils/LoadingOverlay";
 import './Dashboard.scss'
 import {populate} from "../../api/Populate";
-import {SiteContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function Dashboard() {
-    const siteResponse = useContext(SiteContext);
+    const siteStatus = useContext(WebSocketStateContext);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [contentResponse, setContentResponse] = useState<DatasetContentResponse | null>(null);
@@ -42,7 +42,7 @@ export default function Dashboard() {
                 </div>
                 <p className="lead">The easiest way to populate your development database.</p>
             </div>
-            {siteResponse.hasTarget && (
+            {siteStatus.hasTarget && (
                 <div className="datasets p-3">
                     {contentResponse.datasetContents
                         .filter(datasetContent => datasetContent.failureCauses || "static" !== datasetContent.name)
@@ -57,8 +57,11 @@ export default function Dashboard() {
                         ))}
                 </div>
             )}
-            {siteResponse.hasTarget || (
-                <h2>No target database defined</h2>
+            {siteStatus.hasTarget || (
+                <div className={"text-center"} style={{marginTop:"12em"}}>
+                    <h2>No target database defined</h2>
+                    <p>Please go to settings to define your target database </p>
+                </div>
             )}
         </div>
     )

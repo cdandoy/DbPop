@@ -32,6 +32,15 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
         this.directory = directory;
     }
 
+    public String getDownloadedPath() {
+        try {
+            return directory.getCanonicalPath();
+        } catch (IOException e) {
+            log.error("Failed to call getCanonicalPath() on {}", directory);
+            return directory.toString();
+        }
+    }
+
     @Override
     public void close() {
     }

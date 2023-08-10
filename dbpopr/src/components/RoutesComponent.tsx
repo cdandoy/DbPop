@@ -5,7 +5,6 @@ import EditVirtualFkComponent from "./vfk/EditVirtualFkComponent";
 import AddVirtualFkComponent from "./vfk/AddVirtualFkComponent";
 import Dashboard from "./dashboard/Dashboard";
 import React, {useContext} from "react";
-import {SiteContext} from "./app/App";
 import ToolsComponent from "./tools/ToolsComponent";
 import CodeSourceDownload from "./tools/code/sourcedownload/CodeSourceDownload";
 import CodeSourceCompare from "./tools/code/sourcecompare/CodeSourceCompare";
@@ -25,9 +24,12 @@ import TargetDataTools from "./tools/TargetDataTools";
 import TargetCodeTools from "./tools/TargetCodeTools";
 import SourceCodeTools from "./tools/SourceCodeTools";
 import SourceDataTools from "./tools/SourceDataTools";
+import SettingsComponent from "./settings/SettingsComponent";
+import EditDatabaseSettingsComponent from "./settings/EditDatabaseSettingsComponent";
+import {WebSocketStateContext} from "./ws/useWebSocketState";
 
 export default function RoutesComponent() {
-    const siteResponse = useContext(SiteContext);
+    const siteStatus = useContext(WebSocketStateContext);
     return <>
         <Routes>
             <Route path="/datasets" element=<Datasets/>/>
@@ -35,7 +37,7 @@ export default function RoutesComponent() {
             <Route path="/codechanges" element=<CodeChanges/>/>
 
             <Route path="/tools" element=<ToolsComponent/>/>
-            {siteResponse.hasSource && <>
+            {siteStatus.hasSource && <>
                 <Route path="/tools/source/" element=<SourceTools/>/>
                 <Route path="/tools/source/data" element=<SourceDataTools/>/>
                 <Route path="/tools/source/code" element=<SourceCodeTools/>/>
@@ -45,7 +47,7 @@ export default function RoutesComponent() {
                 <Route path="/tools/source/compare" element=<CodeSourceCompare/>/>
                 <Route path="/tools/source/download" element=<CodeSourceDownload/>/>
             </>}
-            {siteResponse.hasTarget && <>
+            {siteStatus.hasTarget && <>
                 <Route path="/tools/target/" element=<TargetTools/>/>
                 <Route path="/tools/target/data" element=<TargetDataTools/>/>
                 <Route path="/tools/target/code" element=<TargetCodeTools/>/>
@@ -60,6 +62,9 @@ export default function RoutesComponent() {
             <Route path="/vfk" element=<VirtualFksComponent/>/>
             <Route path="/vfk/add" element=<AddVirtualFkComponent/>/>
             <Route path="/vfk/:pkTable/:fkName" element=<EditVirtualFkComponent/>/>
+            <Route path="/settings/:type" element=<EditDatabaseSettingsComponent/>/>
+            <Route path="/settings" element=<SettingsComponent/>/>
+
             <Route path="/" element=<Dashboard/>/>
         </Routes>
     </>

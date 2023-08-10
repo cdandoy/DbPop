@@ -3,7 +3,7 @@ package org.dandoy.dbpopd.code;
 import io.micronaut.context.annotation.Context;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.utils.IOUtils;
 
 import java.io.File;

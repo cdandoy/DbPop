@@ -1,5 +1,6 @@
 package org.dandoy.dbpopd.site;
 
+import io.micronaut.context.event.ApplicationEventListener;
 import io.micronaut.websocket.WebSocketBroadcaster;
 import io.micronaut.websocket.WebSocketSession;
 import io.micronaut.websocket.annotation.OnClose;
@@ -7,15 +8,19 @@ import io.micronaut.websocket.annotation.OnMessage;
 import io.micronaut.websocket.annotation.OnOpen;
 import io.micronaut.websocket.annotation.ServerWebSocket;
 import jakarta.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.dandoy.dbpopd.config.ConnectionBuilderChangedEvent;
+import org.dandoy.dbpopd.config.ConnectionType;
 
 import java.util.function.Supplier;
 
 @Slf4j
 @Singleton
 @ServerWebSocket("/ws/site")
-public class SiteWebSocket {
+public class SiteWebSocket implements ApplicationEventListener<ConnectionBuilderChangedEvent> {
     private final WebSocketBroadcaster broadcaster;
+    @Getter
     private final SiteStatus siteStatus = new SiteStatus();
     private SiteStatus siteStatusBeforeDelay;
     private int delayed = 0;
@@ -26,7 +31,6 @@ public class SiteWebSocket {
 
     @OnOpen
     public void onOpen(WebSocketSession ignore) {
-        log.debug("SiteWebSocket.onOpen");
         sendSiteStatus();
     }
 
@@ -40,15 +44,28 @@ public class SiteWebSocket {
         log.debug("SiteWebSocket.onClose");
     }
 
+    @Override
+    public void onApplicationEvent(ConnectionBuilderChangedEvent event) {
+        boolean hasConnection = event.connectionBuilder() != null;
+        if (event.type() == ConnectionType.SOURCE) {
+            siteStatus.setHasSource(hasConnection);
+        } else if (event.type() == ConnectionType.TARGET) {
+            siteStatus.setHasTarget(hasConnection);
+        }
+        fireSiteStatus();
+    }
+
     public void setHasCode(boolean hasCode) {
         siteStatus.setHasCode(hasCode);
-        if (delayed == 0) {
-            sendSiteStatus();
-        }
+        fireSiteStatus();
     }
 
     public void codeChanged() {
-        siteStatus.setCodeChanged();
+        siteStatus.codeChanged();
+        fireSiteStatus();
+    }
+
+    private void fireSiteStatus() {
         if (delayed == 0) {
             sendSiteStatus();
         }

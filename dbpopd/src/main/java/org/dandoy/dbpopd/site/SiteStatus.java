@@ -8,6 +8,8 @@ import java.util.Objects;
 @Getter
 @Setter
 public final class SiteStatus {
+    private boolean hasSource;
+    private boolean hasTarget;
     private boolean hasCode;
     private int codeChanges;
 
@@ -15,11 +17,13 @@ public final class SiteStatus {
     }
 
     public SiteStatus(SiteStatus that) {
+        this.hasSource = that.hasSource;
+        this.hasTarget = that.hasTarget;
         this.hasCode = that.hasCode;
         this.codeChanges = that.codeChanges;
     }
 
-    public void setCodeChanged() {
+    public void codeChanged() {
         this.codeChanges++;
     }
 

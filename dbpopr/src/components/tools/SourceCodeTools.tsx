@@ -3,15 +3,15 @@ import PageHeader from "../pageheader/PageHeader";
 import {Section} from "./Section";
 import download_source from "./code/sourcedownload/download_source.png"
 import compare_source from "./code/sourcecompare/compare_source.png"
-import {SiteContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function SourceCodeTools() {
-    const siteResponse = useContext(SiteContext);
+    const siteStatus = useContext(WebSocketStateContext);
     return <div id={"tools-component"} className={"container"}>
         <div>
             <PageHeader title={"Tools"}
                         breadcrumbs={
-                            siteResponse.hasTarget ? [
+                            siteStatus.hasTarget ? [
                                     {to: "/tools", label: "Tools"},
                                     {to: "/tools/source", label: "Source"},
                                     {label: "Code"},
@@ -24,15 +24,15 @@ export default function SourceCodeTools() {
             />
 
             <div className={"ms-8"}>
-                <Section title={"Compare Source"}
-                         description={"Compare the tables and sprocs in the source database with the local SQL files"}
-                         to={"/tools/source/compare"}
-                         img={compare_source}
-                />
                 <Section title={"Download Source"}
                          description={"Download the tables and sprocs from the source database to the local SQL files"}
                          to={"/tools/source/download"}
                          img={download_source}
+                />
+                <Section title={"Compare Source"}
+                         description={"Compare the tables and sprocs in the source database with the local SQL files"}
+                         to={"/tools/source/compare"}
+                         img={compare_source}
                 />
             </div>
         </div>

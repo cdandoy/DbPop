@@ -13,7 +13,8 @@ import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.utils.StringUtils;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
+import org.dandoy.dbpopd.config.DatabaseCacheService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.IOUtils;
 import org.dandoy.diff.DiffLine;
@@ -31,11 +32,13 @@ import java.util.stream.Stream;
 @Slf4j
 public class CodeController {
     private final ConfigurationService configurationService;
+    private final DatabaseCacheService databaseCacheService;
     private final CodeService codeService;
     private final ChangeDetector changeDetector;
 
-    public CodeController(ConfigurationService configurationService, CodeService codeService, ChangeDetector changeDetector) {
+    public CodeController(ConfigurationService configurationService, DatabaseCacheService databaseCacheService, CodeService codeService, ChangeDetector changeDetector) {
         this.configurationService = configurationService;
+        this.databaseCacheService = databaseCacheService;
         this.codeService = codeService;
         this.changeDetector = changeDetector;
     }
@@ -65,9 +68,9 @@ public class CodeController {
         return codeService.downloadTargetToFile();
     }
 
-    record ChangeResponse(String path, String dbname, ObjectIdentifierResponse objectIdentifier, boolean fileChanged, boolean databaseChanged, boolean fileDeleted, boolean databaseDeleted) {}
+    public record ChangeResponse(String path, String dbname, ObjectIdentifierResponse objectIdentifier, boolean fileChanged, boolean databaseChanged, boolean fileDeleted, boolean databaseDeleted) {}
 
-    record ObjectIdentifierResponse(String type, TableName tableName, ObjectIdentifierResponse parent) {
+    public record ObjectIdentifierResponse(String type, TableName tableName, ObjectIdentifierResponse parent) {
         static ObjectIdentifierResponse toObjectIdentifierResponse(ObjectIdentifier objectIdentifier) {
             return new ObjectIdentifierResponse(
                     objectIdentifier.getType(),
@@ -150,8 +153,6 @@ public class CodeController {
         ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
         String leftDefinition = getFileDefinition(objectIdentifier);
         String rightDefinition = getDatabaseDefinition(objectIdentifier);
-//        String leftDefinition = getFileDefinition(new ObjectIdentifier("SQL_STORED_PROCEDURE", "master", "dbo", "GetInvoices"));
-//        String rightDefinition = getFileDefinition(new ObjectIdentifier("SQL_STORED_PROCEDURE", "master", "dbo", "GetInvoices2"));
         List<String> fileLines = Arrays.asList(leftDefinition.split("\n"));
         List<String> databaseLines = Arrays.asList(rightDefinition.split("\n"));
         Patch<String> patch = DiffUtils.diff(
@@ -181,7 +182,7 @@ public class CodeController {
     }
 
     private String getDatabaseDefinition(ObjectIdentifier objectIdentifier) {
-        Database targetDatabase = configurationService.getTargetDatabaseCache();
+        Database targetDatabase = databaseCacheService.getTargetDatabaseCache();
         String definition = targetDatabase.getDefinition(objectIdentifier);
         if (definition == null) return "";
         return StringUtils.normalizeEOL(definition);

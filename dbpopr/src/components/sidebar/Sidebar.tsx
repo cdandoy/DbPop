@@ -1,6 +1,32 @@
 import React, {useContext, useState} from "react";
 import './Sidebar.scss'
-import {SiteContext} from "../app/App";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
+
+function databaseStatuses(hasSource: boolean, hasTarget: boolean) {
+    function databaseLight(has: boolean, name: string) {
+        if (has) {
+            return <i
+                className={"fa fa-circle fa-xs"}
+                style={{color: 'green'}}
+                title={`${name}: Connected`}
+            />;
+        } else {
+            return <i
+                className={"fa fa-circle fa-xs"}
+                style={{color: 'lightgray'}}
+                title={`${name}: Disconnected`}
+            />
+        }
+    }
+
+    return <>
+        <span className="db-status">
+            {databaseLight(hasSource, "Source Database")}
+            &nbsp;
+            {databaseLight(hasTarget, "Target Database")}
+        </span>
+    </>
+}
 
 // See https://www.codinglabweb.com/2022/01/sidebar-menu-in-html-css-javascript.html
 export default function Sidebar({title1, title2, search, children, menu, bottomMenu}: {
@@ -11,33 +37,27 @@ export default function Sidebar({title1, title2, search, children, menu, bottomM
     menu?: React.ReactNode;
     bottomMenu?: React.ReactNode;
 }) {
-    const siteResponse = useContext(SiteContext);
+    const siteStatus = useContext(WebSocketStateContext);
     const [closed, setClosed] = useState(false);
 
     return <>
         <div id={"sidebar-root"}>
             <nav className={`sidebar ${closed ? 'close' : ''}`}>
                 <header>
-                    <div className="image-text">
+                    {closed ?
+                        databaseStatuses(siteStatus.hasSource, siteStatus.hasTarget)
+                        :
+                        <div className="image-text">
                         <span className="image">
                             {/*<img src="logo.png" alt=""/>*/}
                         </span>
-                        <div className="text logo-text">
-                            <span className="title1">{title1}</span>
-                            <span className="title2">{title2}</span>
-                            <span className="db-status">
-                                <i className={"fa fa-circle fa-xs"}
-                                   style={{color: siteResponse.hasSource ? 'green' : 'default'}}
-                                   title={"Source Database"}
-                                ></i>
-                                &nbsp;
-                                <i className={"fa fa-circle fa-xs"}
-                                   style={{color: siteResponse.hasTarget ? 'green' : 'default'}}
-                                   title={"Target Database"}
-                                ></i>
-                            </span>
+                            <div className="text logo-text">
+                                <span className="title1">{title1}</span>
+                                <span className="title2">{title2}</span>
+                                {databaseStatuses(siteStatus.hasSource, siteStatus.hasTarget)}
+                            </div>
                         </div>
-                    </div>
+                    }
 
                     <button className="toggle" onClick={() => setClosed(!closed)}>
                         <i className='fa fa-chevron-right'/>

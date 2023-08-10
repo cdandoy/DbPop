@@ -7,7 +7,7 @@ import org.dandoy.dbpop.database.Dependency;
 import org.dandoy.dbpop.database.Query;
 import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.tests.TableAssertion;
-import org.dandoy.dbpopd.ConfigurationService;
+import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.CsvAssertionService;
 import org.dandoy.dbpopd.download.DownloadController;
 import org.dandoy.dbpopd.download.DownloadRequest;
