@@ -44,25 +44,27 @@ public class SettingsController {
     }
 
     private void saveDatabaseConfiguration(ConnectionType connectionType, DatabaseConfigurationResponse body) {
-        DatabaseConfiguration oldDatabaseConfiguration = databasesConfigurationService.getDatabaseConfiguration(connectionType);
-        DatabaseConfiguration databaseConfiguration = new DatabaseConfiguration(
-                body.url(),
-                body.username(),
-                body.password().equals(FAKE_PASSWORD) ? oldDatabaseConfiguration.password() : body.password()
+        String url = body.url();
+        String username = body.username();
+        String password = extractPasswordFromRequest(
+                databasesConfigurationService.getDatabaseConfiguration(connectionType).password(),
+                body.password()
         );
-        databasesConfigurationService.setDatabaseConfiguration(connectionType, databaseConfiguration);
-        if (!StringUtils.isBlank(body.url())) {
-            validateDatabaseConfiguration(databaseConfiguration);
+        databasesConfigurationService.setDatabaseConfiguration(connectionType, url, username, password);
+        if (!StringUtils.isBlank(url)) {
+            validateDatabaseConfiguration(url, username, password);
         }
     }
 
-    private void validateDatabaseConfiguration(DatabaseConfiguration databaseConfiguration) {
-        if (!databaseConfiguration.hasInfo()) return;
-        UrlConnectionBuilder urlConnectionBuilder = new UrlConnectionBuilder(
-                databaseConfiguration.url(),
-                databaseConfiguration.username(),
-                databaseConfiguration.password()
-        );
+    private static String extractPasswordFromRequest(String oldPassword, String newPassword) {
+        if (newPassword == null) return null;
+        if (newPassword.equals(FAKE_PASSWORD)) return oldPassword;
+        return newPassword;
+    }
+
+    private void validateDatabaseConfiguration(String url, String username, String password) {
+        if (StringUtils.isBlank(url)) return;
+        UrlConnectionBuilder urlConnectionBuilder = new UrlConnectionBuilder(url, username, password);
         //noinspection EmptyTryBlock
         try (Connection ignored = urlConnectionBuilder.createConnection()) {
         } catch (SQLException e) {
@@ -79,11 +81,11 @@ public class SettingsController {
                 databaseConfiguration.url(),
                 databaseConfiguration.username(),
                 StringUtils.isBlank(databaseConfiguration.password()) ? null : FAKE_PASSWORD,
-                databaseConfiguration.conflict()
+                databaseConfiguration.fromEnvVariables()
         );
     }
 
-    public record DatabaseConfigurationResponse(String url, String username, String password, boolean conflict) {}
+    public record DatabaseConfigurationResponse(String url, String username, String password, boolean fromEnvVariables) {}
 
     public record Settings(DatabaseConfigurationResponse sourceDatabaseConfiguration, DatabaseConfigurationResponse targetDatabaseConfiguration) {}
 }

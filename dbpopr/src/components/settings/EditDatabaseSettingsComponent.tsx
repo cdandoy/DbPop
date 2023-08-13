@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react"
 import PageHeader from "../pageheader/PageHeader";
-import {DatabaseConfiguration, getSettings, postDatabase} from "../../api/settingsApi";
+import {DatabaseConfigurationResponse, getSettings, postDatabase} from "../../api/settingsApi";
 import {Button} from "react-bootstrap";
 import {useParams} from "react-router";
 import {useNavigate} from "react-router-dom";
@@ -10,7 +10,7 @@ export default function EditDatabaseSettingsComponent() {
     const [url, setUrl] = useState("");
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [conflict] = useState(false);
+    const [fromEnvVariables, setFromEnvVariables] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | undefined>();
@@ -19,14 +19,10 @@ export default function EditDatabaseSettingsComponent() {
 
     useEffect(() => {
         setLoading(true);
-        loadSettings();
-    }, [type]);
-
-    function loadSettings() {
         getSettings()
             .then(result => {
                 let settings = result.data;
-                let configuration: DatabaseConfiguration;
+                let configuration: DatabaseConfigurationResponse;
                 if (type === "source") {
                     configuration = settings.sourceDatabaseConfiguration;
                 } else {
@@ -35,10 +31,11 @@ export default function EditDatabaseSettingsComponent() {
                 setUrl(configuration.url || '');
                 setUsername(configuration.username || '');
                 setPassword(configuration.password || '');
+                setFromEnvVariables(configuration.fromEnvVariables);
                 setLoading(false)
                 setSaving(false);
             })
-    }
+    }, [type]);
 
     function whenSave(event: React.SyntheticEvent) {
         event.preventDefault();
@@ -49,38 +46,36 @@ export default function EditDatabaseSettingsComponent() {
         setError(undefined);
         setSaving(true);
         try {
-            postDatabase(type!, {url, username, password, conflict}).then(() => {
-                loadSettings();
-            }).then(() => {
-                navigate('/settings');
-            }).catch(reason => {
-                setError(reason.response.data.detail);
-                setSaving(false);
-            })
+            postDatabase(type!, {url, username, password})
+                .then(() => {
+                    navigate('/settings');
+                })
+                .catch(reason => {
+                    setError(reason.response.data.detail);
+                    setSaving(false);
+                })
         } catch (e) {
             console.log("Error?");
         }
     }
 
     function whenClear() {
-        setUrl('');
-        setUsername('');
-        setPassword('');
-        doSave();
+        postDatabase(type!, {})
+            .then(() => {
+                navigate('/settings')
+            });
     }
 
     function getTitle(): JSX.Element | string | undefined {
         if (type === "source") {
-            return <>
-                <div>
-                    DbPop can copy tables, data, and code from a source database to files.<br/>
-                    The source database is typically a copy of the production database, use your production database at your own risks.
-                </div>
-
-
-            </>
+            return <div>
+                DbPop can copy tables, data, and code from a source database to files.<br/>
+                The source database is typically a copy of the production database, use your production database at your own risks.
+            </div>
         } else if (type === "target") {
-            return "DbPop seeds data into the target database."
+            return <div>
+                DbPop seeds data into the target database.
+            </div>
         }
     }
 
@@ -98,41 +93,55 @@ export default function EditDatabaseSettingsComponent() {
         />
 
         <form onSubmit={whenSave} autoComplete={"off"}>
-            {conflict && <div className="alert alert-warning" role="alert">There is a conflict between environment variables and the configuration file.</div>}
             <div className="form-group">
                 <label htmlFor="url">URL</label>
-                <input type="text" className="form-control" id="url" placeholder="jdbc:sqlserver://localhost;database=tempdb;trustServerCertificate=true"
-                       value={url}
-                       onChange={event => setUrl(event.target.value)}
-                />
+                {fromEnvVariables ?
+                    <span className="form-control">{url}</span>
+                    :
+                    <input type="text" className="form-control" id="url" placeholder="jdbc:sqlserver://localhost;database=tempdb;trustServerCertificate=true"
+                           value={url}
+                           onChange={event => setUrl(event.target.value)}
+                    />
+                }
             </div>
             <div className="form-group">
                 <label htmlFor="username">Username</label>
-                <input type="text" className="form-control" id="username" placeholder="sa"
-                       value={username}
-                       onChange={event => setUsername(event.target.value)}
-                />
+                {fromEnvVariables ?
+                    <span className="form-control">{username}</span>
+                    :
+                    <input type="text" className="form-control" id="username" placeholder="sa"
+                           value={username}
+                           onChange={event => setUsername(event.target.value)}
+                    />
+                }
             </div>
             <div className="form-group">
                 <label htmlFor="password">Password</label>
-                <input type="password" className="form-control" id="password"
-                       value={password}
-                       onChange={event => setPassword(event.target.value)}
-                />
+                {fromEnvVariables ?
+                    <span className="form-control">{password}</span>
+                    :
+                    <input type="password" className="form-control" id="password"
+                           value={password}
+                           onChange={event => setPassword(event.target.value)}
+                    />
+                }
             </div>
-            <div className={"mt-5"}>
-                {error && <div className="alert alert-danger" role="alert">{error}</div>}
-                {saving && <div className="alert alert-info" role="alert"><i className={"fa fa-spinner fa-spin"}/> Validating...</div>}
-                <div className="btn-group" role="group" aria-label="Button group example">
-                    <Button type={"submit"} disabled={saving}>
-                        Save
-                    </Button>
-                    <Button type={"button"} disabled={saving} variant={"secondary"} onClick={whenClear}>
-                        Clear
-                    </Button>
+            {fromEnvVariables ?
+                <div className="alert alert-info mt-5" role="alert">Defined by environment variables.</div>
+                :
+                <div className={"mt-5"}>
+                    {error && <div className="alert alert-danger" role="alert">{error}</div>}
+                    {saving && <div className="alert alert-info" role="alert"><i className={"fa fa-spinner fa-spin"}/> Validating...</div>}
+                    <div className="btn-group" role="group" aria-label="Button group example">
+                        <Button type={"submit"} disabled={saving}>
+                            Save
+                        </Button>
+                        <Button type={"button"} disabled={saving} variant={"secondary"} onClick={whenClear}>
+                            Clear
+                        </Button>
+                    </div>
                 </div>
-
-            </div>
+            }
         </form>
     </>
 }

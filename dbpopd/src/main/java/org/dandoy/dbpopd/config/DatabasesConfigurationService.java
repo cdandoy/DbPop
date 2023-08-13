@@ -106,19 +106,20 @@ public class DatabasesConfigurationService {
     }
 
     private DatabaseConfiguration getDatabaseConfiguration(Properties properties, String urlName, String usernameName, String passwordName) {
-        DatabaseConfiguration envSource = new DatabaseConfiguration(
-                System.getenv(urlName),
-                System.getenv(usernameName),
-                System.getenv(passwordName)
-        );
-        DatabaseConfiguration fileSource = new DatabaseConfiguration(
+        if (!StringUtils.isBlank(System.getenv(urlName))) {
+            return new DatabaseConfiguration(
+                    System.getenv(urlName),
+                    System.getenv(usernameName),
+                    System.getenv(passwordName),
+                    true
+            );
+        }
+
+        return new DatabaseConfiguration(
                 properties.getProperty(urlName),
                 properties.getProperty(usernameName),
-                properties.getProperty(passwordName)
-        );
-        return new DatabaseConfiguration(
-                fileSource.hasInfo() ? fileSource : envSource,
-                envSource.hasInfo() && fileSource.hasInfo()
+                properties.getProperty(passwordName),
+                false
         );
     }
 
@@ -126,12 +127,12 @@ public class DatabasesConfigurationService {
         return databaseConfigurations[type.ordinal()];
     }
 
-    public void setDatabaseConfiguration(ConnectionType type, DatabaseConfiguration configuration) {
+    public void setDatabaseConfiguration(ConnectionType type, String url, String username, String password) {
         String name = type.name();
         Properties properties = getConfigurationProperties();
-        setProperty(properties, name + "_JDBCURL", configuration.url());
-        setProperty(properties, name + "_USERNAME", configuration.username());
-        setProperty(properties, name + "_PASSWORD", configuration.password());
+        setProperty(properties, name + "_JDBCURL", url);
+        setProperty(properties, name + "_USERNAME", username);
+        setProperty(properties, name + "_PASSWORD", password);
         saveConfigurationProperties(properties);
     }
 

@@ -1,28 +1,27 @@
 import axios, {AxiosResponse} from "axios";
 
-export interface DatabaseConfiguration {
+export interface DatabaseConfigurationResponse {
     url?: string;
     username?: string;
     password?: string;
-    conflict: boolean;
+    fromEnvVariables: boolean;
+}
+
+export interface DatabaseConfigurationRequest {
+    url?: string;
+    username?: string;
+    password?: string;
 }
 
 export interface Settings {
-    sourceDatabaseConfiguration: DatabaseConfiguration;
-    targetDatabaseConfiguration: DatabaseConfiguration;
+    sourceDatabaseConfiguration: DatabaseConfigurationResponse;
+    targetDatabaseConfiguration: DatabaseConfigurationResponse;
 }
 
 export function getSettings(): Promise<AxiosResponse<Settings>> {
     return axios.get<Settings>('/settings')
 }
 
-export function postDatabase(type:string, databaseConfiguration: DatabaseConfiguration) {
-    return axios.post<DatabaseConfiguration>(`/settings/${type}`, databaseConfiguration)
-}
-export function postSource(databaseConfiguration: DatabaseConfiguration) {
-    return axios.post<DatabaseConfiguration>(`/settings/source`, databaseConfiguration)
-}
-
-export function postTarget(databaseConfiguration: DatabaseConfiguration) {
-    return axios.post<DatabaseConfiguration>(`/settings/target`, databaseConfiguration)
+export function postDatabase(type: string, databaseConfiguration: DatabaseConfigurationRequest) {
+    return axios.post<DatabaseConfigurationResponse>(`/settings/${type}`, databaseConfiguration)
 }

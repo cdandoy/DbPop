@@ -1,10 +1,10 @@
 import React, {useEffect, useState} from "react"
-import {DatabaseConfiguration, getSettings} from "../../api/settingsApi";
+import {DatabaseConfigurationResponse, getSettings} from "../../api/settingsApi";
 import PageHeader from "../pageheader/PageHeader";
 import ViewDatabaseSettingsComponent from "./ViewDatabaseSettingsComponent";
 import {NavLink} from "react-router-dom";
 
-function Database({configuration, type}: { configuration: DatabaseConfiguration, type: string }) {
+function Database({configuration, type}: { configuration: DatabaseConfigurationResponse, type: string }) {
     return <>
         <div className={"clearfix"}>
             <h3 className={"float-start"}>{type === "source" ? "Source Database" : "Target Database"}</h3>
@@ -22,8 +22,8 @@ function Database({configuration, type}: { configuration: DatabaseConfiguration,
 
 export default function SettingsComponent() {
     const [loading, setLoading] = useState(true);
-    const [source, setSource] = useState<DatabaseConfiguration | undefined>()
-    const [target, setTarget] = useState<DatabaseConfiguration | undefined>()
+    const [source, setSource] = useState<DatabaseConfigurationResponse | undefined>()
+    const [target, setTarget] = useState<DatabaseConfigurationResponse | undefined>()
 
     useEffect(() => {
         getSettings()

@@ -13,28 +13,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-public record DatabaseConfiguration(String url, String username, String password, boolean conflict) {
+public record DatabaseConfiguration(String url, String username, String password, boolean fromEnvVariables) {
     private static final Pattern JDBC_URL_PARSER = Pattern.compile("jdbc:sqlserver://(\\w+)(:(\\d+))?(;.*)");
-
-    public DatabaseConfiguration(String url, String username, String password) {
-        this(url, username, password, false);
-    }
-
-    public DatabaseConfiguration(DatabaseConfiguration that, boolean conflict) {
-        this(
-                that.url(),
-                that.username(),
-                that.password(),
-                conflict
-        );
-    }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof DatabaseConfiguration that)) return false;
 
-        if (conflict != that.conflict) return false;
+        if (fromEnvVariables != that.fromEnvVariables) return false;
         if (!Objects.equals(url, that.url)) return false;
         if (!Objects.equals(username, that.username)) return false;
         if (!Objects.equals(password, that.password)) return false;
@@ -47,7 +34,7 @@ public record DatabaseConfiguration(String url, String username, String password
         int result = url != null ? url.hashCode() : 0;
         result = 31 * result + (username != null ? username.hashCode() : 0);
         result = 31 * result + (password != null ? password.hashCode() : 0);
-        result = 31 * result + (conflict ? 1 : 0);
+        result = 31 * result + (fromEnvVariables ? 1 : 0);
         return result;
     }
 
