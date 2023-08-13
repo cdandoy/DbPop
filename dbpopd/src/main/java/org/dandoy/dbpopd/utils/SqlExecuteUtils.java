@@ -50,6 +50,7 @@ public class SqlExecuteUtils {
         return accumulator.getSqls();
     }
 
+    @SuppressWarnings("SqlSourceToSinkFlow")
     public static void executeSqls(File setupFile, Connection connection, List<Sql> sqls) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             for (Sql sql : sqls) {
@@ -59,7 +60,7 @@ public class SqlExecuteUtils {
                          warnings != null;
                          warnings = warnings.getNextWarning()) {
                         String message = warnings.getMessage();
-                        System.out.println("\n" + message);
+                        log.warn(message);
                     }
                     if (isSelect) {
                         try (ResultSet resultSet = statement.getResultSet()) {
@@ -72,8 +73,7 @@ public class SqlExecuteUtils {
                                 sb.append(metaData.getColumnLabel(i + 1));
                             }
                             if (!sb.isEmpty()) {
-                                System.out.println(sb);
-                                System.out.println("_".repeat(sb.length()));
+                                log.info(sb.toString());
                             }
 
                             // Print the values
@@ -83,7 +83,7 @@ public class SqlExecuteUtils {
                                     if (i > 0) sb.append('\t');
                                     sb.append(resultSet.getString(i + 1));
                                 }
-                                System.out.println(sb);
+                                log.info(sb.toString());
                             }
                         }
                     }
@@ -93,7 +93,6 @@ public class SqlExecuteUtils {
                         filename = setupFile.getCanonicalPath();
                     } catch (IOException ignored) {
                     }
-                    System.out.println();
                     log.error("""
                                     Error at {}:{}
                                     {}
@@ -109,7 +108,6 @@ public class SqlExecuteUtils {
 //                  Do not fail if one statement fails. We may be importing sprocs that are in an invalid state
                 }
             }
-            System.out.println();
         }
     }
 
@@ -120,7 +118,7 @@ public class SqlExecuteUtils {
         private final StringBuilder stringBuilder = new StringBuilder();
 
         void addLine(String line) {
-            if (stringBuilder.length() == 0 && line.isEmpty()) return;
+            if (stringBuilder.isEmpty() && line.isEmpty()) return;
             stringBuilder.append(line).append("\n");
         }
 

@@ -62,6 +62,7 @@ public class ConfigurationService implements ApplicationEventListener<Connection
         this.flywayDirectory = flywayDirectory != null ? toCanonical(new File(flywayDirectory)) : new File(configurationDir, "flyway");
         this.codeAutoSave = codeAutoSave;
 
+        System.out.println();
         log.info("Configuration directory: {}", toCanonical(this.configurationDir));
         if (datasetsDirectory != null) log.info("Datasets directory: {}", toCanonical(this.datasetsDirectory));
         if (setupDirectory != null) log.info("Setup directory: {}", toCanonical(this.setupDirectory));
