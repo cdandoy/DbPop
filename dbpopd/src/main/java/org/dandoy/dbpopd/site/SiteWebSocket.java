@@ -46,11 +46,11 @@ public class SiteWebSocket implements ApplicationEventListener<ConnectionBuilder
 
     @Override
     public void onApplicationEvent(ConnectionBuilderChangedEvent event) {
-        boolean hasConnection = event.connectionBuilder() != null;
+        SiteStatus.ConnectionStatus connectionStatus = new SiteStatus.ConnectionStatus(event.isConfigured(), event.errorMessage());
         if (event.type() == ConnectionType.SOURCE) {
-            siteStatus.setHasSource(hasConnection);
+            siteStatus.setSourceConnectionStatus(connectionStatus);
         } else if (event.type() == ConnectionType.TARGET) {
-            siteStatus.setHasTarget(hasConnection);
+            siteStatus.setTargetConnectionStatus(connectionStatus);
         }
         fireSiteStatus();
     }

@@ -2,29 +2,23 @@ import React, {useContext, useState} from "react";
 import './Sidebar.scss'
 import {WebSocketStateContext} from "../ws/useWebSocketState";
 
-function databaseStatuses(hasSource: boolean, hasTarget: boolean) {
-    function databaseLight(has: boolean, name: string) {
-        if (has) {
-            return <i
-                className={"fa fa-circle fa-xs"}
-                style={{color: 'green'}}
-                title={`${name}: Connected`}
-            />;
-        } else {
-            return <i
-                className={"fa fa-circle fa-xs"}
-                style={{color: 'lightgray'}}
-                title={`${name}: Disconnected`}
-            />
-        }
+function databaseStatuses(hasSource: boolean, sourceErrorMessage: string | undefined, hasTarget: boolean, targetErrorMessage: string | undefined) {
+    function databaseLight(has: boolean, errorMessage: string | undefined, name: string) {
+        return <i
+            className={"fa fa-circle fa-xs"}
+            style={{color: errorMessage ? 'orangered' : has ? 'green' : 'lightgray'}}
+            title={`${name}: ${errorMessage ? errorMessage : has ? 'Connected' : 'Undefined'}`}
+        />;
     }
 
     return <>
-        <span className="db-status">
-            {databaseLight(hasSource, "Source Database")}
-            &nbsp;
-            {databaseLight(hasTarget, "Target Database")}
-        </span>
+        <div>
+            <span className="db-status">
+                {databaseLight(hasSource, sourceErrorMessage, "Source Database")}
+                &nbsp;
+                {databaseLight(hasTarget, targetErrorMessage, "Target Database")}
+            </span>
+        </div>
     </>
 }
 
@@ -45,7 +39,7 @@ export default function Sidebar({title1, title2, search, children, menu, bottomM
             <nav className={`sidebar ${closed ? 'close' : ''}`}>
                 <header>
                     {closed ?
-                        databaseStatuses(siteStatus.hasSource, siteStatus.hasTarget)
+                        databaseStatuses(siteStatus.hasSource, siteStatus.sourceErrorMessage, siteStatus.hasTarget, siteStatus.targetErrorMessage)
                         :
                         <div className="image-text">
                         <span className="image">
@@ -54,7 +48,7 @@ export default function Sidebar({title1, title2, search, children, menu, bottomM
                             <div className="text logo-text">
                                 <span className="title1">{title1}</span>
                                 <span className="title2">{title2}</span>
-                                {databaseStatuses(siteStatus.hasSource, siteStatus.hasTarget)}
+                                {databaseStatuses(siteStatus.hasSource, siteStatus.sourceErrorMessage, siteStatus.hasTarget, siteStatus.targetErrorMessage)}
                             </div>
                         </div>
                     }

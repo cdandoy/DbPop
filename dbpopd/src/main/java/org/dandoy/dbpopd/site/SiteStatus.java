@@ -8,8 +8,8 @@ import java.util.Objects;
 @Getter
 @Setter
 public final class SiteStatus {
-    private boolean hasSource;
-    private boolean hasTarget;
+    private ConnectionStatus sourceConnectionStatus;
+    private ConnectionStatus targetConnectionStatus;
     private boolean hasCode;
     private int codeChanges;
 
@@ -17,8 +17,8 @@ public final class SiteStatus {
     }
 
     public SiteStatus(SiteStatus that) {
-        this.hasSource = that.hasSource;
-        this.hasTarget = that.hasTarget;
+        this.sourceConnectionStatus = that.sourceConnectionStatus;
+        this.targetConnectionStatus = that.targetConnectionStatus;
         this.hasCode = that.hasCode;
         this.codeChanges = that.codeChanges;
     }
@@ -38,4 +38,6 @@ public final class SiteStatus {
     public int hashCode() {
         return Objects.hash(hasCode, codeChanges);
     }
+
+    public record ConnectionStatus(boolean configured, String errorMessage) {}
 }

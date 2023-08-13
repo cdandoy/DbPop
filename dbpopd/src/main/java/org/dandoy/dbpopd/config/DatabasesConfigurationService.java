@@ -3,6 +3,7 @@ package org.dandoy.dbpopd.config;
 import io.micronaut.context.annotation.Context;
 import io.micronaut.context.annotation.Property;
 import io.micronaut.context.event.ApplicationEventPublisher;
+import io.micronaut.scheduling.annotation.Scheduled;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.Getter;
@@ -10,13 +11,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.net.Socket;
 import java.nio.file.Files;
+import java.sql.Connection;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.dandoy.dbpopd.utils.IOUtils.toCanonical;
 
@@ -24,12 +26,13 @@ import static org.dandoy.dbpopd.utils.IOUtils.toCanonical;
 @Context
 @Slf4j
 public class DatabasesConfigurationService {
+    private static final Pattern JDBC_URL_PARSER = Pattern.compile("jdbc:sqlserver://(\\w+)(:(\\d+))?(;.*)");
     private final ApplicationEventPublisher<DatabaseConfigurationChangedEvent> databaseConfigurationChangedPublisher;
     private final File configurationFile;
     private final ApplicationEventPublisher<ConnectionBuilderChangedEvent> connectionBuilderChangedPublisher;
     @Getter
     private final DatabaseConfiguration[] databaseConfigurations = new DatabaseConfiguration[2];
-    private final ConnectionBuilder[] connectionBuilders = new ConnectionBuilder[2];
+    private final ConnectionBuilderChangedEvent[] connectionBuilderChangedEvents = new ConnectionBuilderChangedEvent[2];
 
     public DatabasesConfigurationService(
             @SuppressWarnings("MnInjectionPoints") @Property(name = "dbpopd.configuration.path") String configurationPath,
@@ -42,9 +45,42 @@ public class DatabasesConfigurationService {
         this.databaseConfigurationChangedPublisher = databaseConfigurationChangedPublisher;
     }
 
+    public static boolean canTcpConnect(String url) {
+        Matcher matcher = JDBC_URL_PARSER.matcher(url);
+        if (!matcher.matches()) {
+            log.warn("Could not parse the connection string '{}'", url);
+            return true; // Assume we can
+        }
+
+        String host = matcher.group(1);
+        String portGroup = matcher.group(3);
+        int port = 1433;
+        if (portGroup != null) {
+            port = Integer.parseInt(portGroup);
+        }
+        log.debug("Attempting a socket connection to {}:{}", host, port);
+        try (Socket socket = new Socket(host, port)) {
+            try (InputStream ignored = socket.getInputStream()) {
+                return true;
+            }
+        } catch (Exception ignore) {
+            return false;
+        }
+    }
+
     @PostConstruct
     public void init() {
         buildConfigs();
+    }
+
+    @Scheduled(fixedDelay = "5s", initialDelay = "10s")
+    void checkConnections() {
+        log.debug("checkConnections()");
+        try {
+            buildConfigs();
+        } catch (Exception e) {
+            log.error("Failed to checkConnections()", e);
+        }
     }
 
     private Properties getConfigurationProperties() {
@@ -78,25 +114,38 @@ public class DatabasesConfigurationService {
     private void buildDatabaseConfig(Properties properties, ConnectionType type) {
         DatabaseConfiguration databaseConfiguration = getDatabaseConfiguration(properties, type);
         if (!Objects.equals(databaseConfigurations[type.ordinal()], databaseConfiguration)) {
-            databaseConfigurations[type.ordinal()] = databaseConfiguration;
             databaseConfigurationChangedPublisher.publishEvent(
                     new DatabaseConfigurationChangedEvent(
                             type,
                             databaseConfiguration
                     )
             );
+            databaseConfigurations[type.ordinal()] = databaseConfiguration;
+        }
 
-            ConnectionBuilder connectionBuilder = databaseConfiguration.createConnectionBuilder();
-            ConnectionBuilder currentConnectionBuilder = connectionBuilders[type.ordinal()];
-            if (!(connectionBuilder == null && currentConnectionBuilder == null)) { // Don't fire an event if they are both null
-                connectionBuilderChangedPublisher.publishEvent(
-                        new ConnectionBuilderChangedEvent(
-                                type,
-                                connectionBuilder
-                        )
-                );
-                connectionBuilders[type.ordinal()] = connectionBuilder;
-            }
+        // This method is invoked periodically, so we check the database connection even if the configuration has not changed.
+        ConnectionBuilderChangedEvent changedEvent = createConnectionBuilderChangedEvent(type, databaseConfiguration);
+        if (!Objects.equals(connectionBuilderChangedEvents[type.ordinal()], changedEvent)) {
+            connectionBuilderChangedPublisher.publishEvent(changedEvent);
+            connectionBuilderChangedEvents[type.ordinal()] = changedEvent;
+        }
+    }
+
+    private static ConnectionBuilderChangedEvent createConnectionBuilderChangedEvent(ConnectionType type, DatabaseConfiguration databaseConfiguration) {
+        if (!databaseConfiguration.hasInfo()) {
+            log.debug("Connection {} is not configured", type);
+            return new ConnectionBuilderChangedEvent(type, false, null, null);
+        }
+        if (!canTcpConnect(databaseConfiguration.url())) {
+            log.debug("Connection {} - Cannot ping the TCP port - {}", type, databaseConfiguration.url());
+            return new ConnectionBuilderChangedEvent(type, true, null, "Failed to connect to " + databaseConfiguration.url());
+        }
+        ConnectionBuilder connectionBuilder = databaseConfiguration.createConnectionBuilder();
+        try (Connection ignored = connectionBuilder.createConnection()) {
+            return new ConnectionBuilderChangedEvent(type, true, connectionBuilder, null);
+        } catch (Exception e) {
+            log.debug("Failed to connect to " + databaseConfiguration.url(), e);
+            return new ConnectionBuilderChangedEvent(type, true, null, e.getMessage());
         }
     }
 

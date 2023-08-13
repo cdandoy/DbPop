@@ -60,7 +60,7 @@ export default function Datasets() {
                         return (
                             <td key={datasetContent.name} className={"text-end"}>
                                 {contentElement?.rows && (
-                                    <>{contentElement.rows.toLocaleString()} rows</>
+                                    <>{contentElement.rows.toLocaleString()}</>
                                 )}
                             </td>
                         )

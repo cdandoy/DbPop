@@ -2,16 +2,23 @@ import useWebSocket, {ReadyState} from "react-use-websocket";
 import React, {useEffect, useState} from "react";
 import {Change, DefaultChanges, targetChanges} from "../../api/changeApi";
 
+interface ConnectionStatus {
+    configured: boolean;
+    errorMessage?: string;
+}
+
 interface StructuredWebSocketMessage {
-    hasSource: boolean;
-    hasTarget: boolean;
+    sourceConnectionStatus: ConnectionStatus;
+    targetConnectionStatus: ConnectionStatus;
     hasCode: boolean;
     codeChanges: number;
 }
 
 export interface WebSocketState {
     hasSource: boolean;
+    sourceErrorMessage?: string;
     hasTarget: boolean;
+    targetErrorMessage?: string;
     codeChanged: number;
     connected: boolean;
     codeChanges: Change[];
@@ -44,7 +51,9 @@ function getWebsocketUrl(): string {
 
 export function useWebSocketState(): WebSocketState {
     const [hasSource, setHasSource] = useState(false);
+    const [sourceErrorMessage, setSourceErrorMessage] = useState<string | undefined>();
     const [hasTarget, setHasTarget] = useState(false);
+    const [targetErrorMessage, setTargetErrorMessage] = useState<string | undefined>();
     const [codeChanged, setCodeChanged] = useState(0);
     const [connected, setConnected] = useState(false);
     const [codeChanges, setCodeChanges] = useState<Change[]>(DefaultChanges);
@@ -62,8 +71,10 @@ export function useWebSocketState(): WebSocketState {
     useEffect(() => {
         if (lastJsonMessage) {
             const message = lastJsonMessage as any as StructuredWebSocketMessage;
-            setHasSource(message.hasSource);
-            setHasTarget(message.hasTarget);
+            setHasSource(message.sourceConnectionStatus.configured);
+            setSourceErrorMessage(message.sourceConnectionStatus.errorMessage);
+            setHasTarget(message.targetConnectionStatus.configured);
+            setTargetErrorMessage(message.targetConnectionStatus.errorMessage);
             setCodeChanged(message.codeChanges);
             setHasCode(message.hasCode);
         }
@@ -81,7 +92,10 @@ export function useWebSocketState(): WebSocketState {
         }
     };
 
-    useEffect(() => refreshCodeChanges(), [hasCode, codeChanged]);
+    useEffect(() => {
+        refreshCodeChanges();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasCode, codeChanged]);
 
     const connectionStatus = {
         [ReadyState.CONNECTING]: false,
@@ -93,11 +107,14 @@ export function useWebSocketState(): WebSocketState {
 
     useEffect(() => {
         setConnected(connectionStatus);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [readyState]);
 
     return {
         hasSource,
+        sourceErrorMessage,
         hasTarget,
+        targetErrorMessage,
         codeChanged,
         connected,
         codeChanges,

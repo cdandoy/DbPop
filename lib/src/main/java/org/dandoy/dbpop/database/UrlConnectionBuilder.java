@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -32,5 +33,25 @@ public class UrlConnectionBuilder implements ConnectionBuilder {
     @Override
     public Connection createConnection() throws SQLException {
         return DriverManager.getConnection(url, username, password);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof UrlConnectionBuilder that)) return false;
+
+        if (!Objects.equals(url, that.url)) return false;
+        if (!Objects.equals(username, that.username)) return false;
+        if (!Objects.equals(password, that.password)) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = url != null ? url.hashCode() : 0;
+        result = 31 * result + (username != null ? username.hashCode() : 0);
+        result = 31 * result + (password != null ? password.hashCode() : 0);
+        return result;
     }
 }
