@@ -15,8 +15,7 @@ function Database({configuration, type}: { configuration: DatabaseConfiguration,
             </div>
         </div>
         <div className={"ms-3 mb-5"}>
-            {configuration.disabled ? <div className={"text-center"}>Disabled</div> : <ViewDatabaseSettingsComponent configuration={configuration}/>}
-
+            {!configuration.url ? <div className={"text-center"}>Disabled</div> : <ViewDatabaseSettingsComponent configuration={configuration}/>}
         </div>
     </>
 }

@@ -1,7 +1,6 @@
 package org.dandoy.dbpopd.config;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
 
@@ -14,16 +13,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-public record DatabaseConfiguration(boolean disabled, String url, String username, String password, boolean conflict) {
+public record DatabaseConfiguration(String url, String username, String password, boolean conflict) {
     private static final Pattern JDBC_URL_PARSER = Pattern.compile("jdbc:sqlserver://(\\w+)(:(\\d+))?(;.*)");
 
-    public DatabaseConfiguration(boolean disabled, String url, String username, String password) {
-        this(disabled, url, username, password, false);
+    public DatabaseConfiguration(String url, String username, String password) {
+        this(url, username, password, false);
     }
 
     public DatabaseConfiguration(DatabaseConfiguration that, boolean conflict) {
         this(
-                that.disabled(),
                 that.url(),
                 that.username(),
                 that.password(),
@@ -37,7 +35,6 @@ public record DatabaseConfiguration(boolean disabled, String url, String usernam
         if (!(o instanceof DatabaseConfiguration that)) return false;
 
         if (conflict != that.conflict) return false;
-        if (!Objects.equals(disabled, that.disabled)) return false;
         if (!Objects.equals(url, that.url)) return false;
         if (!Objects.equals(username, that.username)) return false;
         if (!Objects.equals(password, that.password)) return false;
@@ -56,13 +53,8 @@ public record DatabaseConfiguration(boolean disabled, String url, String usernam
 
     boolean hasInfo() {return url() != null;}
 
-    @Override
-    public boolean disabled() {
-        return disabled || StringUtils.isBlank(url);
-    }
-
     public ConnectionBuilder createConnectionBuilder() {
-        if (hasInfo() && !disabled()) {
+        if (hasInfo()) {
             if (canTcpConnect(url)) {
                 UrlConnectionBuilder urlConnectionBuilder = new UrlConnectionBuilder(url(), username(), password());
                 try (Connection ignored = urlConnectionBuilder.createConnection()) {

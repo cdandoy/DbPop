@@ -1,10 +1,9 @@
 import axios, {AxiosResponse} from "axios";
 
 export interface DatabaseConfiguration {
-    disabled: boolean;
-    url: string;
-    username: string;
-    password: string;
+    url?: string;
+    username?: string;
+    password?: string;
     conflict: boolean;
 }
 

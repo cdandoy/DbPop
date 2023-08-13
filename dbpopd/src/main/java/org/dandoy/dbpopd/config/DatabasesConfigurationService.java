@@ -7,6 +7,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 
 import java.io.BufferedReader;
@@ -101,18 +102,16 @@ public class DatabasesConfigurationService {
 
     public DatabaseConfiguration getDatabaseConfiguration(Properties properties, ConnectionType type) {
         String name = type.name();
-        return getDatabaseConfiguration(properties, name + "_DISABLED", name + "_JDBCURL", name + "_USERNAME", name + "_PASSWORD");
+        return getDatabaseConfiguration(properties, name + "_JDBCURL", name + "_USERNAME", name + "_PASSWORD");
     }
 
-    private DatabaseConfiguration getDatabaseConfiguration(Properties properties, String disabledName, String urlName, String usernameName, String passwordName) {
+    private DatabaseConfiguration getDatabaseConfiguration(Properties properties, String urlName, String usernameName, String passwordName) {
         DatabaseConfiguration envSource = new DatabaseConfiguration(
-                booleanValueOf(System.getenv(disabledName)),
                 System.getenv(urlName),
                 System.getenv(usernameName),
                 System.getenv(passwordName)
         );
         DatabaseConfiguration fileSource = new DatabaseConfiguration(
-                booleanValueOf(properties.getProperty(disabledName)),
                 properties.getProperty(urlName),
                 properties.getProperty(usernameName),
                 properties.getProperty(passwordName)
@@ -123,12 +122,6 @@ public class DatabasesConfigurationService {
         );
     }
 
-    private static boolean booleanValueOf(String s) {
-        if (s == null) return false;
-        s = s.trim().toLowerCase();
-        return s.equals("true") || s.equals("yes") || s.equals("1");
-    }
-
     public DatabaseConfiguration getDatabaseConfiguration(ConnectionType type) {
         return databaseConfigurations[type.ordinal()];
     }
@@ -136,18 +129,18 @@ public class DatabasesConfigurationService {
     public void setDatabaseConfiguration(ConnectionType type, DatabaseConfiguration configuration) {
         String name = type.name();
         Properties properties = getConfigurationProperties();
-        if (configuration.disabled()) {
-            properties.setProperty(name + "_DISABLED", "true");
-            properties.remove(name + "_JDBCURL");
-            properties.remove(name + "_USERNAME");
-            properties.remove(name + "_PASSWORD");
-        } else {
-            properties.remove(name + "_DISABLED");
-            properties.setProperty(name + "_JDBCURL", configuration.url());
-            properties.setProperty(name + "_USERNAME", configuration.username());
-            properties.setProperty(name + "_PASSWORD", configuration.password());
-        }
+        setProperty(properties, name + "_JDBCURL", configuration.url());
+        setProperty(properties, name + "_USERNAME", configuration.username());
+        setProperty(properties, name + "_PASSWORD", configuration.password());
         saveConfigurationProperties(properties);
+    }
+
+    private static void setProperty(Properties properties, String name, String value) {
+        if (StringUtils.isBlank(value)) {
+            properties.remove(name);
+        } else {
+            properties.setProperty(name, value);
+        }
     }
 
     /**

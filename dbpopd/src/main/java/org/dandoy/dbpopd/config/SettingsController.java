@@ -46,13 +46,12 @@ public class SettingsController {
     private void saveDatabaseConfiguration(ConnectionType connectionType, DatabaseConfigurationResponse body) {
         DatabaseConfiguration oldDatabaseConfiguration = databasesConfigurationService.getDatabaseConfiguration(connectionType);
         DatabaseConfiguration databaseConfiguration = new DatabaseConfiguration(
-                body.disabled(),
                 body.url(),
                 body.username(),
                 body.password().equals(FAKE_PASSWORD) ? oldDatabaseConfiguration.password() : body.password()
         );
         databasesConfigurationService.setDatabaseConfiguration(connectionType, databaseConfiguration);
-        if (!body.disabled()) {
+        if (!StringUtils.isBlank(body.url())) {
             validateDatabaseConfiguration(databaseConfiguration);
         }
     }
@@ -77,7 +76,6 @@ public class SettingsController {
     private static DatabaseConfigurationResponse toDatabaseConfigurationResponse(DatabaseConfiguration[] databaseConfigurations, ConnectionType type) {
         DatabaseConfiguration databaseConfiguration = databaseConfigurations[type.ordinal()];
         return new DatabaseConfigurationResponse(
-                databaseConfiguration.disabled(),
                 databaseConfiguration.url(),
                 databaseConfiguration.username(),
                 StringUtils.isBlank(databaseConfiguration.password()) ? null : FAKE_PASSWORD,
@@ -85,7 +83,7 @@ public class SettingsController {
         );
     }
 
-    public record DatabaseConfigurationResponse(boolean disabled, String url, String username, String password, boolean conflict) {}
+    public record DatabaseConfigurationResponse(String url, String username, String password, boolean conflict) {}
 
     public record Settings(DatabaseConfigurationResponse sourceDatabaseConfiguration, DatabaseConfigurationResponse targetDatabaseConfiguration) {}
 }

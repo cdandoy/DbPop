@@ -3,10 +3,10 @@ import PageHeader from "../pageheader/PageHeader";
 import {DatabaseConfiguration, getSettings, postDatabase} from "../../api/settingsApi";
 import {Button} from "react-bootstrap";
 import {useParams} from "react-router";
+import {useNavigate} from "react-router-dom";
 
 export default function EditDatabaseSettingsComponent() {
     let {type} = useParams();
-    const [disabled, setDisabled] = useState(false);
     const [url, setUrl] = useState("");
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -15,11 +15,11 @@ export default function EditDatabaseSettingsComponent() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | undefined>();
     const title = type === "source" ? "Source Database" : "Target Database";
+    let navigate = useNavigate();
 
     useEffect(() => {
         setLoading(true);
         loadSettings();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [type]);
 
     function loadSettings() {
@@ -32,10 +32,9 @@ export default function EditDatabaseSettingsComponent() {
                 } else {
                     configuration = settings.targetDatabaseConfiguration;
                 }
-                setDisabled(configuration.disabled);
-                setUrl(configuration.url);
-                setUsername(configuration.username);
-                setPassword(configuration.password || "");
+                setUrl(configuration.url || '');
+                setUsername(configuration.username || '');
+                setPassword(configuration.password || '');
                 setLoading(false)
                 setSaving(false);
             })
@@ -43,11 +42,17 @@ export default function EditDatabaseSettingsComponent() {
 
     function whenSave(event: React.SyntheticEvent) {
         event.preventDefault();
+        doSave();
+    }
+
+    function doSave() {
         setError(undefined);
         setSaving(true);
         try {
-            postDatabase(type!, {disabled, url, username, password, conflict}).then(() => {
+            postDatabase(type!, {url, username, password, conflict}).then(() => {
                 loadSettings();
+            }).then(() => {
+                navigate('/settings');
             }).catch(reason => {
                 setError(reason.response.data.detail);
                 setSaving(false);
@@ -55,6 +60,13 @@ export default function EditDatabaseSettingsComponent() {
         } catch (e) {
             console.log("Error?");
         }
+    }
+
+    function whenClear() {
+        setUrl('');
+        setUsername('');
+        setPassword('');
+        doSave();
     }
 
     function getTitle(): JSX.Element | string | undefined {
@@ -86,41 +98,40 @@ export default function EditDatabaseSettingsComponent() {
         />
 
         <form onSubmit={whenSave} autoComplete={"off"}>
-            <div className="form-check form-switch mb-3">
-                <input className="form-check-input" type="checkbox" role="switch" id="enabled" checked={!disabled} onChange={event => setDisabled(!event.target.checked)}/>
-                <label className="form-check-label" htmlFor="enabled">Enabled</label>
+            {conflict && <div className="alert alert-warning" role="alert">There is a conflict between environment variables and the configuration file.</div>}
+            <div className="form-group">
+                <label htmlFor="url">URL</label>
+                <input type="text" className="form-control" id="url" placeholder="jdbc:sqlserver://localhost;database=tempdb;trustServerCertificate=true"
+                       value={url}
+                       onChange={event => setUrl(event.target.value)}
+                />
             </div>
-            {disabled || <>
-                {conflict && <div className="alert alert-warning" role="alert">There is a conflict between environment variables and the configuration file.</div>}
-                <div className="form-group">
-                    <label htmlFor="url">URL</label>
-                    <input type="text" className="form-control" id="url" placeholder="jdbc:sqlserver://localhost;database=tempdb;trustServerCertificate=true"
-                           value={url}
-                           onChange={event => setUrl(event.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="username">Username</label>
-                    <input type="text" className="form-control" id="username" placeholder="sa"
-                           value={username}
-                           onChange={event => setUsername(event.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="password">Password</label>
-                    <input type="password" className="form-control" id="password"
-                           value={password}
-                           onChange={event => setPassword(event.target.value)}
-                    />
-                </div>
-            </>
-            }
+            <div className="form-group">
+                <label htmlFor="username">Username</label>
+                <input type="text" className="form-control" id="username" placeholder="sa"
+                       value={username}
+                       onChange={event => setUsername(event.target.value)}
+                />
+            </div>
+            <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <input type="password" className="form-control" id="password"
+                       value={password}
+                       onChange={event => setPassword(event.target.value)}
+                />
+            </div>
             <div className={"mt-5"}>
                 {error && <div className="alert alert-danger" role="alert">{error}</div>}
                 {saving && <div className="alert alert-info" role="alert"><i className={"fa fa-spinner fa-spin"}/> Validating...</div>}
-                <Button type={"submit"} disabled={saving}>
-                    Save
-                </Button>
+                <div className="btn-group" role="group" aria-label="Button group example">
+                    <Button type={"submit"} disabled={saving}>
+                        Save
+                    </Button>
+                    <Button type={"button"} disabled={saving} variant={"secondary"} onClick={whenClear}>
+                        Clear
+                    </Button>
+                </div>
+
             </div>
         </form>
     </>
