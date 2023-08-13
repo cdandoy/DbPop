@@ -1,6 +1,7 @@
 package org.dandoy.dbpopd.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
 
@@ -19,7 +20,7 @@ public record DatabaseConfiguration(boolean disabled, String url, String usernam
     public DatabaseConfiguration(boolean disabled, String url, String username, String password) {
         this(disabled, url, username, password, false);
     }
-    
+
     public DatabaseConfiguration(DatabaseConfiguration that, boolean conflict) {
         this(
                 that.disabled(),
@@ -54,6 +55,11 @@ public record DatabaseConfiguration(boolean disabled, String url, String usernam
     }
 
     boolean hasInfo() {return url() != null;}
+
+    @Override
+    public boolean disabled() {
+        return disabled || StringUtils.isBlank(url);
+    }
 
     public ConnectionBuilder createConnectionBuilder() {
         if (hasInfo() && !disabled()) {

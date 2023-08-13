@@ -7,6 +7,7 @@ import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.problem.HttpStatusType;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
 import org.zalando.problem.Problem;
 
@@ -16,6 +17,7 @@ import java.sql.SQLException;
 @Controller("/settings")
 @Slf4j
 public class SettingsController {
+    public static final String FAKE_PASSWORD = "*****";
     private final DatabasesConfigurationService databasesConfigurationService;
 
     public SettingsController(DatabasesConfigurationService databasesConfigurationService) {
@@ -47,7 +49,7 @@ public class SettingsController {
                 body.disabled(),
                 body.url(),
                 body.username(),
-                body.password().equals("*****") ? oldDatabaseConfiguration.password() : body.password()
+                body.password().equals(FAKE_PASSWORD) ? oldDatabaseConfiguration.password() : body.password()
         );
         databasesConfigurationService.setDatabaseConfiguration(connectionType, databaseConfiguration);
         if (!body.disabled()) {
@@ -78,7 +80,7 @@ public class SettingsController {
                 databaseConfiguration.disabled(),
                 databaseConfiguration.url(),
                 databaseConfiguration.username(),
-                null,
+                StringUtils.isBlank(databaseConfiguration.password()) ? null : FAKE_PASSWORD,
                 databaseConfiguration.conflict()
         );
     }

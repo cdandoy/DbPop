@@ -4,7 +4,7 @@ export interface DatabaseConfiguration {
     disabled: boolean;
     url: string;
     username: string;
-    password?: string;
+    password: string;
     conflict: boolean;
 }
 

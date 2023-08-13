@@ -9,7 +9,7 @@ export default function EditDatabaseSettingsComponent() {
     const [disabled, setDisabled] = useState(false);
     const [url, setUrl] = useState("");
     const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("*****");
+    const [password, setPassword] = useState("");
     const [conflict] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -17,6 +17,12 @@ export default function EditDatabaseSettingsComponent() {
     const title = type === "source" ? "Source Database" : "Target Database";
 
     useEffect(() => {
+        setLoading(true);
+        loadSettings();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [type]);
+
+    function loadSettings() {
         getSettings()
             .then(result => {
                 let settings = result.data;
@@ -29,12 +35,11 @@ export default function EditDatabaseSettingsComponent() {
                 setDisabled(configuration.disabled);
                 setUrl(configuration.url);
                 setUsername(configuration.username);
+                setPassword(configuration.password || "");
                 setLoading(false)
+                setSaving(false);
             })
-    }, [type])
-
-
-    if (loading) return <div><i className={"fa fa-spinner fa-spin"}/> Loading...</div>
+    }
 
     function whenSave(event: React.SyntheticEvent) {
         event.preventDefault();
@@ -42,10 +47,9 @@ export default function EditDatabaseSettingsComponent() {
         setSaving(true);
         try {
             postDatabase(type!, {disabled, url, username, password, conflict}).then(() => {
-                console.log("saved")
+                loadSettings();
             }).catch(reason => {
                 setError(reason.response.data.detail);
-            }).finally(() => {
                 setSaving(false);
             })
         } catch (e) {
@@ -68,6 +72,8 @@ export default function EditDatabaseSettingsComponent() {
         }
     }
 
+    if (loading) return <div><i className={"fa fa-spinner fa-spin"}/> Loading...</div>
+
     return <>
         <PageHeader title={title}
                     subtitle={getTitle()}
@@ -79,7 +85,7 @@ export default function EditDatabaseSettingsComponent() {
                     }
         />
 
-        <form onSubmit={whenSave}>
+        <form onSubmit={whenSave} autoComplete={"off"}>
             <div className="form-check form-switch mb-3">
                 <input className="form-check-input" type="checkbox" role="switch" id="enabled" checked={!disabled} onChange={event => setDisabled(!event.target.checked)}/>
                 <label className="form-check-label" htmlFor="enabled">Enabled</label>
@@ -95,7 +101,7 @@ export default function EditDatabaseSettingsComponent() {
                 </div>
                 <div className="form-group">
                     <label htmlFor="username">Username</label>
-                    <input type="username" className="form-control" id="username" placeholder="sa"
+                    <input type="text" className="form-control" id="username" placeholder="sa"
                            value={username}
                            onChange={event => setUsername(event.target.value)}
                     />

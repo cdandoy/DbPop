@@ -138,12 +138,15 @@ public class DatabasesConfigurationService {
         Properties properties = getConfigurationProperties();
         if (configuration.disabled()) {
             properties.setProperty(name + "_DISABLED", "true");
+            properties.remove(name + "_JDBCURL");
+            properties.remove(name + "_USERNAME");
+            properties.remove(name + "_PASSWORD");
         } else {
             properties.remove(name + "_DISABLED");
+            properties.setProperty(name + "_JDBCURL", configuration.url());
+            properties.setProperty(name + "_USERNAME", configuration.username());
+            properties.setProperty(name + "_PASSWORD", configuration.password());
         }
-        properties.setProperty(name + "_JDBCURL", configuration.url());
-        properties.setProperty(name + "_USERNAME", configuration.username());
-        properties.setProperty(name + "_PASSWORD", configuration.password());
         saveConfigurationProperties(properties);
     }
 
