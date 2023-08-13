@@ -138,7 +138,7 @@ public class DatabasesConfigurationService {
         }
         if (!canTcpConnect(databaseConfiguration.url())) {
             log.debug("Connection {} - Cannot ping the TCP port - {}", type, databaseConfiguration.url());
-            return new ConnectionBuilderChangedEvent(type, true, null, "Failed to connect to " + databaseConfiguration.url());
+            return new ConnectionBuilderChangedEvent(type, true, null, "Database is not running");
         }
         ConnectionBuilder connectionBuilder = databaseConfiguration.createConnectionBuilder();
         try (Connection ignored = connectionBuilder.createConnection()) {

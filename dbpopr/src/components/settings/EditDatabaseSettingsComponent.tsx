@@ -1,19 +1,22 @@
-import React, {useEffect, useState} from "react"
+import React, {useContext, useEffect, useState} from "react"
 import PageHeader from "../pageheader/PageHeader";
 import {DatabaseConfigurationResponse, getSettings, postDatabase} from "../../api/settingsApi";
 import {Button} from "react-bootstrap";
 import {useParams} from "react-router";
 import {useNavigate} from "react-router-dom";
+import {WebSocketStateContext} from "../ws/useWebSocketState";
 
 export default function EditDatabaseSettingsComponent() {
     let {type} = useParams();
+    const siteStatus = useContext(WebSocketStateContext);
+    const siteStatusErrorMessage = type === "source" ? siteStatus.sourceErrorMessage : siteStatus.targetErrorMessage;
     const [url, setUrl] = useState("");
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [fromEnvVariables, setFromEnvVariables] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | undefined>();
+    const [error, setError] = useState<string | undefined>(siteStatusErrorMessage);
     const title = type === "source" ? "Source Database" : "Target Database";
     let navigate = useNavigate();
 
@@ -126,22 +129,24 @@ export default function EditDatabaseSettingsComponent() {
                     />
                 }
             </div>
-            {fromEnvVariables ?
-                <div className="alert alert-info mt-5" role="alert">Defined by environment variables.</div>
-                :
-                <div className={"mt-5"}>
-                    {error && <div className="alert alert-danger" role="alert">{error}</div>}
-                    {saving && <div className="alert alert-info" role="alert"><i className={"fa fa-spinner fa-spin"}/> Validating...</div>}
-                    <div className="btn-group" role="group" aria-label="Button group example">
-                        <Button type={"submit"} disabled={saving}>
-                            Save
-                        </Button>
-                        <Button type={"button"} disabled={saving} variant={"secondary"} onClick={whenClear}>
-                            Clear
-                        </Button>
-                    </div>
-                </div>
-            }
+            <div className={"mt-5"}>
+                {error && <div className="alert alert-danger" role="alert">{error}</div>}
+                {fromEnvVariables ?
+                    <div className="alert alert-info " role="alert">Defined by environment variables.</div>
+                    :
+                    <>
+                        {saving && <div className="alert alert-info" role="alert"><i className={"fa fa-spinner fa-spin"}/> Validating...</div>}
+                        <div className="btn-group" role="group" aria-label="Button group example">
+                            <Button type={"submit"} disabled={saving}>
+                                Save
+                            </Button>
+                            <Button type={"button"} disabled={saving} variant={"secondary"} onClick={whenClear}>
+                                Clear
+                            </Button>
+                        </div>
+                    </>
+                }
+            </div>
         </form>
     </>
 }

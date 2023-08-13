@@ -1,22 +1,26 @@
 import React, {useContext, useState} from "react";
 import './Sidebar.scss'
 import {WebSocketStateContext} from "../ws/useWebSocketState";
+import {NavLink} from "react-router-dom";
 
 function databaseStatuses(hasSource: boolean, sourceErrorMessage: string | undefined, hasTarget: boolean, targetErrorMessage: string | undefined) {
-    function databaseLight(has: boolean, errorMessage: string | undefined, name: string) {
-        return <i
-            className={"fa fa-circle fa-xs"}
-            style={{color: errorMessage ? 'orangered' : has ? 'green' : 'lightgray'}}
-            title={`${name}: ${errorMessage ? errorMessage : has ? 'Connected' : 'Undefined'}`}
-        />;
+    function databaseLight(type: string, has: boolean, errorMessage: string | undefined) {
+        const name = type === "source" ? "Source Database" : "Target Database";
+        return <NavLink to={`/settings/${type}`}>
+            <i
+                className={"fa fa-circle fa-xs"}
+                style={{color: errorMessage ? 'orangered' : has ? 'green' : 'lightgray'}}
+                title={`${name}: ${errorMessage ? errorMessage : has ? 'Connected' : 'Undefined'}`}
+            />
+        </NavLink>;
     }
 
     return <>
         <div>
             <span className="db-status">
-                {databaseLight(hasSource, sourceErrorMessage, "Source Database")}
+                {databaseLight("source", hasSource, sourceErrorMessage)}
                 &nbsp;
-                {databaseLight(hasTarget, targetErrorMessage, "Target Database")}
+                {databaseLight("target", hasTarget, targetErrorMessage)}
             </span>
         </div>
     </>
