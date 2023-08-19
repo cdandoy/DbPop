@@ -1,11 +1,11 @@
-import React, {useContext} from "react";
+import React, {useContext, useEffect, useState} from "react";
 import {Button} from "react-bootstrap";
 import './CodeChanges.scss'
 import PageHeader from "../pageheader/PageHeader";
-import {uploadDbChangeToTarget, uploadFileChangeToTarget} from "../../api/codeApi";
 import {ObjectIdentifier} from "../../models/ObjectIdentifier";
 import {WebSocketStateContext} from "../ws/useWebSocketState";
 import {NavLink} from "react-router-dom";
+import axios from "axios";
 
 function Message({message}: { message: string }) {
     return <>
@@ -15,29 +15,47 @@ function Message({message}: { message: string }) {
     </>
 }
 
+interface ChangedObject {
+    objectIdentifier: ObjectIdentifier;
+    name: string;
+    type: string;
+    changeType: string;
+}
+
 export default function CodeChanges() {
     const siteStatus = useContext(WebSocketStateContext);
+    const [changedObjects, setChangedObjects] = useState<ChangedObject[]>([]);
+    const [refreshCount, setRefreshCount] = useState(0)
 
-    function onApplyFileChanges(path: string, objectIdentifier: ObjectIdentifier) {
-        uploadFileChangeToTarget([objectIdentifier])
-            .then(() => siteStatus.refreshCodeChanges());
+    useEffect(() => {
+        axios.get<ChangedObject[]>(`/code2/target/changes`)
+            .then(response => {
+                setChangedObjects(response.data);
+            });
+    }, [siteStatus.codeDiffChanges, refreshCount]);
+
+    function refresh() {
+        setRefreshCount(refreshCount + 1);
     }
 
-    function onApplyDbChanges(path: string, objectIdentifier: ObjectIdentifier) {
-        uploadDbChangeToTarget([objectIdentifier])
-            .then(() => siteStatus.refreshCodeChanges());
+    function onApplyFileChange(objectIdentifier: ObjectIdentifier) {
+        axios.post(`/code2/target/changes/apply-file`, objectIdentifier)
+            .then(refresh);
+    }
+
+    function onApplyDbChange(objectIdentifier: ObjectIdentifier) {
+        axios.post(`/code2/target/changes/apply-db`, objectIdentifier)
+            .then(refresh);
     }
 
     function onApplyAllFileChanges() {
-        const applyChanges = siteStatus.codeChanges.map(value => value.objectIdentifier);
-        uploadFileChangeToTarget(applyChanges)
-            .then(() => siteStatus.refreshCodeChanges());
+        axios.post(`/code2/target/changes/apply-all-files`)
+            .then(refresh);
     }
 
     function onApplyAllDbChanges() {
-        const applyChanges = siteStatus.codeChanges.map(value => value.objectIdentifier);
-        uploadDbChangeToTarget(applyChanges)
-            .then(() => siteStatus.refreshCodeChanges());
+        axios.post(`/code2/target/changes/apply-all-db`)
+            .then(refresh);
     }
 
     function ObjectIdentifierIcon({objectIdentifier}: { objectIdentifier: ObjectIdentifier }) {
@@ -64,7 +82,7 @@ export default function CodeChanges() {
                 <div className="card-body">
                     <table>
                         <tbody>
-                        {siteStatus.codeChanges.filter(it => it.databaseChanged || it.databaseDeleted).length > 0 &&
+                        {changedObjects.filter(change => change.changeType === "DATABASE_ONLY" || change.changeType === "UPDATED").length > 0 &&
                             <tr>
                                 <td>
                                     <Button variant={"primary"}
@@ -80,7 +98,7 @@ export default function CodeChanges() {
                                 <td><strong>Apply All Database Changes</strong></td>
                             </tr>
                         }
-                        {siteStatus.codeChanges.filter(it => it.fileChanged || it.fileDeleted).length > 0 &&
+                        {changedObjects.filter(change => change.changeType === "FILE_ONLY" || change.changeType === "UPDATED").length > 0 &&
                             <tr>
                                 <td>
                                     <Button variant={"outline-primary"}
@@ -109,19 +127,19 @@ export default function CodeChanges() {
                 <div className="card-body">
                     <table className={"table table-hover"}>
                         <tbody>
-                        {siteStatus.codeChanges.map(change => <tr key={change.objectIdentifier.type + '-' + change.dbname}>
+                        {changedObjects.map(change => <tr key={change.objectIdentifier.type + '-' + change.name}>
                             <td width={"100%"}>
                                 <NavLink to={"/codechanges/diff"} state={change.objectIdentifier}>
                                     <ObjectIdentifierIcon objectIdentifier={change.objectIdentifier}/>
-                                    {change.dbname}
+                                    {change.name}
                                 </NavLink>
                             </td>
                             <td width={"0"} style={{whiteSpace: "nowrap"}}>
-                                {(change.fileChanged || change.fileDeleted) && <>
+                                {(change.changeType === "FILE_ONLY" || change.changeType === "UPDATED") && <>
                                     <Button variant={"outline-primary"}
                                             size={"sm"}
                                             title={"Apply the source file change to the database"}
-                                            onClick={() => onApplyFileChanges(change.path, change.objectIdentifier)}
+                                            onClick={() => onApplyFileChange(change.objectIdentifier)}
                                     >
                                         <i className={"fa fa-file"} style={{paddingRight: "3px"}}/>
                                         <i className={"fa fa-arrow-right"} style={{paddingRight: "3px"}}/>
@@ -129,11 +147,11 @@ export default function CodeChanges() {
                                     </Button>
                                 </>
                                 }
-                                {(change.databaseChanged || change.databaseDeleted) && <>
+                                {(change.changeType === "DATABASE_ONLY" || change.changeType === "UPDATED") && <>
                                     <Button variant={"primary"}
                                             size={"sm"}
                                             title={"Apply the database change to the source file"}
-                                            onClick={() => onApplyDbChanges(change.path, change.objectIdentifier)}
+                                            onClick={() => onApplyDbChange(change.objectIdentifier)}
                                     >
                                         <i className={"fa fa-file"} style={{paddingRight: "3px"}}/>
                                         <i className={"fa fa-arrow-left"} style={{paddingRight: "3px"}}/>
@@ -142,7 +160,7 @@ export default function CodeChanges() {
                                 </>}
                             </td>
                         </tr>)}
-                        {siteStatus.codeChanges.length >= 100 && <tr>
+                        {changedObjects.length >= 100 && <tr>
                             <td colSpan={2}><Message message={"Too many changes to display"}/></td>
                         </tr>
                         }
@@ -154,8 +172,7 @@ export default function CodeChanges() {
     }
 
     function Content() {
-        if (!siteStatus.hasCode) return <Message message={"No Code Downloaded"}/>
-        if (siteStatus.codeChanges.length === 0) return <Message message={"No Changes Detected"}/>;
+        if (!siteStatus.hasCodeDiffs) return <Message message={"No Changes Detected"}/>;
         return <>
             <div className={"row"}>
                 <div className={"col-6"}>

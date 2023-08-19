@@ -19,7 +19,7 @@ export interface UploadResult {
 }
 
 export interface DownloadResult {
-    downloadedPath:string;
+    downloadedPath: string;
     codeTypeCounts: Pair[];
     executionTime: number;
 }
@@ -57,12 +57,4 @@ export function downloadTargetToFile() {
 export interface ApplyChange {
     path: string
     objectIdentifier: ObjectIdentifier
-}
-
-export function uploadDbChangeToTarget(objectIdentifiers:ObjectIdentifier[]) {
-    return axios.post(`/code/target/changes/apply-dbs`, objectIdentifiers);
-}
-
-export function uploadFileChangeToTarget(objectIdentifiers:ObjectIdentifier[]) {
-    return axios.post(`/code/target/changes/apply-files`, objectIdentifiers);
 }

@@ -65,6 +65,11 @@ public class SiteWebSocket implements ApplicationEventListener<ConnectionBuilder
         fireSiteStatus();
     }
 
+    public void codeDiffChanged(boolean hasChanges) {
+        siteStatus.codeDiffChanged(hasChanges);
+        fireSiteStatus();
+    }
+
     private void fireSiteStatus() {
         if (delayed == 0) {
             sendSiteStatus();

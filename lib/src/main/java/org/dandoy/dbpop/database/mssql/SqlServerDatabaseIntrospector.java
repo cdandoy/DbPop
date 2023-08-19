@@ -35,6 +35,13 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     }
 
     @Override
+    public void visitModuleMetas(DatabaseVisitor databaseVisitor) {
+        for (String catalog : database.getCatalogs()) {
+            visitModuleMetas(catalog, databaseVisitor);
+        }
+    }
+
+    @Override
     @SneakyThrows
     public void visitModuleMetas(String catalog, DatabaseVisitor databaseVisitor) {
         use(catalog);
@@ -127,6 +134,15 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     );
                 }
             }
+        }
+    }
+
+    @Override
+    @SneakyThrows
+    public void visitModuleDefinitions(DatabaseVisitor databaseVisitor) {
+        Collection<String> catalogs = database.getCatalogs();
+        for (String catalog : catalogs) {
+            visitModuleDefinitions(catalog, databaseVisitor);
         }
     }
 

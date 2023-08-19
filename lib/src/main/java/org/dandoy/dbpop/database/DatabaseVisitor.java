@@ -1,6 +1,6 @@
 package org.dandoy.dbpop.database;
 
-import org.jetbrains.annotations.Nullable;
+import jakarta.annotation.Nullable;
 
 import java.util.Date;
 

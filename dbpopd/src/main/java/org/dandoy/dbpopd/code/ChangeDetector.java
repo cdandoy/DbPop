@@ -96,7 +96,7 @@ public class ChangeDetector {
 
     private boolean areSameHash(File file, String sql) {
         byte[] fileHash = fileChangeDetector.getHash(file);
-        byte[] dbHash = databaseChangeDetector.getHash(sql);
+        byte[] dbHash = DatabaseChangeDetector.getHash(sql);
         return Arrays.equals(fileHash, dbHash);
     }
 

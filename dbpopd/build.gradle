@@ -19,7 +19,7 @@ dependencies {
     implementation("io.micronaut:micronaut-validation")
     implementation("io.micronaut.problem:micronaut-problem-json")
     implementation("io.swagger.core.v3:swagger-annotations")
-    implementation("jakarta.annotation:jakarta.annotation-api")
+    implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
     compileOnly("org.projectlombok:lombok")
     implementation 'ch.qos.logback:logback-classic:1.4.4'
     implementation('org.slf4j:jcl-over-slf4j:2.0.3')

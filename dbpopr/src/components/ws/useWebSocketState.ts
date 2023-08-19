@@ -12,6 +12,8 @@ interface StructuredWebSocketMessage {
     targetConnectionStatus: ConnectionStatus;
     hasCode: boolean;
     codeChanges: number;
+    hasCodeDiffs: boolean;
+    codeDiffChanges: number;
 }
 
 export interface WebSocketState {
@@ -20,6 +22,8 @@ export interface WebSocketState {
     hasTarget: boolean;
     targetErrorMessage?: string;
     codeChanged: number;
+    hasCodeDiffs: boolean;
+    codeDiffChanges: number;
     connected: boolean;
     codeChanges: Change[];
     refreshCodeChanges: () => void;
@@ -30,6 +34,8 @@ export const WebSocketStateContext = React.createContext<WebSocketState>({
     hasSource: false,
     hasTarget: false,
     codeChanged: 0,
+    hasCodeDiffs: false,
+    codeDiffChanges: 0,
     connected: false,
     codeChanges: [],
     refreshCodeChanges: () => {
@@ -55,6 +61,8 @@ export function useWebSocketState(): WebSocketState {
     const [hasTarget, setHasTarget] = useState(false);
     const [targetErrorMessage, setTargetErrorMessage] = useState<string | undefined>();
     const [codeChanged, setCodeChanged] = useState(0);
+    const [hasCodeDiffs, setHasCodeDiffs] = useState(false);
+    const [codeDiffChanges, setCodeDiffChanges] = useState(0);
     const [connected, setConnected] = useState(false);
     const [codeChanges, setCodeChanges] = useState<Change[]>(DefaultChanges);
     const [hasCode, setHasCode] = useState(false);
@@ -76,6 +84,8 @@ export function useWebSocketState(): WebSocketState {
             setHasTarget(message.targetConnectionStatus.configured);
             setTargetErrorMessage(message.targetConnectionStatus.errorMessage);
             setCodeChanged(message.codeChanges);
+            setHasCodeDiffs(message.hasCodeDiffs);
+            setCodeDiffChanges(message.codeDiffChanges);
             setHasCode(message.hasCode);
         }
     }, [lastJsonMessage]);
@@ -116,6 +126,8 @@ export function useWebSocketState(): WebSocketState {
         hasTarget,
         targetErrorMessage,
         codeChanged,
+        hasCodeDiffs,
+        codeDiffChanges,
         connected,
         codeChanges,
         refreshCodeChanges: refreshCodeChanges,

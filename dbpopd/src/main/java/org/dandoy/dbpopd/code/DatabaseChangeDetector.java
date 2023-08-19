@@ -113,7 +113,7 @@ public class DatabaseChangeDetector {
         });
     }
 
-    byte[] getHash(String sql) {
+    static byte[] getHash(String sql) {
         if (sql == null) return null;
         sql = ChangeDetector.cleanSql(sql);
         byte[] bytes = sql.getBytes(StandardCharsets.UTF_8);
