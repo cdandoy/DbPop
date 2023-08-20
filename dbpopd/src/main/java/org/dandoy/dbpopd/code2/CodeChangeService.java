@@ -33,7 +33,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
     private FileChangeDetector fileChangeDetector;
     private final Map<ObjectIdentifier, ObjectSignature> fileSignatures = new HashMap<>();
     private Map<ObjectIdentifier, ObjectSignature> databaseSignatures;
-    private Date lastDatabaseCheck;
+    private Date lastDatabaseCheck = new Date(0L);
     private DatabaseCache databaseCache;
     @Getter
     private SignatureDiff signatureDiff = new SignatureDiff(emptyList(), emptyList(), emptyList());
@@ -120,10 +120,13 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
 
     private void compareSignatures() {
         // Compare the files and database signatures
-        CollectionComparator<ObjectIdentifier> comparator = CollectionComparator.build(
-                fileSignatures.keySet(),
-                databaseSignatures == null ? Collections.emptySet() : databaseSignatures.keySet()
-        );
+        CollectionComparator<ObjectIdentifier> comparator;
+        synchronized (this) {
+            comparator = CollectionComparator.build(
+                    fileSignatures.keySet(),
+                    databaseSignatures == null ? Collections.emptySet() : databaseSignatures.keySet()
+            );
+        }
         Collection<ObjectIdentifier> fileOnly = comparator.leftOnly;
         Collection<ObjectIdentifier> databaseOnly = comparator.rightOnly;
         Collection<ObjectIdentifier> different = comparator.common.stream()

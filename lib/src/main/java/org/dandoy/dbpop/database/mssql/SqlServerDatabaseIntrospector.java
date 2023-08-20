@@ -53,6 +53,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                 WHERE o.is_ms_shipped = 0
                   AND o.type_desc IN ('USER_TABLE', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE', 'SQL_TABLE_VALUED_FUNCTION', 'SQL_TRIGGER', 'VIEW')
+                  AND s.name NOT IN ('temp')
                 ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -84,6 +85,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.objects t_o ON t_o.object_id = fk.parent_object_id
                          JOIN sys.schemas s_o ON s_o.schema_id = t_o.schema_id
                 WHERE o.is_ms_shipped = 0
+                  AND s.name NOT IN ('temp')
                   AND o.type_desc = 'FOREIGN_KEY_CONSTRAINT'
                 ORDER BY s.name, o.name
                 """)) {
@@ -112,11 +114,12 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         // Indexes
         // Tables without an index have a dummy unnamed in the sys.indexes table
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT o.object_id, s.name AS "schema", o.name AS "table", i.name AS "index", o.modify_date AS modify_date
+                SELECT o.object_id, s.name AS "schema", o.name AS "table", i.name AS "index", i.is_primary_key, o.modify_date AS modify_date
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          JOIN sys.indexes i ON i.object_id = o.object_id
                 WHERE o.is_ms_shipped = 0
+                  AND s.name NOT IN ('temp')
                   AND i.name IS NOT NULL
                 ORDER BY s.name, o.name
                 """)) {
@@ -126,10 +129,11 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String schema = resultSet.getString("schema");
                     String tableName = resultSet.getString("table");
                     String indexName = resultSet.getString("index");
+                    boolean isPrimaryKey = resultSet.getInt("is_primary_key") > 0;
                     Timestamp modifyDate = resultSet.getTimestamp("modify_date");
                     databaseVisitor.moduleMeta(
                             new SqlServerObjectIdentifier(
-                                    null, "INDEX", catalog, schema, indexName,
+                                    null, isPrimaryKey ? "PRIMARY_KEY" : "INDEX", catalog, schema, indexName,
                                     new SqlServerObjectIdentifier(objectId, "USER_TABLE", catalog, schema, tableName)
                             ),
                             modifyDate
@@ -160,6 +164,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
                 WHERE o.is_ms_shipped = 0
                   AND o.type_desc IN ('SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE', 'SQL_TABLE_VALUED_FUNCTION', 'SQL_TRIGGER', 'VIEW')
+                  AND s.name NOT IN ('temp')
                 ORDER BY s.name, o.name
                 """)) {
             visitModuleDefinitions(databaseVisitor, catalog, preparedStatement);
@@ -187,6 +192,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
                          LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
                          LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
+                  AND s.name NOT IN ('temp')
                 WHERE t.is_ms_shipped = 0
                 ORDER BY s.name, t.name, c.column_id
                 """)) {
@@ -214,6 +220,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.columns o_c ON o_c.object_id = fkc.referenced_object_id AND o_c.column_id = fkc.referenced_column_id
                          JOIN sys.columns m_c ON m_c.object_id = fkc.parent_object_id AND m_c.column_id = fkc.parent_column_id
                 WHERE t.is_ms_shipped = 0
+                  AND s.name NOT IN ('temp')
                 ORDER BY fk.name, s.name, t.name, m_c.column_id
                                 """)) {
             visitModuleForeignKeyDefinitions(databaseVisitor, catalog, preparedStatement);
@@ -238,6 +245,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
                          JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
                 WHERE t.is_ms_shipped = 0
+                  AND s.name NOT IN ('temp')
                 ORDER BY s.name, t.name, i.index_id, ic.key_ordinal
                 """)) {
             visitModuleIndexDefinitions(databaseVisitor, catalog, preparedStatement);
@@ -864,6 +872,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 WHERE o.is_ms_shipped = 0
                   AND do.is_ms_shipped = 0
                   AND o.type_desc IN ('SQL_TRIGGER', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION', 'VIEW', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE')
+                  AND s.name NOT IN ('temp')
                 ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {

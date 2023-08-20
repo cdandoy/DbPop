@@ -111,7 +111,7 @@ public class CodeService {
     private static final Pattern SPROC_PATTERN = Pattern.compile("(?<pre>.*)(\\bCREATE\\b\\s+(OR\\s+ALTER\\s+)?)(?<type>FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b(?<post>.*)", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);
 
     private ExecutionsResult.Execution uploadFileToTarget(Statement statement, ObjectIdentifier objectIdentifier) {
-        log.info("Executing " + objectIdentifier);
+        log.debug("Executing {}", objectIdentifier);
         File codeDirectory = configurationService.getCodeDirectory();
         File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
         try {
@@ -141,7 +141,8 @@ public class CodeService {
             }
             return new ExecutionsResult.Execution(objectIdentifier, null);
         } catch (Exception e) {
-            log.error("Failed to upload " + objectIdentifier + " - " + file + e.getMessage());
+            log.error("Failed to upload {} - {}", objectIdentifier, file);
+            log.error("     {}", e.getMessage());
             return new ExecutionsResult.Execution(objectIdentifier, e.getMessage());
         }
     }
