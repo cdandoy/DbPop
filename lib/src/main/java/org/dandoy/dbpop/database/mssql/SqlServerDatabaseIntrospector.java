@@ -192,8 +192,8 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
                          LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
                          LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
-                  AND s.name NOT IN ('temp')
                 WHERE t.is_ms_shipped = 0
+                  AND s.name NOT IN ('temp')
                 ORDER BY s.name, t.name, c.column_id
                 """)) {
             visitTableDefinitions(databaseVisitor, catalog, preparedStatement);

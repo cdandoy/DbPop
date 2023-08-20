@@ -8,12 +8,14 @@ import jakarta.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
-import org.dandoy.dbpop.database.DatabaseCache;
+import org.dandoy.dbpop.database.ConnectionBuilder;
+import org.dandoy.dbpop.database.Database;
+import org.dandoy.dbpop.database.DefaultDatabase;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.utils.CollectionComparator;
 import org.dandoy.dbpopd.config.ConfigurationService;
+import org.dandoy.dbpopd.config.ConnectionBuilderChangedEvent;
 import org.dandoy.dbpopd.config.ConnectionType;
-import org.dandoy.dbpopd.config.DatabaseCacheChangedEvent;
 import org.dandoy.dbpopd.site.SiteWebSocket;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 
@@ -27,16 +29,16 @@ import static java.util.Collections.emptyList;
 @Singleton
 @Slf4j
 @Context
-public class CodeChangeService implements FileChangeDetector.FileChangeListener, ApplicationEventListener<DatabaseCacheChangedEvent> {
+public class CodeChangeService implements FileChangeDetector.FileChangeListener, ApplicationEventListener<ConnectionBuilderChangedEvent> {
     private final File codeDirectory;
     private final SiteWebSocket siteWebSocket;
     private FileChangeDetector fileChangeDetector;
     private final Map<ObjectIdentifier, ObjectSignature> fileSignatures = new HashMap<>();
     private Map<ObjectIdentifier, ObjectSignature> databaseSignatures;
     private Date lastDatabaseCheck = new Date(0L);
-    private DatabaseCache databaseCache;
     @Getter
     private SignatureDiff signatureDiff = new SignatureDiff(emptyList(), emptyList(), emptyList());
+    private ConnectionBuilder targetConnectionBuilder;
 
     public CodeChangeService(ConfigurationService configurationService, SiteWebSocket siteWebSocket) {
         this.codeDirectory = configurationService.getCodeDirectory();
@@ -49,16 +51,20 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
     }
 
     @Override
-    public void onApplicationEvent(DatabaseCacheChangedEvent event) {
+    public void onApplicationEvent(ConnectionBuilderChangedEvent event) {
         if (event.type() == ConnectionType.TARGET) {
-            databaseCache = event.databaseCache();
-            if (databaseCache != null) {
-                DatabaseChangeDetector.UpdatedSignatures updatedSignatures = DatabaseChangeDetector.getAllSignatures(databaseCache);
-                databaseSignatures = updatedSignatures.signatures();
-                lastDatabaseCheck = updatedSignatures.lastModifiedDate();
-                compareSignatures();
-            } else {
+            targetConnectionBuilder = event.connectionBuilder();
+            if (targetConnectionBuilder == null) {
                 databaseSignatures = null;
+                lastDatabaseCheck = new Date(0);
+            } else {
+                // If we have a new database connection, get all the signatures
+                try (DefaultDatabase database = Database.createDefaultDatabase(targetConnectionBuilder)) {
+                    DatabaseChangeDetector.UpdatedSignatures updatedSignatures = DatabaseChangeDetector.getAllSignatures(database);
+                    databaseSignatures = updatedSignatures.signatures();
+                    lastDatabaseCheck = updatedSignatures.lastModifiedDate();
+                }
+                compareSignatures();
             }
         }
     }
@@ -71,10 +77,12 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
     }
 
     private void updateDatabaseSignatures() {
-        if (databaseCache != null) {
-            DatabaseChangeDetector.UpdatedSignatures updatedSignatures = DatabaseChangeDetector.getUpdatedSignatures(databaseCache, lastDatabaseCheck, databaseSignatures);
-            databaseSignatures = updatedSignatures.signatures();
-            lastDatabaseCheck = updatedSignatures.lastModifiedDate();
+        if (targetConnectionBuilder != null) {
+            try (DefaultDatabase database = Database.createDefaultDatabase(targetConnectionBuilder)) {
+                DatabaseChangeDetector.UpdatedSignatures updatedSignatures = DatabaseChangeDetector.getUpdatedSignatures(database, lastDatabaseCheck, databaseSignatures);
+                databaseSignatures = updatedSignatures.signatures();
+                lastDatabaseCheck = updatedSignatures.lastModifiedDate();
+            }
             compareSignatures();
         }
     }

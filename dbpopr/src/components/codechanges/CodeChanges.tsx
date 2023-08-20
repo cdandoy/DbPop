@@ -172,7 +172,7 @@ export default function CodeChanges() {
     }
 
     function Content() {
-        if (!siteStatus.hasCodeDiffs) return <Message message={"No Changes Detected"}/>;
+        if (changedObjects.length === 0) return <Message message={"No Changes Detected"}/>;
         return <>
             <div className={"row"}>
                 <div className={"col-6"}>
