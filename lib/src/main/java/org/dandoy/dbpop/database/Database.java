@@ -62,7 +62,7 @@ public abstract class Database implements AutoCloseable {
 
     public abstract void verifyConnection();
 
-    public abstract Connection getConnection() throws SQLException;
+    public abstract Connection getConnection();
 
     public abstract DatabaseIntrospector createDatabaseIntrospector();
 

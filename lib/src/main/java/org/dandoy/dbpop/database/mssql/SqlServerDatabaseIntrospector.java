@@ -110,12 +110,14 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         }
 
         // Indexes
+        // Tables without an index have a dummy unnamed in the sys.indexes table
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT o.object_id, s.name AS "schema", o.name AS "table", i.name AS "index", o.modify_date AS modify_date
                 FROM sys.schemas s
                          JOIN sys.objects o ON o.schema_id = s.schema_id
                          JOIN sys.indexes i ON i.object_id = o.object_id
                 WHERE o.is_ms_shipped = 0
+                  AND i.name IS NOT NULL
                 ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {

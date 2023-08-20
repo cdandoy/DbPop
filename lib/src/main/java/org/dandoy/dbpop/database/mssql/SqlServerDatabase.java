@@ -811,7 +811,7 @@ public class SqlServerDatabase extends DefaultDatabase {
     @Override
     public void dropObject(ObjectIdentifier objectIdentifier) {
         String sql = getTransitionGenerator(objectIdentifier.getType()).drop(objectIdentifier);
-        use(objectIdentifier.getCatalog());
+        // use(objectIdentifier.getCatalog());
         executeSql(sql);
     }
 

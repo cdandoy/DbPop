@@ -11,7 +11,10 @@ import java.util.*;
 
 @Slf4j
 public class DatabaseChangeDetector {
-    public static Map<ObjectIdentifier, ObjectSignature> getAllSignatures(Database database) {
+   public record UpdatedSignatures(Map<ObjectIdentifier, ObjectSignature> signatures, Date lastModifiedDate) {}
+
+    public static UpdatedSignatures getAllSignatures(Database database) {
+        final Date[] lastModifiedDate = {new Date(0)};
         Map<ObjectIdentifier, ObjectSignature> objectSignatures = new HashMap<>();
         database.createDatabaseIntrospector().visitModuleDefinitions(new DatabaseVisitor() {
             @Override
@@ -20,15 +23,19 @@ public class DatabaseChangeDetector {
                         objectIdentifier,
                         HashCalculator.getObjectSignature(objectIdentifier.getType(), definition)
                 );
+                if (modifyDate.after(lastModifiedDate[0])) {
+                    lastModifiedDate[0] = modifyDate;
+                }
             }
-
         });
-        return objectSignatures;
+        return new UpdatedSignatures(objectSignatures, lastModifiedDate[0]);
     }
 
-    public static Map<ObjectIdentifier, ObjectSignature> getUpdatedSignatures(Database database, @Nonnull Date modifiedSince, Map<ObjectIdentifier, ObjectSignature> oldSignatures) {
+
+    public static UpdatedSignatures getUpdatedSignatures(Database database, @Nonnull Date modifiedSince, Map<ObjectIdentifier, ObjectSignature> oldSignatures) {
         Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
         List<ObjectIdentifier> objectIdentifiers = new ArrayList<>();
+        final Date[] lastModifiedDate = {modifiedSince};
 
         // Visit all the definitions.
         // If the last modified date is newer than the last visit, add the identifier to objectIdentifiers
@@ -41,6 +48,9 @@ public class DatabaseChangeDetector {
                 } else { // Preserve the old signature
                     ret.put(objectIdentifier, oldSignatures.get(objectIdentifier));
                 }
+                if (modifyDate.after(lastModifiedDate[0])) {
+                    lastModifiedDate[0] = modifyDate;
+                }
             }
         });
 
@@ -52,6 +62,6 @@ public class DatabaseChangeDetector {
                 ret.put(objectIdentifier, newSignature);
             }
         });
-        return ret;
+        return new UpdatedSignatures(ret, lastModifiedDate[0]);
     }
 }

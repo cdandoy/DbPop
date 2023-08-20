@@ -36,7 +36,7 @@ public class DatabaseProxy extends Database {
     }
 
     @Override
-    public Connection getConnection() throws SQLException {
+    public Connection getConnection() {
         return delegate.getConnection();
     }
 

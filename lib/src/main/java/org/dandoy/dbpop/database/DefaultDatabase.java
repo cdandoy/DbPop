@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.database;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVRecord;
 import org.dandoy.dbpop.upload.DataFileHeader;
@@ -46,7 +47,7 @@ public abstract class DefaultDatabase extends Database {
     }
 
     @Override
-    public Connection getConnection() throws SQLException {
+    public Connection getConnection() {
         return safeConnection.getConnection();
     }
 
@@ -419,14 +420,11 @@ public abstract class DefaultDatabase extends Database {
             safeClose(statement);
             statement = null;
 
-            try {
-                getConnection();
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
+            getConnection();
         }
 
-        public synchronized Connection getConnection() throws SQLException {
+        @SneakyThrows
+        public synchronized Connection getConnection() {
             if (connection == null) {
                 connection = connectionBuilder.createConnection();
                 connection.setAutoCommit(true);

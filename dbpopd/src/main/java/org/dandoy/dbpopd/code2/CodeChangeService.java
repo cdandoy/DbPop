@@ -53,8 +53,9 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
         if (event.type() == ConnectionType.TARGET) {
             databaseCache = event.databaseCache();
             if (databaseCache != null) {
-                lastDatabaseCheck = new Date();
-                databaseSignatures = DatabaseChangeDetector.getAllSignatures(databaseCache);
+                DatabaseChangeDetector.UpdatedSignatures updatedSignatures = DatabaseChangeDetector.getAllSignatures(databaseCache);
+                databaseSignatures = updatedSignatures.signatures();
+                lastDatabaseCheck = updatedSignatures.lastModifiedDate();
                 compareSignatures();
             } else {
                 databaseSignatures = null;
@@ -71,9 +72,9 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
 
     private void updateDatabaseSignatures() {
         if (databaseCache != null) {
-            Date now = new Date();
-            databaseSignatures = DatabaseChangeDetector.getUpdatedSignatures(databaseCache, lastDatabaseCheck, databaseSignatures);
-            lastDatabaseCheck = now;
+            DatabaseChangeDetector.UpdatedSignatures updatedSignatures = DatabaseChangeDetector.getUpdatedSignatures(databaseCache, lastDatabaseCheck, databaseSignatures);
+            databaseSignatures = updatedSignatures.signatures();
+            lastDatabaseCheck = updatedSignatures.lastModifiedDate();
             compareSignatures();
         }
     }
@@ -117,7 +118,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
         compareSignatures();
     }
 
-    private synchronized void compareSignatures() {
+    private void compareSignatures() {
         // Compare the files and database signatures
         CollectionComparator<ObjectIdentifier> comparator = CollectionComparator.build(
                 fileSignatures.keySet(),

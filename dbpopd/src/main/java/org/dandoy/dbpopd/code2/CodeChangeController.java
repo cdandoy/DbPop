@@ -7,14 +7,14 @@ import io.micronaut.http.annotation.Post;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ObjectIdentifier;
-import org.dandoy.dbpopd.config.ConfigurationService;
 
-import java.io.File;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static java.util.Collections.emptyList;
 import static java.util.function.Function.identity;
 
 @Controller("/code2")
@@ -69,31 +69,34 @@ public class CodeChangeController {
 
     @Post("target/changes/apply-file")
     public ExecutionsResult applyToDatabase(@Body ObjectIdentifier objectIdentifier) {
-        long t0 = System.currentTimeMillis();
-        CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
-        if (signatureDiff.isDifferent(objectIdentifier) || signatureDiff.isFileOnly(objectIdentifier)) {
-            ExecutionsResult.Execution execution = codeService.uploadFileToTarget(objectIdentifier);
-            return new ExecutionsResult(List.of(execution), System.currentTimeMillis() - t0);
-        } else if (signatureDiff.isDatabaseOnly(objectIdentifier)) {
-            ExecutionsResult.Execution execution = codeService.drop(objectIdentifier);
-            return new ExecutionsResult(List.of(execution), System.currentTimeMillis() - t0);
-        } else {
-            return new ExecutionsResult(Collections.emptyList(), 0);
-        }
+        return createExecutionsResult(() -> {
+            var signatureDiff = codeChangeService.getSignatureDiff();
+            if (signatureDiff.isDifferent(objectIdentifier) || signatureDiff.isFileOnly(objectIdentifier)) {
+                return codeService.applyFiles(List.of(objectIdentifier), emptyList());
+            } else if (signatureDiff.isDatabaseOnly(objectIdentifier)) {
+                return codeService.applyFiles(emptyList(), List.of(objectIdentifier));
+            } else {
+                return emptyList();
+            }
+        });
     }
 
     @Post("target/changes/apply-all-files")
-    public void applyAllFileChangeToDb() {
-        CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
-        for (ObjectIdentifier objectIdentifier : signatureDiff.fileOnly()) {
-            codeService.uploadFileToTarget(objectIdentifier);
-        }
-        for (ObjectIdentifier objectIdentifier : signatureDiff.different()) {
-            codeService.uploadFileToTarget(objectIdentifier);
-        }
-        for (ObjectIdentifier objectIdentifier : signatureDiff.databaseOnly()) {
-            codeService.drop(objectIdentifier);
-        }
+    public ExecutionsResult applyAllFileChangeToDb() {
+        return createExecutionsResult(() -> {
+            List<ObjectIdentifier> uploadObjectIdentifiers = new ArrayList<>();
+            CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
+
+            uploadObjectIdentifiers.addAll(signatureDiff.fileOnly());
+            uploadObjectIdentifiers.addAll(signatureDiff.different());
+            return codeService.applyFiles(uploadObjectIdentifiers, signatureDiff.databaseOnly());
+        });
+    }
+
+    private static ExecutionsResult createExecutionsResult(Supplier<List<ExecutionsResult.Execution>> supplier) {
+        long t0 = System.currentTimeMillis();
+        List<ExecutionsResult.Execution> executions = supplier.get();
+        return new ExecutionsResult(executions, System.currentTimeMillis() - t0);
     }
 
     public enum ChangeType {

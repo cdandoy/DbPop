@@ -146,8 +146,6 @@ public class Populator {
                 } finally {
                     databasePreparationStrategy.afterInserts();
                 }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
             }
             try {
                 populatorListener.afterPopulate();
