@@ -4,9 +4,9 @@ import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.utils.CollectionUtils;
-import org.dandoy.dbpop.utils.StringUtils;
 
 import java.sql.*;
 import java.util.Date;
@@ -61,9 +61,11 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     int objectId = resultSet.getInt("object_id");
                     String schema = resultSet.getString("schema");
                     String name = resultSet.getString("name");
-                    String typeDesc = resultSet.getString("type_desc");
-                    Timestamp modifyDate = resultSet.getTimestamp("modify_date");
-                    databaseVisitor.moduleMeta(new SqlServerObjectIdentifier(objectId, typeDesc, catalog, schema, name), modifyDate);
+                    if (areValidNames(schema, name)) {
+                        String typeDesc = resultSet.getString("type_desc");
+                        Timestamp modifyDate = resultSet.getTimestamp("modify_date");
+                        databaseVisitor.moduleMeta(new SqlServerObjectIdentifier(objectId, typeDesc, catalog, schema, name), modifyDate);
+                    }
                 }
             }
         }
@@ -100,13 +102,15 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String tableSchema = resultSet.getString("table_schema");
                     String tableName = resultSet.getString("table_name");
                     String tableType = resultSet.getString("table_type");
-                    databaseVisitor.moduleMeta(
-                            new SqlServerObjectIdentifier(
-                                    fkId, fkType, catalog, fkSchema, fkName,
-                                    new SqlServerObjectIdentifier(tableId, tableType, catalog, tableSchema, tableName)
-                            ),
-                            modifyDate
-                    );
+                    if (areValidNames(fkSchema, fkName, tableSchema, tableName)) {
+                        databaseVisitor.moduleMeta(
+                                new SqlServerObjectIdentifier(
+                                        fkId, fkType, catalog, fkSchema, fkName,
+                                        new SqlServerObjectIdentifier(tableId, tableType, catalog, tableSchema, tableName)
+                                ),
+                                modifyDate
+                        );
+                    }
                 }
             }
         }
@@ -131,16 +135,25 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String indexName = resultSet.getString("index");
                     boolean isPrimaryKey = resultSet.getInt("is_primary_key") > 0;
                     Timestamp modifyDate = resultSet.getTimestamp("modify_date");
-                    databaseVisitor.moduleMeta(
-                            new SqlServerObjectIdentifier(
-                                    null, isPrimaryKey ? "PRIMARY_KEY" : "INDEX", catalog, schema, indexName,
-                                    new SqlServerObjectIdentifier(objectId, "USER_TABLE", catalog, schema, tableName)
-                            ),
-                            modifyDate
-                    );
+                    if (areValidNames(schema, tableName, indexName)) {
+                        databaseVisitor.moduleMeta(
+                                new SqlServerObjectIdentifier(
+                                        null, isPrimaryKey ? "PRIMARY_KEY" : "INDEX", catalog, schema, indexName,
+                                        new SqlServerObjectIdentifier(objectId, "USER_TABLE", catalog, schema, tableName)
+                                ),
+                                modifyDate
+                        );
+                    }
                 }
             }
         }
+    }
+
+    private static boolean areValidNames(String... names) {
+        for (String name : names) {
+            if (StringUtils.containsAny(name, ".[]")) return false;
+        }
+        return true;
     }
 
     @Override
@@ -629,7 +642,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          LEFT JOIN sys.sql_modules sm ON sm.object_id = o.object_id
                 WHERE o.object_id in (%s)
                 ORDER BY s.name, o.name
-                """.formatted(StringUtils.repeat("?", bindCount, ",")))) {
+                """.formatted(StringUtils.repeat("?", ",", bindCount)))) {
             int i;
             for (i = 0; i < bindCount && i < identifiers.size(); i++) {
                 preparedStatement.setInt(i + 1, identifiers.get(i).getObjectId());
@@ -670,7 +683,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 WHERE t.is_ms_shipped = 0
                   AND t.object_id in (%s)
                 ORDER BY s.name, t.name, c.column_id
-                """.formatted(StringUtils.repeat("?", bindCount, ",")))) {
+                """.formatted(StringUtils.repeat("?", ",", bindCount)))) {
             int i;
             for (i = 0; i < bindCount && i < identifiers.size(); i++) {
                 preparedStatement.setInt(i + 1, identifiers.get(i).getObjectId());
@@ -725,28 +738,33 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         try (ResultSet resultSet = preparedStatement.executeQuery()) {
             Closer closer = new Closer();
             while (resultSet.next()) {
-                closer.setTableId(resultSet.getInt("table_id"))
-                        .setSchemaName(resultSet.getString("schema_name"))
-                        .setTableName(resultSet.getString("table_name"))
-                        .setModifyDate(resultSet.getTimestamp("modify_date"))
-                        .addColumn(
-                                new SqlServerColumn(
-                                        resultSet.getString("column_name"),
-                                        ColumnType.getColumnType(
-                                                resultSet.getString("type_name"),
-                                                resultSet.getInt("type_precision")
-                                        ),
-                                        resultSet.getInt("is_nullable") > 0,
-                                        resultSet.getString("type_name"),
-                                        resultSet.getInt("type_precision"),
-                                        resultSet.getInt("type_max_length"),
-                                        resultSet.getInt("type_scale"),
-                                        resultSet.getString("seed_value"),
-                                        resultSet.getString("increment_value"),
-                                        resultSet.getString("default_constraint_name"),
-                                        resultSet.getString("default_value")
-                                )
-                        );
+                String schemaName = resultSet.getString("schema_name");
+                String tableName = resultSet.getString("table_name");
+                String columnName = resultSet.getString("column_name");
+                if (areValidNames(schemaName, tableName, columnName)) {
+                    closer.setTableId(resultSet.getInt("table_id"))
+                            .setSchemaName(schemaName)
+                            .setTableName(tableName)
+                            .setModifyDate(resultSet.getTimestamp("modify_date"))
+                            .addColumn(
+                                    new SqlServerColumn(
+                                            columnName,
+                                            ColumnType.getColumnType(
+                                                    resultSet.getString("type_name"),
+                                                    resultSet.getInt("type_precision")
+                                            ),
+                                            resultSet.getInt("is_nullable") > 0,
+                                            resultSet.getString("type_name"),
+                                            resultSet.getInt("type_precision"),
+                                            resultSet.getInt("type_max_length"),
+                                            resultSet.getInt("type_scale"),
+                                            resultSet.getString("seed_value"),
+                                            resultSet.getString("increment_value"),
+                                            resultSet.getString("default_constraint_name"),
+                                            resultSet.getString("default_value")
+                                    )
+                            );
+                }
             }
             closer.flush();
         }
@@ -779,7 +797,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 WHERE t.is_ms_shipped = 0
                   AND fk.object_id in (%s)
                 ORDER BY fk.name, s.name, t.name, m_c.column_id
-                """.formatted(StringUtils.repeat("?", bindCount, ",")))) {
+                """.formatted(StringUtils.repeat("?", ",", bindCount)))) {
             int i;
             for (i = 0; i < bindCount && i < identifiers.size(); i++) {
                 preparedStatement.setInt(i + 1, identifiers.get(i).getObjectId());
@@ -815,7 +833,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
                          JOIN (VALUES %s) AS x(t, i) ON x.t = i.object_id AND x.i = i.name
                 ORDER BY s.name, t.name, i.index_id, ic.key_ordinal
-                """.formatted(StringUtils.repeat("(?, ?)", bindCount, ",")))) {
+                """.formatted(StringUtils.repeat("(?, ?)", ",", bindCount)))) {
             int jdbcPos = 1;
             for (SqlServerObjectIdentifier indexIdentifier : identifiers) {
                 SqlServerObjectIdentifier tableIdentifier = indexIdentifier.getParent();
@@ -836,11 +854,13 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 int objectId = resultSet.getInt("object_id");
                 String schema = resultSet.getString("schema");
                 String name = resultSet.getString("name");
-                String typeDesc = resultSet.getString("type_desc");
-                Date modifyDate = resultSet.getTimestamp("modify_date");
-                SqlServerObjectIdentifier objectIdentifier = new SqlServerObjectIdentifier(objectId, typeDesc, catalog, schema, name);
-                String definition = resultSet.getString("definition");
-                databaseVisitor.moduleDefinition(objectIdentifier, modifyDate, definition);
+                if (areValidNames(schema, name)) {
+                    String typeDesc = resultSet.getString("type_desc");
+                    Date modifyDate = resultSet.getTimestamp("modify_date");
+                    SqlServerObjectIdentifier objectIdentifier = new SqlServerObjectIdentifier(objectId, typeDesc, catalog, schema, name);
+                    String definition = resultSet.getString("definition");
+                    databaseVisitor.moduleDefinition(objectIdentifier, modifyDate, definition);
+                }
             }
         }
     }
@@ -883,7 +903,9 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     String dependentSchema = resultSet.getString("d_schema");
                     String dependentName = resultSet.getString("d_name");
                     String dependentTypeDesc = resultSet.getString("d_type_desc");
-                    databaseVisitor.dependency(catalog, schema, name, typeDesc, dependentSchema, dependentName, dependentTypeDesc);
+                    if (areValidNames(schema, name, dependentSchema, dependentName)) {
+                        databaseVisitor.dependency(catalog, schema, name, typeDesc, dependentSchema, dependentName, dependentTypeDesc);
+                    }
                 }
             }
         }
