@@ -42,9 +42,10 @@ public class SqlServerIndex extends Index {
                             includedColumnNames.isEmpty() ? "" : " INCLUDE (" + String.join(", ", includedColumnNames) + ")"
                     );
         } else {
-            return "ALTER TABLE %s ADD CONSTRAINT %s PRIMARY KEY (%s)".formatted(
+            return "ALTER TABLE %s ADD CONSTRAINT %s PRIMARY KEY %s (%s)".formatted(
                     database.quote(getTableName()),
                     database.quote(getName()),
+                    typeDesc,
                     super.getColumns().stream().map(database::quote).collect(Collectors.joining(", "))
             );
         }

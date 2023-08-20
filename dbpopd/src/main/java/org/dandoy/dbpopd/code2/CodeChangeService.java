@@ -141,6 +141,10 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
                 .filter(objectIdentifier -> {
                     ObjectSignature fileSignature = fileSignatures.get(objectIdentifier);
                     ObjectSignature databaseSignature = databaseSignatures.get(objectIdentifier);
+                    if (fileSignature == null || databaseSignature == null) {
+                        log.info("One of them disappeared");
+                        return false;
+                    }
                     byte[] fileHash = fileSignature.hash();
                     byte[] databaseHash = databaseSignature.hash();
                     return !Arrays.equals(fileHash, databaseHash);

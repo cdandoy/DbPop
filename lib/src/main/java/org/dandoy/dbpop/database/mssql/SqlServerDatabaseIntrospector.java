@@ -385,21 +385,26 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         try (ResultSet resultSet = preparedStatement.executeQuery()) {
             Closer closer = new Closer();
             while (resultSet.next()) {
-                closer.setIds(
-                                resultSet.getInt("table_id"),
-                                resultSet.getInt("index_id")
-                        )
-                        .setSchemaName(resultSet.getString("schema_name"))
-                        .setTableName(resultSet.getString("table_name"))
-                        .setModifyDate(resultSet.getTimestamp("modify_date"))
-                        .setIndexName(resultSet.getString("index_name"))
-                        .setUnique(resultSet.getInt("is_unique") > 0)
-                        .setPrimaryKey(resultSet.getInt("is_primary_key") > 0)
-                        .setTypeDesc(resultSet.getString("type_desc"))
-                        .addColumn(new SqlServerIndex.SqlServerIndexColumn(
-                                resultSet.getString("column_name"),
-                                resultSet.getInt("is_included_column") > 0
-                        ));
+                String schemaName = resultSet.getString("schema_name");
+                String tableName = resultSet.getString("table_name");
+                String indexName = resultSet.getString("index_name");
+                if (areValidNames(schemaName, tableName, indexName)) {
+                    closer.setIds(
+                                    resultSet.getInt("table_id"),
+                                    resultSet.getInt("index_id")
+                            )
+                            .setSchemaName(schemaName)
+                            .setTableName(tableName)
+                            .setModifyDate(resultSet.getTimestamp("modify_date"))
+                            .setIndexName(indexName)
+                            .setUnique(resultSet.getInt("is_unique") > 0)
+                            .setPrimaryKey(resultSet.getInt("is_primary_key") > 0)
+                            .setTypeDesc(resultSet.getString("type_desc"))
+                            .addColumn(new SqlServerIndex.SqlServerIndexColumn(
+                                    resultSet.getString("column_name"),
+                                    resultSet.getInt("is_included_column") > 0
+                            ));
+                }
             }
             closer.flush();
         }

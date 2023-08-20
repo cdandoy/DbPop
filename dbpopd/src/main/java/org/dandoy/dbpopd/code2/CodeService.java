@@ -18,9 +18,7 @@ import java.sql.Statement;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-@SuppressWarnings("SqlSourceToSinkFlow")
 @Singleton
 @Slf4j
 public class CodeService {
@@ -79,32 +77,31 @@ public class CodeService {
     }
 
     private List<ExecutionsResult.Execution> uploadFileToTarget(Database targetDatabase, Statement statement, Collection<ObjectIdentifier> objectIdentifiers) {
+
+        {   // Create the catalog and schemas
+            Map<String, Set<String>> owners = new HashMap<>();
+            objectIdentifiers.forEach(objectIdentifier -> owners
+                    .computeIfAbsent(objectIdentifier.getCatalog(), s -> new HashSet<>())
+                    .add(objectIdentifier.getSchema())
+            );
+            for (Map.Entry<String, Set<String>> entry : owners.entrySet()) {
+                String catalog = entry.getKey();
+                Set<String> schemas = entry.getValue();
+                targetDatabase.createCatalog(catalog);
+                try {
+                    statement.execute("USE " + targetDatabase.quote(catalog));
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+                for (String schema : schemas) {
+                    targetDatabase.createShema(catalog, schema);
+                }
+            }
+        }
+
         return objectIdentifiers.stream()
-                // Group and execute by catalog
-                .collect(Collectors.groupingBy(ObjectIdentifier::getCatalog))
-                .entrySet()
-                .stream()
-                .map(entry -> {
-                    String catalog = entry.getKey();
-                    List<ObjectIdentifier> identifiers = entry.getValue();
-
-                    // Create and use the catalog
-                    targetDatabase.createCatalog(catalog);
-                    try {
-                        statement.execute("USE " + catalog);
-                    } catch (SQLException e) {
-                        throw new RuntimeException("Failed to USE " + catalog);
-                    }
-
-                    // Create the schemas
-                    identifiers.stream().map(ObjectIdentifier::getSchema).distinct().forEach(schema -> targetDatabase.createShema(catalog, schema));
-
-                    return identifiers.stream()
-                            .sorted(Comparator.comparing(it -> CODE_TYPES.indexOf(it.getType())))
-                            .map(objectIdentifier -> uploadFileToTarget(statement, objectIdentifier))
-                            .toList();
-                })
-                .flatMap(Collection::stream)
+                .sorted(Comparator.comparing(it -> CODE_TYPES.indexOf(it.getType())))       // Create the tables first, ...
+                .map(objectIdentifier -> uploadFileToTarget(statement, objectIdentifier))   // Upload
                 .toList();
     }
 
