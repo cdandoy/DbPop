@@ -120,6 +120,10 @@ public abstract class Database implements AutoCloseable {
         throw new NotImplementedException();
     }
 
+    public void useCatalog(String catalog) {
+        throw new NotImplementedException();
+    }
+
     public void createShema(String catalog, String schema) {
         throw new NotImplementedException();
     }

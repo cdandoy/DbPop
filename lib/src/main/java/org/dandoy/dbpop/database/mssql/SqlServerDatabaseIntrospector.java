@@ -151,7 +151,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
 
     private static boolean areValidNames(String... names) {
         for (String name : names) {
-            if (StringUtils.containsAny(name, ".[]")) return false;
+            if (StringUtils.containsAny(name, "[]")) return false;
         }
         return true;
     }
@@ -491,7 +491,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 for (Map.Entry<String, List<ObjectIdentifier>> entry : objectIdentifiers.stream()
                         .collect(Collectors.groupingBy(ObjectIdentifier::getCatalog)).entrySet()) {
                     String catalog = entry.getKey();
-                    database.use(catalog);
+                    database.useCatalog(catalog);
                     List<ObjectIdentifier> list = entry.getValue();
                     for (ObjectIdentifier objectIdentifier : list) {
                         preparedStatement.setString(1, objectIdentifier.getSchema());
@@ -539,7 +539,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 for (Map.Entry<String, List<ObjectIdentifier>> entry : objectIdentifiers.stream()
                         .collect(Collectors.groupingBy(ObjectIdentifier::getCatalog)).entrySet()) {
                     String catalog = entry.getKey();
-                    database.use(catalog);
+                    database.useCatalog(catalog);
                     List<ObjectIdentifier> list = entry.getValue();
                     for (ObjectIdentifier objectIdentifier : list) {
                         preparedStatement.setString(1, objectIdentifier.getSchema());
@@ -596,7 +596,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 for (Map.Entry<String, List<ObjectIdentifier>> entry : objectIdentifiers.stream()
                         .collect(Collectors.groupingBy(ObjectIdentifier::getCatalog)).entrySet()) {
                     String catalog = entry.getKey();
-                    database.use(catalog);
+                    database.useCatalog(catalog);
                     List<ObjectIdentifier> list = entry.getValue();
                     for (ObjectIdentifier objectIdentifier : list) {
                         ObjectIdentifier parentObjectIdentifier = objectIdentifier.getParent();

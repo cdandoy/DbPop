@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Supplier;
 
 import static java.util.Collections.emptyList;
 
@@ -39,6 +40,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
     @Getter
     private SignatureDiff signatureDiff = new SignatureDiff(emptyList(), emptyList(), emptyList());
     private ConnectionBuilder targetConnectionBuilder;
+    private boolean paused;
 
     public CodeChangeService(ConfigurationService configurationService, SiteWebSocket siteWebSocket) {
         this.codeDirectory = configurationService.getCodeDirectory();
@@ -76,8 +78,25 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
         updateDatabaseSignatures();
     }
 
+    /**
+     * Pauses the file and database change scanning while the supplier is executing
+     * TODO: Re-scan when it completes
+     */
+    <T> T doWithPause(Supplier<T> supplier) {
+        if (paused) return null;
+
+        log.debug("paused");
+        paused = true;
+        try {
+            return supplier.get();
+        } finally {
+            paused = false;
+            log.debug("unpaused");
+        }
+    }
+
     private void updateDatabaseSignatures() {
-        if (targetConnectionBuilder != null) {
+        if (!paused && targetConnectionBuilder != null) {
             try (DefaultDatabase database = Database.createDefaultDatabase(targetConnectionBuilder)) {
                 DatabaseChangeDetector.UpdatedSignatures updatedSignatures = DatabaseChangeDetector.getUpdatedSignatures(database, lastDatabaseCheck, databaseSignatures);
                 databaseSignatures = updatedSignatures.signatures();
@@ -105,6 +124,8 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
 
     @Override
     public synchronized void whenFilesChanged(Map<File, Boolean> changes) {
+        if (paused) return;
+
         for (Map.Entry<File, Boolean> entry : changes.entrySet()) {
             File file = entry.getKey();
             ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(codeDirectory, file);
@@ -141,8 +162,12 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
                 .filter(objectIdentifier -> {
                     ObjectSignature fileSignature = fileSignatures.get(objectIdentifier);
                     ObjectSignature databaseSignature = databaseSignatures.get(objectIdentifier);
-                    if (fileSignature == null || databaseSignature == null) {
-                        log.info("One of them disappeared");
+                    if (fileSignature == null) {
+                        log.warn("File Signature disappeared - {}", objectIdentifier);
+                        return false;
+                    }
+                    if (databaseSignature == null) {
+                        log.warn("Database Signature disappeared - {}", objectIdentifier);
                         return false;
                     }
                     byte[] fileHash = fileSignature.hash();

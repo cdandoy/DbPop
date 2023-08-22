@@ -55,21 +55,24 @@ public class CodeChangeController {
 
     @Post("target/changes/apply-all-db")
     public void applyAllDbChangeToFile() {
-        CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
-        for (ObjectIdentifier objectIdentifier : signatureDiff.databaseOnly()) {
-            codeService.download(objectIdentifier);
-        }
-        for (ObjectIdentifier objectIdentifier : signatureDiff.different()) {
-            codeService.download(objectIdentifier);
-        }
-        for (ObjectIdentifier objectIdentifier : signatureDiff.fileOnly()) {
-            codeService.deleteFile(objectIdentifier);
-        }
+        codeChangeService.doWithPause(() -> {
+            CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
+            for (ObjectIdentifier objectIdentifier : signatureDiff.databaseOnly()) {
+                codeService.download(objectIdentifier);
+            }
+            for (ObjectIdentifier objectIdentifier : signatureDiff.different()) {
+                codeService.download(objectIdentifier);
+            }
+            for (ObjectIdentifier objectIdentifier : signatureDiff.fileOnly()) {
+                codeService.deleteFile(objectIdentifier);
+            }
+            return null;
+        });
     }
 
     @Post("target/changes/apply-file")
     public ExecutionsResult applyToDatabase(@Body ObjectIdentifier objectIdentifier) {
-        return createExecutionsResult(() -> {
+        return codeChangeService.doWithPause(() -> createExecutionsResult(() -> {
             var signatureDiff = codeChangeService.getSignatureDiff();
             if (signatureDiff.isDifferent(objectIdentifier) || signatureDiff.isFileOnly(objectIdentifier)) {
                 return codeService.applyFiles(List.of(objectIdentifier), emptyList());
@@ -78,19 +81,19 @@ public class CodeChangeController {
             } else {
                 return emptyList();
             }
-        });
+        }));
     }
 
     @Post("target/changes/apply-all-files")
     public ExecutionsResult applyAllFileChangeToDb() {
-        return createExecutionsResult(() -> {
+        return codeChangeService.doWithPause(() -> createExecutionsResult(() -> {
             List<ObjectIdentifier> uploadObjectIdentifiers = new ArrayList<>();
             CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
 
             uploadObjectIdentifiers.addAll(signatureDiff.fileOnly());
             uploadObjectIdentifiers.addAll(signatureDiff.different());
             return codeService.applyFiles(uploadObjectIdentifiers, signatureDiff.databaseOnly());
-        });
+        }));
     }
 
     private static ExecutionsResult createExecutionsResult(Supplier<List<ExecutionsResult.Execution>> supplier) {

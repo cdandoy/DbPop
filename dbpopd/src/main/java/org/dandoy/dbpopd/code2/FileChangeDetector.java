@@ -19,7 +19,6 @@ public class FileChangeDetector implements AutoCloseable {
     private final FileChangeListener fileChangeListener;
     private final Map<WatchKey, Path> keys = new HashMap<>();
     private final Set<Path> knownFiles = new HashSet<>();
-    private boolean hasCode;
     /**
      * Accumulates the actions and only send the events if nothing happened for a few seconds.
      * The boolean is true if the file has been deleted

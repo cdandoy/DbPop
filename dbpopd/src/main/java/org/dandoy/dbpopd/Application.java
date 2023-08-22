@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Info;
 import lombok.Getter;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -18,9 +19,10 @@ import java.util.Properties;
                 version = "0.4.5"
         )
 )
+@Slf4j
+@Getter
 public class Application {
 
-    @Getter
     private static long startTimeMilis;
 
     public static void main(String[] args) {
@@ -38,7 +40,10 @@ public class Application {
         if (version != null) {
             System.out.printf(" DbPop (v%s)\n%n", version);
         }
-
+//        log.error("ERROR");
+//        log.warn("WARN");
+//        log.info("INFO");
+//        log.debug("DEBUG");
         Micronaut.build(args)
                 .banner(false)
                 .deduceEnvironment(false)

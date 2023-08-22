@@ -14,6 +14,7 @@ import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("SqlSourceToSinkFlow")
 @Slf4j
 public class SqlServerDatabase extends DefaultDatabase {
     private static final Set<String> SYS_SCHEMAS = new HashSet<>(Arrays.asList("guest", "INFORMATION_SCHEMA", "sys", "db_owner", "db_accessadmin", "db_securityadmin", "db_ddladmin", "db_backupoperator", "db_datareader", "db_datawriter", "db_denydatareader", "db_denydatawriter"));
@@ -38,18 +39,10 @@ public class SqlServerDatabase extends DefaultDatabase {
         }
     }
 
-    void use(String catalog) {
-        try (Statement statement = getConnection().createStatement()) {
-            statement.execute("USE " + catalog);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     @Override
     public Collection<TableName> getTableNames(String catalog, String schema) {
         try {
-            use(catalog);
+            useCatalog(catalog);
             try (PreparedStatement preparedStatement = getConnection().prepareStatement("""
                     SELECT s.name AS schema_name, t.name AS table_name
                     FROM sys.schemas s
@@ -154,7 +147,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         Map<TableName, List<ForeignKey>> foreignKeys = new HashMap<>();
         Map<TableName, List<Index>> indexes = new HashMap<>();
         Map<TableName, SqlServerPrimaryKey> primaryKeyMap = new HashMap<>();
-        use(catalog);
+        useCatalog(catalog);
         // Collects the tables and columns
         try (PreparedStatement tablesStatement = getConnection().prepareStatement("""
                 SELECT s.name             AS s,
@@ -645,7 +638,7 @@ public class SqlServerDatabase extends DefaultDatabase {
     public List<ForeignKey> getRelatedForeignKeys(TableName tableName) {
         try {
             List<ForeignKey> foreignKeys = new ArrayList<>();
-            use(tableName.getCatalog());
+            useCatalog(tableName.getCatalog());
             try (PreparedStatement preparedStatement = getConnection().prepareStatement("""
                     SELECT s.name   AS s,
                            t.name   AS t,
@@ -782,7 +775,7 @@ public class SqlServerDatabase extends DefaultDatabase {
 
     @Override
     public void createCatalog(String catalog) {
-        String sql = String.format("CREATE DATABASE %s", catalog);
+        String sql = String.format("CREATE DATABASE %s", quote(catalog));
         try {
             log.debug("SQL: {}", sql);
             try (Statement statement = getConnection().createStatement()) {
@@ -791,6 +784,15 @@ public class SqlServerDatabase extends DefaultDatabase {
         } catch (SQLException e) {
             if ("S0003".equals(e.getSQLState())) return;
             throw new RuntimeException(String.format("Failed to execute \"%s\"", sql), e);
+        }
+    }
+
+    @Override
+    public void useCatalog(String catalog) {
+        try (Statement statement = getConnection().createStatement()) {
+            statement.execute("USE " + quote(catalog));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -825,7 +827,7 @@ public class SqlServerDatabase extends DefaultDatabase {
         ));
     }
 
-    class SqlServerDatabaseInserter extends DatabaseInserter {
+    protected class SqlServerDatabaseInserter extends DatabaseInserter {
         private final TableName tableName;
         private final boolean identity;
         private IdentityColumnInserter identityColumnInserter;

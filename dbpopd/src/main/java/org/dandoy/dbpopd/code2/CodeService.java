@@ -78,31 +78,33 @@ public class CodeService {
 
     private List<ExecutionsResult.Execution> uploadFileToTarget(Database targetDatabase, Statement statement, Collection<ObjectIdentifier> objectIdentifiers) {
 
-        {   // Create the catalog and schemas
-            Map<String, Set<String>> owners = new HashMap<>();
-            objectIdentifiers.forEach(objectIdentifier -> owners
-                    .computeIfAbsent(objectIdentifier.getCatalog(), s -> new HashSet<>())
-                    .add(objectIdentifier.getSchema())
-            );
-            for (Map.Entry<String, Set<String>> entry : owners.entrySet()) {
-                String catalog = entry.getKey();
-                Set<String> schemas = entry.getValue();
-                targetDatabase.createCatalog(catalog);
-                try {
-                    statement.execute("USE " + targetDatabase.quote(catalog));
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-                for (String schema : schemas) {
-                    targetDatabase.createShema(catalog, schema);
-                }
-            }
+        Map<String, List<ObjectIdentifier>> identifiersByCatalog = new HashMap<>();
+        for (ObjectIdentifier objectIdentifier : objectIdentifiers) {
+            identifiersByCatalog.computeIfAbsent(objectIdentifier.getCatalog(), s -> new ArrayList<>())
+                    .add(objectIdentifier);
         }
+        // Create the catalog and schemas
+        identifiersByCatalog.forEach((catalog, identifiers) -> {
+            targetDatabase.createCatalog(catalog);
+            targetDatabase.useCatalog(catalog);
+            identifiers.stream().map(ObjectIdentifier::getSchema).distinct().forEach(schema -> targetDatabase.createShema(catalog, schema));
+        });
+        // Create the objects
+        List<ExecutionsResult.Execution> ret = new ArrayList<>();
+        for (Map.Entry<String, List<ObjectIdentifier>> entry : identifiersByCatalog.entrySet()) {
+            String catalog = entry.getKey();
+            List<ObjectIdentifier> identifiers = entry.getValue();
 
-        return objectIdentifiers.stream()
-                .sorted(Comparator.comparing(it -> CODE_TYPES.indexOf(it.getType())))       // Create the tables first, ...
-                .map(objectIdentifier -> uploadFileToTarget(statement, objectIdentifier))   // Upload
-                .toList();
+            targetDatabase.useCatalog(catalog);
+            // TODO: We should log the progress by catalog + type, something like "Creating 123 TABLES in AdventureWorks"
+            identifiers.stream()
+                    .sorted(Comparator.comparing(it -> CODE_TYPES.indexOf(it.getType())))       // Create the tables first, ...
+                    .forEach(objectIdentifier -> {
+                        ExecutionsResult.Execution execution = uploadFileToTarget(statement, objectIdentifier);
+                        ret.add(execution);
+                    });
+        }
+        return ret;
     }
 
     private static final Pattern SPROC_PATTERN = Pattern.compile("(?<pre>.*)(\\bCREATE\\b\\s+(OR\\s+ALTER\\s+)?)(?<type>FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b(?<post>.*)", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);

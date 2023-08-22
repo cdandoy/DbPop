@@ -237,6 +237,11 @@ public class DatabaseCache extends Database {
     }
 
     @Override
+    public void useCatalog(String catalog) {
+        delegate.useCatalog(catalog);
+    }
+
+    @Override
     public void createShema(String catalog, String schema) {
         delegate.createShema(catalog, schema);
     }
