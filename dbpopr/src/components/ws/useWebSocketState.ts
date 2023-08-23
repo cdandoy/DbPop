@@ -1,6 +1,5 @@
 import useWebSocket, {ReadyState} from "react-use-websocket";
 import React, {useEffect, useState} from "react";
-import {Change, DefaultChanges, targetChanges} from "../../api/changeApi";
 
 interface ConnectionStatus {
     configured: boolean;
@@ -25,8 +24,6 @@ export interface WebSocketState {
     hasCodeDiffs: boolean;
     codeDiffChanges: number;
     connected: boolean;
-    codeChanges: Change[];
-    refreshCodeChanges: () => void;
     hasCode: boolean;
 }
 
@@ -37,9 +34,6 @@ export const WebSocketStateContext = React.createContext<WebSocketState>({
     hasCodeDiffs: false,
     codeDiffChanges: 0,
     connected: false,
-    codeChanges: [],
-    refreshCodeChanges: () => {
-    },
     hasCode: false,
 });
 
@@ -64,7 +58,6 @@ export function useWebSocketState(): WebSocketState {
     const [hasCodeDiffs, setHasCodeDiffs] = useState(false);
     const [codeDiffChanges, setCodeDiffChanges] = useState(0);
     const [connected, setConnected] = useState(false);
-    const [codeChanges, setCodeChanges] = useState<Change[]>(DefaultChanges);
     const [hasCode, setHasCode] = useState(false);
     const {lastJsonMessage, readyState} = useWebSocket(
         getWebsocketUrl(),
@@ -91,22 +84,6 @@ export function useWebSocketState(): WebSocketState {
     }, [lastJsonMessage]);
 
 
-    const refreshCodeChanges = () => {
-        if (hasCode) {
-            targetChanges()
-                .then(result => {
-                    setCodeChanges(result.data);
-                })
-        } else {
-            setCodeChanges([]);
-        }
-    };
-
-    useEffect(() => {
-        refreshCodeChanges();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [hasCode, codeChanged]);
-
     const connectionStatus = {
         [ReadyState.CONNECTING]: false,
         [ReadyState.OPEN]: true,
@@ -129,8 +106,6 @@ export function useWebSocketState(): WebSocketState {
         hasCodeDiffs,
         codeDiffChanges,
         connected,
-        codeChanges,
-        refreshCodeChanges: refreshCodeChanges,
         hasCode
     }
 }

@@ -114,38 +114,6 @@ public class CodeController {
                 .sorted(Comparator.comparing(ChangeResponse::path));
     }
 
-    @Post("target/changes/apply-files")
-    public void applyToDatabase(@Body ObjectIdentifierResponse[] objectIdentifierResponses) {
-        for (ObjectIdentifierResponse objectIdentifierResponse : objectIdentifierResponses) {
-            ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
-            Change change = changeDetector.removeChange(objectIdentifier);
-            File file = change.getFile();
-            if (change.isFileChanged()) {
-                codeService.uploadFileToTarget(file);
-            } else if (change.isFileDeleted()) {
-                codeService.deleteTargetObject(objectIdentifier);
-            } else {
-                throw new RuntimeException();
-            }
-        }
-    }
-
-    @Post("target/changes/apply-dbs")
-    public void applyToFile(@Body ObjectIdentifierResponse[] objectIdentifierResponses) {
-        for (ObjectIdentifierResponse objectIdentifierResponse : objectIdentifierResponses) {
-            ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
-            Change change = changeDetector.removeChange(objectIdentifier);
-            File file = change.getFile();
-            if (change.isDatabaseChanged()) {
-                codeService.downloadTargetToFile(objectIdentifier);
-            } else if (change.isDatabaseDeleted()) {
-                codeService.deleteFile(file);
-            } else {
-                throw new RuntimeException();
-            }
-        }
-    }
-
     public record CodeDiffResponse(List<DiffLine> diffLines, String leftName, String rightName) {}
 
     @Post("/target/diff/")

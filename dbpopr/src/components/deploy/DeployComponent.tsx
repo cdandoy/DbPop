@@ -56,7 +56,6 @@ export default function DeployComponent() {
         if (!hasSnapshot) return <NoSnapshotContent handleCreateSnapshot={handleCreateSnapshot}/>
         if (!hasChanges) return <NoChangesContent/>
         if (state === "input") return <DeployInput setLoading={setLoading}
-                                                   codeChanges={siteStatus.codeChanges}
                                                    setState={setState}
                                                    setFlywayGeneratedFilename={setFlywayGeneratedFilename}
                                                    defaultType={defaultType}/>

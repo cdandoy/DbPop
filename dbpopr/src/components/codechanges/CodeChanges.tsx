@@ -15,7 +15,7 @@ function Message({message}: { message: string }) {
     </>
 }
 
-interface ChangedObject {
+export interface ChangedObject {
     objectIdentifier: ObjectIdentifier;
     name: string;
     type: string;
