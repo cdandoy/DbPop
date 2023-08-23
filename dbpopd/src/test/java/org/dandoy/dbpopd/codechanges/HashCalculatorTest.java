@@ -31,12 +31,8 @@ class HashCalculatorTest {
         try (DatabaseProxy database = Database.createDatabase(connectionBuilder)) {
             Map<ObjectIdentifier, ObjectSignature> fileSignatures = HashCalculator.captureSignatures(codeDirectory);
             Map<ObjectIdentifier, ObjectSignature> databaseSignatures = HashCalculator.captureSignatures(database);
-            exclude(fileSignatures.keySet(), databaseSignatures.keySet()).forEach(objectIdentifier -> {
-                System.out.println("Missing db");
-            });
-            exclude(databaseSignatures.keySet(), fileSignatures.keySet()).forEach(objectIdentifier -> {
-                System.out.println("Missing file");
-            });
+            exclude(fileSignatures.keySet(), databaseSignatures.keySet()).forEach(objectIdentifier -> System.out.println("Missing db"));
+            exclude(databaseSignatures.keySet(), fileSignatures.keySet()).forEach(objectIdentifier -> System.out.println("Missing file"));
             intersect(fileSignatures.keySet(), databaseSignatures.keySet()).forEach(objectIdentifier -> {
                 ObjectSignature fileSignature = fileSignatures.get(objectIdentifier);
                 ObjectSignature databaseSignature = databaseSignatures.get(objectIdentifier);
