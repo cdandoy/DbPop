@@ -9,7 +9,6 @@ interface ConnectionStatus {
 interface StructuredWebSocketMessage {
     sourceConnectionStatus: ConnectionStatus;
     targetConnectionStatus: ConnectionStatus;
-    hasCode: boolean;
     codeChanges: number;
     hasCodeDiffs: boolean;
     codeDiffChanges: number;
@@ -24,7 +23,6 @@ export interface WebSocketState {
     hasCodeDiffs: boolean;
     codeDiffChanges: number;
     connected: boolean;
-    hasCode: boolean;
 }
 
 export const WebSocketStateContext = React.createContext<WebSocketState>({
@@ -34,7 +32,6 @@ export const WebSocketStateContext = React.createContext<WebSocketState>({
     hasCodeDiffs: false,
     codeDiffChanges: 0,
     connected: false,
-    hasCode: false,
 });
 
 function getWebsocketUrl(): string {
@@ -58,7 +55,6 @@ export function useWebSocketState(): WebSocketState {
     const [hasCodeDiffs, setHasCodeDiffs] = useState(false);
     const [codeDiffChanges, setCodeDiffChanges] = useState(0);
     const [connected, setConnected] = useState(false);
-    const [hasCode, setHasCode] = useState(false);
     const {lastJsonMessage, readyState} = useWebSocket(
         getWebsocketUrl(),
         {
@@ -79,7 +75,6 @@ export function useWebSocketState(): WebSocketState {
             setCodeChanged(message.codeChanges);
             setHasCodeDiffs(message.hasCodeDiffs);
             setCodeDiffChanges(message.codeDiffChanges);
-            setHasCode(message.hasCode);
         }
     }, [lastJsonMessage]);
 
@@ -106,6 +101,5 @@ export function useWebSocketState(): WebSocketState {
         hasCodeDiffs,
         codeDiffChanges,
         connected,
-        hasCode
     }
 }
