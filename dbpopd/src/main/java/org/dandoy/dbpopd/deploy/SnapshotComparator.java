@@ -5,8 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.dandoy.dbpop.database.ObjectIdentifier;
-import org.dandoy.dbpopd.code.ChangeDetector;
 import org.dandoy.dbpopd.code.CodeService;
+import org.dandoy.dbpopd.codechanges.HashCalculator;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 
 import java.io.BufferedInputStream;
@@ -54,8 +54,8 @@ public class SnapshotComparator {
                             // Object CHANGED: it exists in the code directory but is different from the snapshot
                             pathsByPriority.remove(file.toPath());
                             String fileSql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
-                            String cleanSnapshotSql = ChangeDetector.cleanSql(snapshotSql);
-                            String cleanFileSql = ChangeDetector.cleanSql(fileSql);
+                            String cleanSnapshotSql = HashCalculator.cleanSql(snapshotSql);
+                            String cleanFileSql = HashCalculator.cleanSql(fileSql);
                             if (!cleanSnapshotSql.equals(cleanFileSql)) {
                                 keepRunning = changeConsumer.accept(objectIdentifier, snapshotSql, fileSql);
                             }

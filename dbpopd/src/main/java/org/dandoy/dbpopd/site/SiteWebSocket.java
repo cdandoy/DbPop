@@ -13,8 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpopd.config.ConnectionBuilderChangedEvent;
 import org.dandoy.dbpopd.config.ConnectionType;
 
-import java.util.function.Supplier;
-
 @Slf4j
 @Singleton
 @ServerWebSocket("/ws/site")
@@ -22,8 +20,6 @@ public class SiteWebSocket implements ApplicationEventListener<ConnectionBuilder
     private final WebSocketBroadcaster broadcaster;
     @Getter
     private final SiteStatus siteStatus = new SiteStatus();
-    private SiteStatus siteStatusBeforeDelay;
-    private int delayed = 0;
 
     public SiteWebSocket(WebSocketBroadcaster broadcaster) {
         this.broadcaster = broadcaster;
@@ -52,54 +48,15 @@ public class SiteWebSocket implements ApplicationEventListener<ConnectionBuilder
         } else if (event.type() == ConnectionType.TARGET) {
             siteStatus.setTargetConnectionStatus(connectionStatus);
         }
-        fireSiteStatus();
-    }
-
-    public void setHasCode(boolean hasCode) {
-        siteStatus.setHasCode(hasCode);
-        fireSiteStatus();
-    }
-
-    public void codeChanged() {
-        siteStatus.codeChanged();
-        fireSiteStatus();
+        sendSiteStatus();
     }
 
     public void codeDiffChanged(boolean hasChanges) {
         siteStatus.codeDiffChanged(hasChanges);
-        fireSiteStatus();
-    }
-
-    private void fireSiteStatus() {
-        if (delayed == 0) {
-            sendSiteStatus();
-        }
+        sendSiteStatus();
     }
 
     private void sendSiteStatus() {
         broadcaster.broadcastSync(siteStatus);
-    }
-
-    public <T> T holdChanges(Supplier<T> supplier) {
-        setDelayed(true);
-        try {
-            return supplier.get();
-        } finally {
-            setDelayed(false);
-        }
-    }
-
-    private synchronized void setDelayed(boolean delayed) {
-        if (this.delayed == 0) {
-            siteStatusBeforeDelay = new SiteStatus(siteStatus);
-        }
-        this.delayed += delayed ? 1 : -1;
-        if (this.delayed == 0) {
-            if (!siteStatus.equals(siteStatusBeforeDelay)) {
-                sendSiteStatus();
-            }
-        } else if (this.delayed < 0 || this.delayed > 3) {
-            throw new RuntimeException("Unexpected delayed value: " + this.delayed);
-        }
     }
 }

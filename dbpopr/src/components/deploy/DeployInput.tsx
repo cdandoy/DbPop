@@ -17,7 +17,7 @@ export function DeployInput({setLoading, setState, setFlywayGeneratedFilename, d
     const [hasDbChanges, setHasDbChanges] = useState(false);
 
     useEffect(() => {
-        axios.get<ChangedObject[]>(`/code2/target/changes`)
+        axios.get<ChangedObject[]>(`/codechanges/target`)
             .then(response => {
                 setHasDbChanges(
                     response.data.filter(change => change.changeType === "DATABASE_ONLY" || change.changeType === "UPDATED").length > 0

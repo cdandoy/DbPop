@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd.code2;
+package org.dandoy.dbpopd.codechanges;
 
 import jakarta.inject.Singleton;
 import lombok.SneakyThrows;

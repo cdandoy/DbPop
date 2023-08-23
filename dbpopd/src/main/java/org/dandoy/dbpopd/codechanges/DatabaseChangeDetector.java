@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd.code2;
+package org.dandoy.dbpopd.codechanges;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;

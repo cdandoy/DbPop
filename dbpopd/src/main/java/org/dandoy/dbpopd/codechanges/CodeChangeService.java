@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd.code2;
+package org.dandoy.dbpopd.codechanges;
 
 import io.micronaut.context.annotation.Context;
 import io.micronaut.context.event.ApplicationEventListener;
@@ -82,7 +82,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
      * Pauses the file and database change scanning while the supplier is executing
      * TODO: Re-scan when it completes
      */
-    <T> T doWithPause(Supplier<T> supplier) {
+    public <T> T doWithPause(Supplier<T> supplier) {
         if (paused) return null;
 
         log.debug("paused");
@@ -92,6 +92,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
         } finally {
             paused = false;
             log.debug("unpaused");
+            fileChangeDetector.checkAll();
         }
     }
 

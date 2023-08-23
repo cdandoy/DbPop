@@ -1,13 +1,12 @@
 package org.dandoy.dbpopd.code;
 
-import io.micronaut.http.HttpStatus;
-import io.micronaut.problem.HttpStatusType;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Singleton;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.utils.FileUtils;
+import org.dandoy.dbpopd.codechanges.CodeChangeService;
 import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.config.DatabaseCacheService;
 import org.dandoy.dbpopd.datasets.DatasetsService;
@@ -15,9 +14,10 @@ import org.dandoy.dbpopd.populate.PopulateService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
 import org.dandoy.dbpopd.utils.IOUtils;
 import org.dandoy.dbpopd.utils.Pair;
-import org.zalando.problem.Problem;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,14 +42,14 @@ public class CodeService {
     private final DatabaseCacheService databaseCacheService;
     private final PopulateService populateService;
     private final DatasetsService datasetsService;
-    private final ChangeDetector changeDetector;
+    private final CodeChangeService codeChangeService;
 
-    public CodeService(ConfigurationService configurationService, DatabaseCacheService databaseCacheService, PopulateService populateService, DatasetsService datasetsService, ChangeDetector changeDetector) {
+    public CodeService(ConfigurationService configurationService, DatabaseCacheService databaseCacheService, PopulateService populateService, DatasetsService datasetsService, CodeChangeService codeChangeService) {
         this.configurationService = configurationService;
         this.databaseCacheService = databaseCacheService;
         this.populateService = populateService;
         this.datasetsService = datasetsService;
-        this.changeDetector = changeDetector;
+        this.codeChangeService = codeChangeService;
     }
 
     /**
@@ -108,48 +108,18 @@ public class CodeService {
         }
     }
 
-    public void downloadTargetToFile(ObjectIdentifier objectIdentifier) {
-        try (Database database = configurationService.createTargetDatabase()) {
-            downloadToFile(database, objectIdentifier);
-        }
-    }
-
     private DownloadResult downloadToFile(Database database) {
         File codeDirectory = configurationService.getCodeDirectory();
         FileUtils.deleteRecursively(codeDirectory);
         DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
-        try (DbToFileVisitor dbToFileVisitor = new DbToFileVisitor(databaseIntrospector, codeDirectory)) {
-            return downloadToFile(database, dbToFileVisitor);
-        }
-    }
-
-    private void downloadToFile(Database database, ObjectIdentifier objectIdentifier) {
-        changeDetector.holdingChanges(changeSession -> {
-            changeSession.removeObjectIdentifier(objectIdentifier);
-            File codeDirectory = configurationService.getCodeDirectory();
-            DatabaseIntrospector databaseIntrospector = database.createDatabaseIntrospector();
-            databaseIntrospector.visitModuleDefinitions(List.of(objectIdentifier), new DatabaseVisitor() {
-                @Override
-                public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
-                    File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
-                    if (!file.getParentFile().mkdirs() && !file.getParentFile().isDirectory()) throw new RuntimeException("Failed to create the directory " + file.getParent());
-                    try (Writer writer = new OutputStreamWriter(new FileOutputStream(file))) {
-                        writer.write(definition);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            });
-            return null;
-        });
+        return downloadToFile(database, new DbToFileVisitor(databaseIntrospector, codeDirectory));
     }
 
     /**
      * Dumps the content of the database to the file system
      */
     private DownloadResult downloadToFile(Database database, DbToFileVisitor visitor) {
-        return changeDetector.holdingChanges(changeSession -> {
-            changeSession.checkAllFiles();
+        return codeChangeService.doWithPause(() -> {
 
             long t0 = System.currentTimeMillis();
             database.createDatabaseIntrospector().visit(visitor);
@@ -190,8 +160,7 @@ public class CodeService {
     @SneakyThrows
     public UploadResult uploadFileToTarget() {
         long t0 = System.currentTimeMillis();
-        return changeDetector.holdingChanges(changeSession -> {
-            changeSession.checkAllDatabaseObjects();
+        return codeChangeService.doWithPause(() -> {
             try (Database targetDatabase = configurationService.createTargetDatabase()) {
                 Connection connection = targetDatabase.getConnection();
                 try (Statement statement = connection.createStatement()) {
@@ -270,54 +239,6 @@ public class CodeService {
 
                     long t1 = System.currentTimeMillis();
                     return new UploadResult(fileExecutions, t1 - t0);
-                } finally {
-                    databaseCacheService.clearTargetDatabaseCache();
-                }
-            } catch (SQLException | IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    @SneakyThrows
-    public void uploadFileToTarget(File file) {
-        long t0 = System.currentTimeMillis();
-        changeDetector.holdingChanges(changeSession -> {
-            try (Database targetDatabase = configurationService.createTargetDatabase()) {
-                Connection connection = targetDatabase.getConnection();
-                try (Statement statement = connection.createStatement()) {
-                    File codeDirectory = configurationService.getCodeDirectory();
-                    ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(codeDirectory, file);
-                    if (objectIdentifier == null) {
-                        throw Problem.builder()
-                                .withTitle("Cannot convert the file to a database object: " + file)
-                                .withStatus(new HttpStatusType(HttpStatus.INTERNAL_SERVER_ERROR))
-                                .build();
-                    }
-                    String catalog = objectIdentifier.getCatalog();
-                    // USE <database>
-                    targetDatabase.createCatalog(catalog);
-                    statement.execute("USE " + catalog);
-
-                    // CREATE SCHEMA
-                    String schema = objectIdentifier.getSchema();
-                    try {
-                        statement.getConnection().commit();
-                        if (!"dbo".equals(schema)) {
-                            statement.execute("CREATE SCHEMA " + schema);
-                        }
-                    } catch (SQLException e) {
-                        if (!e.getSQLState().equals("S0001")) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-
-                    UploadResult.FileExecution fileExecution = execute(statement, objectIdentifier.getType(), file);
-
-                    changeSession.removeObjectIdentifier(objectIdentifier);
-
-                    long t1 = System.currentTimeMillis();
-                    return new UploadResult(List.of(fileExecution), t1 - t0);
                 } finally {
                     databaseCacheService.clearTargetDatabaseCache();
                 }
@@ -435,22 +356,5 @@ public class CodeService {
         entries.sort(Comparator.comparing(CodeDiff.Entry::tableName));
 
         return new CodeDiff(entries);
-    }
-
-    public void deleteTargetObject(ObjectIdentifier objectIdentifier) {
-        changeDetector.holdingChanges(changeSession -> {
-            try (Database targetDatabase = configurationService.createTargetDatabase()) {
-                targetDatabase.dropObject(objectIdentifier);
-                changeSession.removeObjectIdentifier(objectIdentifier);
-            }
-        });
-    }
-
-    public void deleteFile(File file) {
-        changeDetector.holdingChanges(changeSession -> {
-            if (!file.delete() && file.exists()) throw new RuntimeException("Failed to delete " + file);
-            ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(configurationService.getCodeDirectory(), file);
-            changeSession.removeObjectIdentifier(objectIdentifier);
-        });
     }
 }

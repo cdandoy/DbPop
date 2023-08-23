@@ -20,7 +20,7 @@ import java.util.*;
  * The visitor that downloads the code from the source database and dumps it into files
  */
 @Slf4j
-public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
+public class DbToFileVisitor implements DatabaseVisitor {
     final DatabaseIntrospector introspector;
     final File directory;
     private final List<Dependency> dependencies = new ArrayList<>();
@@ -39,10 +39,6 @@ public class DbToFileVisitor implements AutoCloseable, DatabaseVisitor {
             log.error("Failed to call getCanonicalPath() on {}", directory);
             return directory.toString();
         }
-    }
-
-    @Override
-    public void close() {
     }
 
     @Override

@@ -28,7 +28,7 @@ export default function CodeChanges() {
     const [refreshCount, setRefreshCount] = useState(0)
 
     useEffect(() => {
-        axios.get<ChangedObject[]>(`/code2/target/changes`)
+        axios.get<ChangedObject[]>(`/codechanges/target`)
             .then(response => {
                 setChangedObjects(response.data);
             });
@@ -39,22 +39,22 @@ export default function CodeChanges() {
     }
 
     function onApplyFileChange(objectIdentifier: ObjectIdentifier) {
-        axios.post(`/code2/target/changes/apply-file`, objectIdentifier)
+        axios.post(`/codechanges/target/apply-file`, objectIdentifier)
             .then(refresh);
     }
 
     function onApplyDbChange(objectIdentifier: ObjectIdentifier) {
-        axios.post(`/code2/target/changes/apply-db`, objectIdentifier)
+        axios.post(`/codechanges/target/apply-db`, objectIdentifier)
             .then(refresh);
     }
 
     function onApplyAllFileChanges() {
-        axios.post(`/code2/target/changes/apply-all-files`)
+        axios.post(`/codechanges/target/apply-all-files`)
             .then(refresh);
     }
 
     function onApplyAllDbChanges() {
-        axios.post(`/code2/target/changes/apply-all-db`)
+        axios.post(`/codechanges/target/apply-all-db`)
             .then(refresh);
     }
 

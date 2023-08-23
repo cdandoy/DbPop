@@ -1,3 +1,3 @@
-package org.dandoy.dbpopd.code2;
+package org.dandoy.dbpopd.codechanges;
 
 public record ObjectSignature(byte[] hash) {}

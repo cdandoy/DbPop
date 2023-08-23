@@ -1,61 +1,62 @@
-package org.dandoy.dbpopd.code;
+package org.dandoy.dbpopd.codechanges;
 
-import io.micronaut.context.annotation.Context;
-import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
-import org.dandoy.dbpopd.config.ConfigurationService;
-import org.dandoy.dbpopd.utils.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static java.nio.file.StandardWatchEventKinds.*;
 
 @Slf4j
-@Context
-public class FileChangeDetector {
+public class FileChangeDetector implements AutoCloseable {
     private WatchService watchService;
     private Thread thread;
     private final Path codePath;
+    private final FileChangeListener fileChangeListener;
     private final Map<WatchKey, Path> keys = new HashMap<>();
     private final Set<Path> knownFiles = new HashSet<>();
-    private final ChangeDetector changeDetector;
-    private boolean hasCode;
     /**
-     * Accumulates the actions and only send the events if nothing happened for a few seconds
+     * Accumulates the actions and only send the events if nothing happened for a few seconds.
+     * The boolean is true if the file has been deleted
      */
-    private final List<Runnable> pending = new ArrayList<>();
+    private final Map<File, Boolean> pendingChangedFiles = new HashMap<>();
 
-    public FileChangeDetector(ConfigurationService configurationService, ChangeDetector changeDetector) {
-        codePath = configurationService.getCodeDirectory().toPath();
-        this.changeDetector = changeDetector;
+    private FileChangeDetector(Path codePath, FileChangeListener fileChangeListener) {
+        this.codePath = codePath;
+        this.fileChangeListener = fileChangeListener;
     }
 
-    void postContruct() {
+    public static FileChangeDetector createFileChangeDetector(Path codePath, FileChangeListener fileChangeListener) {
         try {
-            watchService = FileSystems.getDefault().newWatchService();
-            thread = new Thread(this::threadLoop, "FileChangeDetector");
-            thread.setDaemon(true);
-            thread.start();
+            FileChangeDetector detector = new FileChangeDetector(codePath, fileChangeListener);
+            detector.checkAllFiles();
+            detector.watchService = FileSystems.getDefault().newWatchService();
+            detector.thread = new Thread(detector::threadLoop, "FileChangeDetector");
+            detector.thread.setDaemon(true);
+            detector.thread.start();
             if (Files.isDirectory(codePath)) {
-                checkHasCodeDirectory();
-                watchPathAndSubPaths(codePath);
+                detector.watchPathAndSubPaths(codePath);
             }
             for (Path path = codePath.getParent(); path != null; path = path.getParent()) {
-                watch(path);
+                detector.watch(path);
             }
+            return detector;
         } catch (IOException e) {
             log.error("Cannot watch the directory " + codePath, e);
+            return null;
         }
     }
 
-    void preDestroy() {
+    void checkAll() {
+        watchPathAndSubPaths(codePath);
+    }
+
+    @Override
+    public void close() {
         try {
             if (watchService != null) {
                 watchService.close();
@@ -107,13 +108,13 @@ public class FileChangeDetector {
     private void handlePathChanged(Path path) {
         File file = path.toFile();
         log.debug("File modified: {}", file);
-        pending.add(() -> changeDetector.whenFileChanged(file));
+        pendingChangedFiles.put(file, false);
     }
 
     private void handlePathDeleted(Path path) {
         File file = path.toFile();
         log.debug("File deleted: {}", file);
-        pending.add(() -> changeDetector.whenFileDeleted(file));
+        pendingChangedFiles.put(file, true);
     }
 
     void threadLoop() {
@@ -151,7 +152,6 @@ public class FileChangeDetector {
                             }
                         }
                     }
-                    checkHasCodeDirectory();
                     boolean valid = watchKey.reset();
                     if (!valid) {
                         Path removed = keys.remove(watchKey);
@@ -184,73 +184,40 @@ public class FileChangeDetector {
 
     private WatchKey getWatchKey() throws InterruptedException {
         WatchKey watchKey;
-        if (pending.isEmpty()) {
+        if (pendingChangedFiles.isEmpty()) {
             watchKey = watchService.take();
         } else {
             watchKey = watchService.poll(1, TimeUnit.SECONDS);
             if (watchKey == null) {
-                log.debug("Processing {} events", pending.size());
-                changeDetector.holdingChanges(changeSession -> {
-                    pending.forEach(Runnable::run);
-                    pending.clear();
-                });
+                log.debug("Processing {} events", pendingChangedFiles.size());
+                fileChangeListener.whenFilesChanged(this.pendingChangedFiles);
+                this.pendingChangedFiles.clear();
                 return null;
             }
         }
         return watchKey;
     }
 
-    byte[] getHash(@Nullable File file) {
-        if (file == null) return null;
-        if (!file.isFile()) return null;
-        MessageDigest messageDigest = ChangeDetector.getMessageDigest();
-        String sql = IOUtils.toString(file);
-        sql = ChangeDetector.cleanSql(sql);
-        byte[] bytes = sql.getBytes(StandardCharsets.UTF_8);
-        return messageDigest.digest(bytes);
-    }
-
-    private void setHasCode(boolean hasCode) {
-        log.debug("setHasCodeDirectory({})", hasCode);
-        if (this.hasCode != hasCode) {
-            this.hasCode = hasCode;
-            changeDetector.setHasCode(hasCode);
-        }
-    }
-
-    private void checkHasCodeDirectory() {
+    private void checkAllFiles() {
         try {
-            final boolean[] found = {false};
-            if (Files.isDirectory(codePath)) {
-                Files.walkFileTree(codePath, new SimpleFileVisitor<>() {
-                    @Override
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                        String filename = file.getName(file.getNameCount() - 1).toString();
-                        if (filename.toLowerCase().endsWith(".sql")) {
-                            found[0] = true;
-                            return FileVisitResult.TERMINATE;
-                        }
-                        return FileVisitResult.CONTINUE;
-                    }
-                });
-            }
-            setHasCode(found[0]);
-        } catch (IOException e) {
-            // ignore, this may happen when delete a directory with many subdirectories
-        }
-    }
-
-    public void checkAllFiles() {
-        try {
+            Map<File, Boolean> changes = new HashMap<>();
             Files.walkFileTree(codePath, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
-                    changeDetector.whenFileChanged(path.toFile());
+                    changes.put(path.toFile(), false);
                     return FileVisitResult.CONTINUE;
                 }
             });
+            this.fileChangeListener.whenFilesChanged(changes);
         } catch (IOException e) {
             log.error("Failed to checkAllFiles()", e);
         }
+    }
+
+    public interface FileChangeListener {
+        /**
+         * @param changes The key is the file that has changed, the value is true if the file has been deleted.
+         */
+        void whenFilesChanged(Map<File, Boolean> changes);
     }
 }

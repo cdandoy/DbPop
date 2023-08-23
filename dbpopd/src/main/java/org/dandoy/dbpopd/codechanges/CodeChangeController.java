@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd.code2;
+package org.dandoy.dbpopd.codechanges;
 
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 import static java.util.Collections.emptyList;
 import static java.util.function.Function.identity;
 
-@Controller("/code2")
+@Controller("/codechanges/target/")
 @Tag(name = "code")
 @Slf4j
 public class CodeChangeController {
@@ -29,7 +29,7 @@ public class CodeChangeController {
         this.codeService = codeService;
     }
 
-    @Get("target/changes")
+    @Get
     public Stream<ChangedObject> targetChanges() {
         CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
         return Stream
@@ -43,7 +43,7 @@ public class CodeChangeController {
                 .limit(100);
     }
 
-    @Post("target/changes/apply-db")
+    @Post("apply-db")
     public void applyDbChangeToFile(@Body ObjectIdentifier objectIdentifier) {
         CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
         if (signatureDiff.isDifferent(objectIdentifier) || signatureDiff.isDatabaseOnly(objectIdentifier)) {
@@ -53,7 +53,7 @@ public class CodeChangeController {
         }
     }
 
-    @Post("target/changes/apply-all-db")
+    @Post("apply-all-db")
     public void applyAllDbChangeToFile() {
         codeChangeService.doWithPause(() -> {
             CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
@@ -70,7 +70,7 @@ public class CodeChangeController {
         });
     }
 
-    @Post("target/changes/apply-file")
+    @Post("apply-file")
     public ExecutionsResult applyToDatabase(@Body ObjectIdentifier objectIdentifier) {
         return codeChangeService.doWithPause(() -> createExecutionsResult(() -> {
             var signatureDiff = codeChangeService.getSignatureDiff();
@@ -84,7 +84,7 @@ public class CodeChangeController {
         }));
     }
 
-    @Post("target/changes/apply-all-files")
+    @Post("apply-all-files")
     public ExecutionsResult applyAllFileChangeToDb() {
         return codeChangeService.doWithPause(() -> createExecutionsResult(() -> {
             List<ObjectIdentifier> uploadObjectIdentifiers = new ArrayList<>();

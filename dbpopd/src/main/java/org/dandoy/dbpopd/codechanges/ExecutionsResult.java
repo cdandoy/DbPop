@@ -1,4 +1,4 @@
-package org.dandoy.dbpopd.code2;
+package org.dandoy.dbpopd.codechanges;
 
 import org.dandoy.dbpop.database.ObjectIdentifier;
 
