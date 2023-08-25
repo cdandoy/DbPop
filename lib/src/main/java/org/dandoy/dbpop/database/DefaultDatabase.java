@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import static org.dandoy.dbpop.database.ColumnType.INVALID;
 
+@SuppressWarnings("SqlSourceToSinkFlow")
 @Slf4j
 public abstract class DefaultDatabase extends Database {
     private static final ExpressionParser EXPRESSION_PARSER = new ExpressionParser();
@@ -128,10 +129,10 @@ public abstract class DefaultDatabase extends Database {
             if (column != null) {
                 ColumnType columnType = column.getColumnType();
                 if (columnType != INVALID) {
-                    if (columnNames.length() > 0) columnNames.append(",");
+                    if (!columnNames.isEmpty()) columnNames.append(",");
                     columnNames.append(quote(columnName));
 
-                    if (bindVariables.length() > 0) bindVariables.append(",");
+                    if (!bindVariables.isEmpty()) bindVariables.append(",");
                     bindVariables.append("?");
                 } else {
                     log.error("Cannot load the data type of {}.{}", table.getTableName().toQualifiedName(), columnName);
@@ -378,6 +379,7 @@ public abstract class DefaultDatabase extends Database {
     }
 
     protected static class SafeConnection implements AutoCloseable {
+        private static final boolean DEBUG_DEADLOCKS = false;
         protected final ConnectionBuilder connectionBuilder;
         private final ConnectionVerifier connectionVerifier;
         private Connection connection;
@@ -428,6 +430,18 @@ public abstract class DefaultDatabase extends Database {
             if (connection == null) {
                 connection = connectionBuilder.createConnection();
                 connection.setAutoCommit(true);
+
+                if (DEBUG_DEADLOCKS) {
+                    try (Statement statement = connection.createStatement()) {
+                        try (ResultSet resultSet = statement.executeQuery("SELECT @@SPID")) {
+                            if (resultSet.next()) {
+                                String spid = resultSet.getString(1);
+                                RuntimeException e = new RuntimeException();
+                                log.info("Connection " + spid, e);
+                            }
+                        }
+                    }
+                }
             }
             return connection;
         }

@@ -123,7 +123,7 @@ public class SqlServerDatabase extends DefaultDatabase {
                 SELECT name
                 FROM sys.databases
                 WHERE state = 0
-                  AND name != 'tempdb'
+                  AND name NOT IN ('model', 'msdb', 'tempdb')
                 ORDER BY name""")) {
             try (ResultSet databaseResultSet = databasesStatement.executeQuery()) {
                 Collection<String> ret = new ArrayList<>();

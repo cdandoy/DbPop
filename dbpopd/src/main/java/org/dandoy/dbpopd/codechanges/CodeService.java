@@ -19,11 +19,25 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.dandoy.dbpop.database.ObjectTypes.*;
+import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.*;
+
+
 @Singleton
 @Slf4j
 public class CodeService {
     public static final List<String> CODE_TYPES = List.of(
-            "USER_TABLE", "PRIMARY_KEY", "INDEX", "FOREIGN_KEY_CONSTRAINT", "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER", "VIEW"
+            USER_TABLE,
+            PRIMARY_KEY,
+            INDEX,
+            FOREIGN_KEY_CONSTRAINT,
+            TYPE_TABLE,
+            SQL_INLINE_TABLE_VALUED_FUNCTION,
+            SQL_SCALAR_FUNCTION,
+            SQL_STORED_PROCEDURE,
+            SQL_TABLE_VALUED_FUNCTION,
+            SQL_TRIGGER,
+            VIEW
     );
     private final ConfigurationService configurationService;
     private final DatabaseCacheService databaseCacheService;
@@ -123,7 +137,7 @@ public class CodeService {
 
             String type = objectIdentifier.getType();
 
-            if (type.equals("USER_TABLE") || type.equals("FOREIGN_KEY_CONSTRAINT") || type.equals("INDEX") || type.equals("PRIMARY_KEY")) {
+            if (type.equals(USER_TABLE) || type.equals(TYPE_TABLE) || type.equals(FOREIGN_KEY_CONSTRAINT) || type.equals(INDEX) || type.equals(PRIMARY_KEY)) {
                 statement.execute(sql);
             } else {
                 Matcher matcher = SPROC_PATTERN.matcher(sql);
