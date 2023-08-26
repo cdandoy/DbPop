@@ -10,7 +10,7 @@ import org.dandoy.dbpop.database.ObjectIdentifier;
 
 import java.util.*;
 
-import static org.dandoy.dbpopd.codechanges.CodeChangeService.debugSignature;
+import static org.dandoy.dbpopd.codechanges.CodeChangeService.debugObjectIdentifier;
 
 @Slf4j
 public class DatabaseChangeDetector {
@@ -23,7 +23,7 @@ public class DatabaseChangeDetector {
             @Override
             public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String sql) {
                 ObjectSignature objectSignature = HashCalculator.getObjectSignature(objectIdentifier.getType(), sql);
-                if (objectIdentifier.equals(debugSignature)) {
+                if (objectIdentifier.equals(debugObjectIdentifier)) {
                     log.info("Database Signature {} | {} | [{}]",
                             objectIdentifier,
                             ByteArrayUtil.toHexString(objectSignature.hash()),
@@ -70,7 +70,7 @@ public class DatabaseChangeDetector {
             @Override
             public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String sql) {
                 ObjectSignature objectSignature = HashCalculator.getObjectSignature(objectIdentifier.getType(), sql);
-                if (objectIdentifier.equals(debugSignature)) {
+                if (objectIdentifier.equals(debugObjectIdentifier)) {
                     log.info("Database Signature {} | {} | [{}]",
                             objectIdentifier,
                             ByteArrayUtil.toHexString(objectSignature.hash()),

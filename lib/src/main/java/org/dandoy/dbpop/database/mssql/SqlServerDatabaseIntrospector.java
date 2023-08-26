@@ -57,11 +57,13 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 WHERE s.name NOT IN ('temp')
                   AND o.type_desc IN ('USER_TABLE', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_SCALAR_FUNCTION', 'SQL_STORED_PROCEDURE', 'SQL_TABLE_VALUED_FUNCTION', 'SQL_TRIGGER', 'VIEW')
                   AND o.is_ms_shipped = 0
-                UNION ALL -- SQL Server bug: TYPE_TABLE has is_ms_shipped=1
-                SELECT o.object_id, s.name AS "schema", o.name, o.type_desc, o.modify_date AS modify_date
+                UNION ALL
+                -- SQL Server bug: TYPE_TABLE has is_ms_shipped=1
+                SELECT o.object_id, s.name AS "schema", tt.name, o.type_desc, o.modify_date AS modify_date
                 FROM sys.schemas s
-                         JOIN sys.objects o ON o.schema_id = s.schema_id
-                WHERE s.name NOT IN ('temp')
+                         JOIN sys.table_types tt ON tt.schema_id = s.schema_id
+                         JOIN sys.objects o ON o.object_id = tt.type_table_object_id
+                WHERE s.name NOT IN ('sys', 'temp')
                   AND o.type_desc IN ('TYPE_TABLE')
                 -- AND o.is_ms_shipped = 0
                 ORDER BY "schema", name
@@ -297,12 +299,11 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
                          LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
                          LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
-                WHERE s.name NOT IN ('temp')
+                WHERE s.name NOT IN ('sys', 'temp')
                 ORDER BY s.name, tt.name, c.column_id
                 """)) {
             visitTableTypeDefinitions(databaseVisitor, catalog, preparedStatement);
         }
-
     }
 
     @SneakyThrows

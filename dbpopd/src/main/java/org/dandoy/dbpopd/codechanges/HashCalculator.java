@@ -5,6 +5,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.ObjectIdentifier;
@@ -140,14 +141,25 @@ public class HashCalculator {
     }
 
     static String cleanCreateOrReplaceSql(String cleanSql) {
-        Matcher matcher = SPROC_PATTERN.matcher(cleanSql);
-        if (!matcher.matches()) return cleanSql;
+        if (true) {
+            // Handle the simple cases
+            if (StringUtils.startsWithIgnoreCase(cleanSql, "CREATE PROCEDURE ")) return cleanSql;
+            if (StringUtils.startsWithIgnoreCase(cleanSql, "CREATE PROC ")) return cleanSql;
+            if (StringUtils.startsWithIgnoreCase(cleanSql, "CREATE FUNCTION ")) return cleanSql;
+            if (StringUtils.startsWithIgnoreCase(cleanSql, "CREATE TRIGGER ")) return cleanSql;
+            if (StringUtils.startsWithIgnoreCase(cleanSql, "CREATE VIEW ")) return cleanSql;
 
-        String pre = matcher.group("pre");
-        String post = matcher.group("post");
-        String type = matcher.group("type");
-        if ("PROC".equals(type)) type = "PROCEDURE";
-        return pre + "CREATE " + type + post;
+            Matcher matcher = SPROC_PATTERN.matcher(cleanSql);
+            if (!matcher.matches()) return cleanSql;
+
+            String pre = matcher.group("pre");
+            String post = matcher.group("post");
+            String type = matcher.group("type");
+            if ("PROC".equals(type)) type = "PROCEDURE";
+            return pre + "CREATE " + type + post;
+        } else {
+            return cleanSql;
+        }
     }
 
     static byte[] getHash(String sql) {

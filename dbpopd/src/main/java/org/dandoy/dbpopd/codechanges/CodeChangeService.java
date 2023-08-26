@@ -42,7 +42,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
     private SignatureDiff signatureDiff = new SignatureDiff(emptyList(), emptyList(), emptyList());
     private ConnectionBuilder targetConnectionBuilder;
     private boolean paused;
-    static ObjectIdentifier debugSignature = null;
+    static ObjectIdentifier debugObjectIdentifier = null;
 
     public CodeChangeService(ConfigurationService configurationService, SiteWebSocket siteWebSocket) {
         this.codeDirectory = configurationService.getCodeDirectory();
@@ -140,7 +140,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
                     try {
                         String sql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
                         ObjectSignature objectSignature = HashCalculator.getObjectSignature(objectIdentifier.getType(), sql);
-                        if (objectIdentifier.equals(debugSignature)) {
+                        if (objectIdentifier.equals(debugObjectIdentifier)) {
                             log.info("File Signature {} | {} | [{}]",
                                     objectIdentifier,
                                     ByteArrayUtil.toHexString(objectSignature.hash()),
@@ -184,8 +184,12 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
                     byte[] fileHash = fileSignature.hash();
                     byte[] databaseHash = databaseSignature.hash();
                     boolean ret = !Arrays.equals(fileHash, databaseHash);
-                    if (objectIdentifier.equals(debugSignature)) {
-                        log.info("compare Signature {} - {}", ByteArrayUtil.toHexString(fileHash), ByteArrayUtil.toHexString(databaseHash));
+                    if (objectIdentifier.equals(debugObjectIdentifier)) {
+                        log.info("compare Signature: {} - {} - {}",
+                                ret ? "different" : "identical",
+                                ByteArrayUtil.toHexString(fileHash),
+                                ByteArrayUtil.toHexString(databaseHash)
+                        );
                     }
                     if (ret) {
                         log.info("Different: {}", objectIdentifier);
