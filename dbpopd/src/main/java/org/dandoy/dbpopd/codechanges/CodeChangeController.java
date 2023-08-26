@@ -22,11 +22,11 @@ import static java.util.function.Function.identity;
 @Slf4j
 public class CodeChangeController {
     private final CodeChangeService codeChangeService;
-    private final CodeService codeService;
+    private final ApplyChangesService applyChangesService;
 
-    public CodeChangeController(CodeChangeService codeChangeService, CodeService codeService) {
+    public CodeChangeController(CodeChangeService codeChangeService, ApplyChangesService applyChangesService) {
         this.codeChangeService = codeChangeService;
-        this.codeService = codeService;
+        this.applyChangesService = applyChangesService;
     }
 
     @Get
@@ -47,9 +47,9 @@ public class CodeChangeController {
     public void applyDbChangeToFile(@Body ObjectIdentifier objectIdentifier) {
         CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
         if (signatureDiff.isDifferent(objectIdentifier) || signatureDiff.isDatabaseOnly(objectIdentifier)) {
-            codeService.download(objectIdentifier);
+            applyChangesService.download(objectIdentifier);
         } else if (signatureDiff.isFileOnly(objectIdentifier)) {
-            codeService.deleteFile(objectIdentifier);
+            applyChangesService.deleteFile(objectIdentifier);
         }
     }
 
@@ -58,13 +58,13 @@ public class CodeChangeController {
         codeChangeService.doWithPause(() -> {
             CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
             for (ObjectIdentifier objectIdentifier : signatureDiff.databaseOnly()) {
-                codeService.download(objectIdentifier);
+                applyChangesService.download(objectIdentifier);
             }
             for (ObjectIdentifier objectIdentifier : signatureDiff.different()) {
-                codeService.download(objectIdentifier);
+                applyChangesService.download(objectIdentifier);
             }
             for (ObjectIdentifier objectIdentifier : signatureDiff.fileOnly()) {
-                codeService.deleteFile(objectIdentifier);
+                applyChangesService.deleteFile(objectIdentifier);
             }
             return null;
         });
@@ -75,9 +75,9 @@ public class CodeChangeController {
         return codeChangeService.doWithPause(() -> createExecutionsResult(() -> {
             var signatureDiff = codeChangeService.getSignatureDiff();
             if (signatureDiff.isDifferent(objectIdentifier) || signatureDiff.isFileOnly(objectIdentifier)) {
-                return codeService.applyFiles(List.of(objectIdentifier), emptyList());
+                return applyChangesService.applyFiles(List.of(objectIdentifier), emptyList());
             } else if (signatureDiff.isDatabaseOnly(objectIdentifier)) {
-                return codeService.applyFiles(emptyList(), List.of(objectIdentifier));
+                return applyChangesService.applyFiles(emptyList(), List.of(objectIdentifier));
             } else {
                 return emptyList();
             }
@@ -92,7 +92,7 @@ public class CodeChangeController {
 
             uploadObjectIdentifiers.addAll(signatureDiff.fileOnly());
             uploadObjectIdentifiers.addAll(signatureDiff.different());
-            return codeService.applyFiles(uploadObjectIdentifiers, signatureDiff.databaseOnly());
+            return applyChangesService.applyFiles(uploadObjectIdentifiers, signatureDiff.databaseOnly());
         }));
     }
 

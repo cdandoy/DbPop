@@ -31,11 +31,25 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static org.dandoy.dbpop.database.ObjectTypes.*;
+import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.*;
+import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.SQL_TRIGGER;
+
 @Singleton
 @Slf4j
 public class CodeService {
     public static final List<String> CODE_TYPES = List.of(
-            "USER_TABLE", "PRIMARY_KEY", "INDEX", "FOREIGN_KEY_CONSTRAINT", "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER", "VIEW"
+            USER_TABLE,
+            PRIMARY_KEY,
+            INDEX,
+            FOREIGN_KEY_CONSTRAINT,
+            TYPE_TABLE,
+            SQL_INLINE_TABLE_VALUED_FUNCTION,
+            SQL_SCALAR_FUNCTION,
+            SQL_STORED_PROCEDURE,
+            SQL_TABLE_VALUED_FUNCTION,
+            SQL_TRIGGER,
+            VIEW
     );
 
     private final ConfigurationService configurationService;

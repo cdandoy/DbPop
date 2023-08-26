@@ -1,11 +1,11 @@
 package org.dandoy.dbpopd.codechanges;
 
 import jakarta.inject.Singleton;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.ObjectIdentifier;
+import org.dandoy.dbpopd.code.CodeService;
 import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.config.DatabaseCacheService;
 import org.dandoy.dbpopd.utils.DbPopdFileUtils;
@@ -20,30 +20,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.dandoy.dbpop.database.ObjectTypes.*;
-import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.*;
-
+import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.TYPE_TABLE;
 
 @Singleton
 @Slf4j
-public class CodeService {
-    public static final List<String> CODE_TYPES = List.of(
-            USER_TABLE,
-            PRIMARY_KEY,
-            INDEX,
-            FOREIGN_KEY_CONSTRAINT,
-            TYPE_TABLE,
-            SQL_INLINE_TABLE_VALUED_FUNCTION,
-            SQL_SCALAR_FUNCTION,
-            SQL_STORED_PROCEDURE,
-            SQL_TABLE_VALUED_FUNCTION,
-            SQL_TRIGGER,
-            VIEW
-    );
+public class ApplyChangesService {
+    private static final Pattern SPROC_PATTERN = Pattern.compile("(?<pre>.*)(\\bCREATE\\b\\s+(OR\\s+ALTER\\s+)?)(?<type>FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b(?<post>.*)", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);
     private final ConfigurationService configurationService;
     private final DatabaseCacheService databaseCacheService;
     private final File codeDirectory;
 
-    public CodeService(DatabaseCacheService databaseCacheService, ConfigurationService configurationService) {
+    public ApplyChangesService(DatabaseCacheService databaseCacheService, ConfigurationService configurationService) {
         this.databaseCacheService = databaseCacheService;
         this.codeDirectory = configurationService.getCodeDirectory();
         this.configurationService = configurationService;
@@ -66,7 +53,6 @@ public class CodeService {
         }
     }
 
-    @SneakyThrows
     List<ExecutionsResult.Execution> applyFiles(Collection<ObjectIdentifier> uploads, Collection<ObjectIdentifier> drops) {
         try (Database targetDatabase = configurationService.createTargetDatabase()) {
 
@@ -80,6 +66,8 @@ public class CodeService {
             ret.addAll(uploadExecutions);
             ret.addAll(dropExecutions);
             return ret;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -112,7 +100,7 @@ public class CodeService {
             targetDatabase.useCatalog(catalog);
             // TODO: We should log the progress by catalog + type, something like "Creating 123 TABLES in AdventureWorks"
             identifiers.stream()
-                    .sorted(Comparator.comparing(it -> CODE_TYPES.indexOf(it.getType())))       // Create the tables first, ...
+                    .sorted(Comparator.comparing(it -> CodeService.CODE_TYPES.indexOf(it.getType())))       // Create the tables first, ...
                     .forEach(objectIdentifier -> {
                         ExecutionsResult.Execution execution = uploadFileToTarget(statement, objectIdentifier);
                         ret.add(execution);
@@ -120,8 +108,6 @@ public class CodeService {
         }
         return ret;
     }
-
-    private static final Pattern SPROC_PATTERN = Pattern.compile("(?<pre>.*)(\\bCREATE\\b\\s+(OR\\s+ALTER\\s+)?)(?<type>FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b(?<post>.*)", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);
 
     private ExecutionsResult.Execution uploadFileToTarget(Statement statement, ObjectIdentifier objectIdentifier) {
         log.debug("Executing {}", objectIdentifier);
@@ -162,7 +148,7 @@ public class CodeService {
 
     private List<ExecutionsResult.Execution> drop(Database targetDatabase, Collection<ObjectIdentifier> objectIdentifiers) {
         return objectIdentifiers.stream()
-                .sorted(Comparator.comparing(it -> -CODE_TYPES.indexOf(it.getType())))
+                .sorted(Comparator.comparing(it -> -CodeService.CODE_TYPES.indexOf(it.getType())))
                 .map(objectIdentifier -> {
                     try {
                         targetDatabase.dropObject(objectIdentifier);
