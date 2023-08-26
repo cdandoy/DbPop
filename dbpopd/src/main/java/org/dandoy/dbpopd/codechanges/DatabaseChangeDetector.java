@@ -1,5 +1,6 @@
 package org.dandoy.dbpopd.codechanges;
 
+import ch.qos.logback.core.encoder.ByteArrayUtil;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
@@ -9,19 +10,29 @@ import org.dandoy.dbpop.database.ObjectIdentifier;
 
 import java.util.*;
 
+import static org.dandoy.dbpopd.codechanges.CodeChangeService.debugSignature;
+
 @Slf4j
 public class DatabaseChangeDetector {
-   public record UpdatedSignatures(Map<ObjectIdentifier, ObjectSignature> signatures, Date lastModifiedDate) {}
+    public record UpdatedSignatures(Map<ObjectIdentifier, ObjectSignature> signatures, Date lastModifiedDate) {}
 
     public static UpdatedSignatures getAllSignatures(Database database) {
         final Date[] lastModifiedDate = {new Date(0)};
         Map<ObjectIdentifier, ObjectSignature> objectSignatures = new HashMap<>();
         database.createDatabaseIntrospector().visitModuleDefinitions(new DatabaseVisitor() {
             @Override
-            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String definition) {
+            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String sql) {
+                ObjectSignature objectSignature = HashCalculator.getObjectSignature(objectIdentifier.getType(), sql);
+                if (objectIdentifier.equals(debugSignature)) {
+                    log.info("Database Signature {} | {} | [{}]",
+                            objectIdentifier,
+                            ByteArrayUtil.toHexString(objectSignature.hash()),
+                            sql
+                    );
+                }
                 objectSignatures.put(
                         objectIdentifier,
-                        HashCalculator.getObjectSignature(objectIdentifier.getType(), definition)
+                        objectSignature
                 );
                 if (modifyDate.after(lastModifiedDate[0])) {
                     lastModifiedDate[0] = modifyDate;
@@ -30,7 +41,6 @@ public class DatabaseChangeDetector {
         });
         return new UpdatedSignatures(objectSignatures, lastModifiedDate[0]);
     }
-
 
     public static UpdatedSignatures getUpdatedSignatures(Database database, @Nonnull Date modifiedSince, Map<ObjectIdentifier, ObjectSignature> oldSignatures) {
         Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
@@ -43,10 +53,11 @@ public class DatabaseChangeDetector {
         database.createDatabaseIntrospector().visitModuleMetas(new DatabaseVisitor() {
             @Override
             public void moduleMeta(ObjectIdentifier objectIdentifier, Date modifyDate) {
-                if (modifyDate.after(modifiedSince)) { // We will need to fetch the SQL to get the new signature
+                ObjectSignature oldSignature = oldSignatures.get(objectIdentifier);
+                if (oldSignature != null && modifyDate.after(modifiedSince)) { // We will need to fetch the SQL to get the new signature
                     objectIdentifiers.add(objectIdentifier);
                 } else { // Preserve the old signature
-                    ret.put(objectIdentifier, oldSignatures.get(objectIdentifier));
+                    ret.put(objectIdentifier, oldSignature);
                 }
                 if (modifyDate.after(lastModifiedDate[0])) {
                     lastModifiedDate[0] = modifyDate;
@@ -57,9 +68,16 @@ public class DatabaseChangeDetector {
         // Recalculate the signatures for the modified objects
         database.createDatabaseIntrospector().visitModuleDefinitions(objectIdentifiers, new DatabaseVisitor() {
             @Override
-            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String definition) {
-                ObjectSignature newSignature = HashCalculator.getObjectSignature(objectIdentifier.getType(), definition);
-                ret.put(objectIdentifier, newSignature);
+            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String sql) {
+                ObjectSignature objectSignature = HashCalculator.getObjectSignature(objectIdentifier.getType(), sql);
+                if (objectIdentifier.equals(debugSignature)) {
+                    log.info("Database Signature {} | {} | [{}]",
+                            objectIdentifier,
+                            ByteArrayUtil.toHexString(objectSignature.hash()),
+                            sql
+                    );
+                }
+                ret.put(objectIdentifier, objectSignature);
             }
         });
         return new UpdatedSignatures(ret, lastModifiedDate[0]);

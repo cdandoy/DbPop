@@ -89,14 +89,16 @@ public class HashCalculator {
     }
 
     static byte[] getHash(String type, String sql) {
-        String cleanSql = switch (type) {
-            case SQL_INLINE_TABLE_VALUED_FUNCTION,
-                    SQL_SCALAR_FUNCTION,
-                    SQL_STORED_PROCEDURE,
-                    SQL_TABLE_VALUED_FUNCTION,
-                    SQL_TRIGGER -> cleanCreateOrReplaceSql(sql);
-            default -> cleanSql(sql);
-        };
+        String cleanSql = cleanSql(sql);
+        if (SQL_STORED_PROCEDURE.equals(type) ||
+            SQL_INLINE_TABLE_VALUED_FUNCTION.equals(type) ||
+            SQL_SCALAR_FUNCTION.equals(type) ||
+            SQL_TABLE_VALUED_FUNCTION.equals(type) ||
+            SQL_TRIGGER.equals(type) ||
+            VIEW.equals(type)) {
+            cleanSql = cleanCreateOrReplaceSql(cleanSql);
+        }
+
         return getHash(cleanSql);
     }
 
@@ -114,31 +116,38 @@ public class HashCalculator {
         return ret;
     }
 
+    /**
+     * Standardizes the SQL text.
+     * TODO: Could do something more efficient.
+     */
     public static String cleanSql(@Nonnull String sql) {
         sql = sql
+                .replace("\t", " ")     // Replace the tabs with spaces
                 .replace("\r\n", "\n")  // Windows
-                .replace("\r", "\n");   // Mac
+                .replace("\r", "\n")    // Mac
+                .trim();                // Remove leading and trailing spaces
 
-        // trim empty lines at the end of the text
-        while (sql.endsWith("\n")) {
-            sql = sql.substring(0, sql.length() - 1);
-            sql = sql.trim();
+        // Replace consecutive spaces with one space to fix tab expansion issues
+        int pos = 0;
+        while (true) {
+            int i = sql.indexOf("  ", pos);
+            if (i == -1) break;
+            sql = sql.substring(0, i + 1) + sql.substring(i + 2);
+            pos = i;
         }
+
         return sql;
     }
 
-    static String cleanCreateOrReplaceSql(String sql) {
-        String cleanSql = cleanSql(sql);
+    static String cleanCreateOrReplaceSql(String cleanSql) {
         Matcher matcher = SPROC_PATTERN.matcher(cleanSql);
-        if (matcher.matches()) {
-            String pre = matcher.group("pre");
-            String post = matcher.group("post");
-            String type = matcher.group("type");
-            if ("PROC".equals(type)) type = "PROCEDURE";
-            return pre + "CREATE " + type + post;
-        } else {
-            return sql;
-        }
+        if (!matcher.matches()) return cleanSql;
+
+        String pre = matcher.group("pre");
+        String post = matcher.group("post");
+        String type = matcher.group("type");
+        if ("PROC".equals(type)) type = "PROCEDURE";
+        return pre + "CREATE " + type + post;
     }
 
     static byte[] getHash(String sql) {

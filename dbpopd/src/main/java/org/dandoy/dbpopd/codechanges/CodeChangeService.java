@@ -1,5 +1,6 @@
 package org.dandoy.dbpopd.codechanges;
 
+import ch.qos.logback.core.encoder.ByteArrayUtil;
 import io.micronaut.context.annotation.Context;
 import io.micronaut.context.event.ApplicationEventListener;
 import io.micronaut.scheduling.annotation.Scheduled;
@@ -41,6 +42,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
     private SignatureDiff signatureDiff = new SignatureDiff(emptyList(), emptyList(), emptyList());
     private ConnectionBuilder targetConnectionBuilder;
     private boolean paused;
+    static ObjectIdentifier debugSignature = null;
 
     public CodeChangeService(ConfigurationService configurationService, SiteWebSocket siteWebSocket) {
         this.codeDirectory = configurationService.getCodeDirectory();
@@ -137,7 +139,15 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
                 } else {
                     try {
                         String sql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
-                        fileSignatures.put(objectIdentifier, HashCalculator.getObjectSignature(objectIdentifier.getType(), sql));
+                        ObjectSignature objectSignature = HashCalculator.getObjectSignature(objectIdentifier.getType(), sql);
+                        if (objectIdentifier.equals(debugSignature)) {
+                            log.info("File Signature {} | {} | [{}]",
+                                    objectIdentifier,
+                                    ByteArrayUtil.toHexString(objectSignature.hash()),
+                                    sql
+                            );
+                        }
+                        fileSignatures.put(objectIdentifier, objectSignature);
                     } catch (IOException e) {
                         log.error("Failed to read " + file, e);
                     }
@@ -173,7 +183,14 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
                     }
                     byte[] fileHash = fileSignature.hash();
                     byte[] databaseHash = databaseSignature.hash();
-                    return !Arrays.equals(fileHash, databaseHash);
+                    boolean ret = !Arrays.equals(fileHash, databaseHash);
+                    if (objectIdentifier.equals(debugSignature)) {
+                        log.info("compare Signature {} - {}", ByteArrayUtil.toHexString(fileHash), ByteArrayUtil.toHexString(databaseHash));
+                    }
+                    if (ret) {
+                        log.info("Different: {}", objectIdentifier);
+                    }
+                    return ret;
                 })
                 .toList();
 

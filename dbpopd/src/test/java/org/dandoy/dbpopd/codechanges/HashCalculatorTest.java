@@ -1,14 +1,21 @@
 package org.dandoy.dbpopd.codechanges;
 
+import ch.qos.logback.core.encoder.ByteArrayUtil;
+import org.apache.commons.io.IOUtils;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DatabaseProxy;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.database.UrlConnectionBuilder;
+import org.dandoy.dbpop.utils.ElapsedStopWatch;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import static org.dandoy.dbpopd.codechanges.HashCalculator.cleanSql;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class HashCalculatorTest {
@@ -43,28 +50,32 @@ class HashCalculatorTest {
         }
     }
 
+    private static String readString(String filename) {
+        try (InputStream inputStream = HashCalculatorTest.class.getResourceAsStream(filename)) {
+            if (inputStream == null) throw new IOException("File not found: " + filename);
+            return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
     void testCleanStoreProcSql() {
-        String expected = HashCalculator.cleanSql("""
-                -- Does something something\r
-                CREATE PROCEDURE GetInvoices @invoice_id INT AS\r
-                BEGIN\r
-                    SELECT invoice_id, customer_id, invoice_date\r
-                    FROM invoices\r
-                    WHERE invoice_id = @invoice_id\r
-                END\r
-                """);
+        String text1 = readString("file1.txt");
+        String text2 = readString("file2.txt");
+        for (int i = 0; i < 100; i++) {
+            cleanSql(text1 + " ".repeat(i));
+        }
 
-        assertEquals(expected, HashCalculator.cleanCreateOrReplaceSql("""
-                -- Does something something
-                CREATE   PROC GetInvoices @invoice_id INT AS
-                BEGIN
-                    SELECT invoice_id, customer_id, invoice_date
-                    FROM invoices
-                    WHERE invoice_id = @invoice_id
-                END
-                
-                
-                """));
+        ElapsedStopWatch stopWatch = new ElapsedStopWatch();
+        for (int i = 0; i < 100; i++) {
+            cleanSql(text1 + " ".repeat(i));
+        }
+        System.out.println("Done in " + stopWatch);
+        assertEquals(cleanSql(text1), cleanSql(text2));
+
+        byte[] hash1 = HashCalculator.getHash("VIEW", text1);
+        byte[] hash2 = HashCalculator.getHash("VIEW", text2);
+        assertEquals(ByteArrayUtil.toHexString(hash1), ByteArrayUtil.toHexString(hash2));
     }
 }

@@ -1,0 +1,6 @@
+
+CREATE    PROCEDURE a.b AS
+BEGIN
+  do something something
+END
+
