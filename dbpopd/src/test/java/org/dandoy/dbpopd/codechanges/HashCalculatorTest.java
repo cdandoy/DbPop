@@ -74,8 +74,8 @@ class HashCalculatorTest {
         System.out.println("Done in " + stopWatch);
         assertEquals(cleanSql(text1), cleanSql(text2));
 
-        byte[] hash1 = HashCalculator.getHash("VIEW", text1);
-        byte[] hash2 = HashCalculator.getHash("VIEW", text2);
+        byte[] hash1 = HashCalculator.getHash(text1);
+        byte[] hash2 = HashCalculator.getHash(text2);
         assertEquals(ByteArrayUtil.toHexString(hash1), ByteArrayUtil.toHexString(hash2));
     }
 }

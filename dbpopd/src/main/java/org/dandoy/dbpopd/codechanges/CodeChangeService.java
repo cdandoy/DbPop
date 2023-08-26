@@ -139,7 +139,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
                 } else {
                     try {
                         String sql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
-                        ObjectSignature objectSignature = HashCalculator.getObjectSignature(objectIdentifier.getType(), sql);
+                        ObjectSignature objectSignature = HashCalculator.getObjectSignature(sql);
                         if (objectIdentifier.equals(debugObjectIdentifier)) {
                             log.info("File Signature {} | {} | [{}]",
                                     objectIdentifier,

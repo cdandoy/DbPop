@@ -22,7 +22,7 @@ public class DatabaseChangeDetector {
         database.createDatabaseIntrospector().visitModuleDefinitions(new DatabaseVisitor() {
             @Override
             public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String sql) {
-                ObjectSignature objectSignature = HashCalculator.getObjectSignature(objectIdentifier.getType(), sql);
+                ObjectSignature objectSignature = HashCalculator.getObjectSignature(sql);
                 if (objectIdentifier.equals(debugObjectIdentifier)) {
                     log.info("Database Signature {} | {} | [{}]",
                             objectIdentifier,
@@ -69,7 +69,7 @@ public class DatabaseChangeDetector {
         database.createDatabaseIntrospector().visitModuleDefinitions(objectIdentifiers, new DatabaseVisitor() {
             @Override
             public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String sql) {
-                ObjectSignature objectSignature = HashCalculator.getObjectSignature(objectIdentifier.getType(), sql);
+                ObjectSignature objectSignature = HashCalculator.getObjectSignature(sql);
                 if (objectIdentifier.equals(debugObjectIdentifier)) {
                     log.info("Database Signature {} | {} | [{}]",
                             objectIdentifier,

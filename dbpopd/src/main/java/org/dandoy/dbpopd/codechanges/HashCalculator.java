@@ -5,7 +5,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.ObjectIdentifier;
@@ -18,16 +17,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.dandoy.dbpop.database.ObjectTypes.*;
 import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.*;
 
 @Slf4j
 public class HashCalculator {
-    private static final Pattern SPROC_PATTERN = Pattern.compile("(?<pre>.*)\\bCREATE\\b +(OR +ALTER +)?(?<type>FUNCTION|PROC|PROCEDURE|TRIGGER|VIEW)\\b(?<post>.*)", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);
-
     private static void eachFile(File dir, Consumer<File> fileConsumer) {
         File[] files = dir.listFiles();
         if (files != null) {
@@ -78,39 +73,31 @@ public class HashCalculator {
             String sql = FileUtils.readFileToString(objectFile, StandardCharsets.UTF_8);
             ret.put(
                     objectIdentifier,
-                    new ObjectSignature(getHash(objectIdentifier.getType(), sql))
+                    getObjectSignature(sql)
             );
         } catch (IOException e) {
             log.error("Failed to read " + objectFile, e);
         }
     }
 
-    static ObjectSignature getObjectSignature(String type, String sql) {
-        return new ObjectSignature(HashCalculator.getHash(type, sql));
+    static ObjectSignature getObjectSignature(String sql) {
+        return new ObjectSignature(HashCalculator.getHash(sql));
     }
 
-    static byte[] getHash(String type, String sql) {
+    static byte[] getHash(String sql) {
         String cleanSql = cleanSql(sql);
-        if (SQL_STORED_PROCEDURE.equals(type) ||
-            SQL_INLINE_TABLE_VALUED_FUNCTION.equals(type) ||
-            SQL_SCALAR_FUNCTION.equals(type) ||
-            SQL_TABLE_VALUED_FUNCTION.equals(type) ||
-            SQL_TRIGGER.equals(type) ||
-            VIEW.equals(type)) {
-            cleanSql = cleanCreateOrReplaceSql(cleanSql);
-        }
-
-        return getHash(cleanSql);
+        byte[] bytes = cleanSql.getBytes(StandardCharsets.UTF_8);
+        return getMessageDigest().digest(bytes);
     }
 
     public static Map<ObjectIdentifier, ObjectSignature> captureSignatures(Database database) {
         Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
         database.createDatabaseIntrospector().visitModuleDefinitions(new DatabaseVisitor() {
             @Override
-            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String definition) {
+            public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String sql) {
                 ret.put(
                         objectIdentifier,
-                        new ObjectSignature(getHash(objectIdentifier.getType(), definition))
+                        getObjectSignature(sql)
                 );
             }
         });
@@ -138,33 +125,6 @@ public class HashCalculator {
         }
 
         return sql;
-    }
-
-    static String cleanCreateOrReplaceSql(String cleanSql) {
-        if (true) {
-            // Handle the simple cases
-            if (StringUtils.startsWithIgnoreCase(cleanSql, "CREATE PROCEDURE ")) return cleanSql;
-            if (StringUtils.startsWithIgnoreCase(cleanSql, "CREATE PROC ")) return cleanSql;
-            if (StringUtils.startsWithIgnoreCase(cleanSql, "CREATE FUNCTION ")) return cleanSql;
-            if (StringUtils.startsWithIgnoreCase(cleanSql, "CREATE TRIGGER ")) return cleanSql;
-            if (StringUtils.startsWithIgnoreCase(cleanSql, "CREATE VIEW ")) return cleanSql;
-
-            Matcher matcher = SPROC_PATTERN.matcher(cleanSql);
-            if (!matcher.matches()) return cleanSql;
-
-            String pre = matcher.group("pre");
-            String post = matcher.group("post");
-            String type = matcher.group("type");
-            if ("PROC".equals(type)) type = "PROCEDURE";
-            return pre + "CREATE " + type + post;
-        } else {
-            return cleanSql;
-        }
-    }
-
-    static byte[] getHash(String sql) {
-        byte[] bytes = sql.getBytes(StandardCharsets.UTF_8);
-        return getMessageDigest().digest(bytes);
     }
 
     @SneakyThrows
