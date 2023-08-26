@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.ObjectIdentifier;
-import org.dandoy.dbpop.database.TableName;
 import org.dandoy.dbpop.utils.StringUtils;
 import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.config.DatabaseCacheService;
@@ -63,20 +62,10 @@ public class CodeController {
         return codeService.downloadTargetToFile();
     }
 
-    public record ObjectIdentifierResponse(String type, TableName tableName, ObjectIdentifierResponse parent) {
-        public ObjectIdentifier toObjectIdentifier() {
-            return new ObjectIdentifier(
-                    type, tableName().getCatalog(), tableName().getSchema(), tableName.getTable(),
-                    parent == null ? null : parent.toObjectIdentifier()
-            );
-        }
-    }
-
     public record CodeDiffResponse(List<DiffLine> diffLines, String leftName, String rightName) {}
 
     @Post("/target/diff/")
-    public CodeDiffResponse targetDiff(@Body ObjectIdentifierResponse objectIdentifierResponse) {
-        ObjectIdentifier objectIdentifier = objectIdentifierResponse.toObjectIdentifier();
+    public CodeDiffResponse targetDiff(@Body ObjectIdentifier objectIdentifier) {
         String leftDefinition = getFileDefinition(objectIdentifier);
         String rightDefinition = getDatabaseDefinition(objectIdentifier);
         List<String> fileLines = Arrays.asList(leftDefinition.split("\n"));

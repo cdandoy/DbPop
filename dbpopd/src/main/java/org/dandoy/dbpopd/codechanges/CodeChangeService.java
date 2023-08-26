@@ -191,9 +191,6 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
                                 ByteArrayUtil.toHexString(databaseHash)
                         );
                     }
-                    if (ret) {
-                        log.info("Different: {}", objectIdentifier);
-                    }
                     return ret;
                 })
                 .toList();
