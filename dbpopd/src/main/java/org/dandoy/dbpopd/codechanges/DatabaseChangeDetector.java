@@ -54,9 +54,17 @@ public class DatabaseChangeDetector {
             @Override
             public void moduleMeta(ObjectIdentifier objectIdentifier, Date modifyDate) {
                 ObjectSignature oldSignature = oldSignatures.get(objectIdentifier);
-                if (oldSignature != null && modifyDate.after(modifiedSince)) { // We will need to fetch the SQL to get the new signature
+                if (oldSignature == null) {
+                    objectIdentifiers.add(objectIdentifier);    // We will need to fetch the SQL to get the new signature
+                } else if (modifyDate.after(modifiedSince)) {
+                    objectIdentifiers.add(objectIdentifier);    // We will need to fetch the SQL to get the new signature
+                } else {
+                    ret.put(objectIdentifier, oldSignature);    // Preserve the old signature
+                }
+
+                if (oldSignature != null && modifyDate.after(modifiedSince)) {
                     objectIdentifiers.add(objectIdentifier);
-                } else { // Preserve the old signature
+                } else {
                     ret.put(objectIdentifier, oldSignature);
                 }
                 if (modifyDate.after(lastModifiedDate[0])) {
