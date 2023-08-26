@@ -128,7 +128,8 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         }
 
         // Indexes
-        // Tables without an index have a dummy unnamed in the sys.indexes table
+        // Tables without an index have a dummy unnamed in the sys.indexes table. Ignore that. [i.name IS NOT NULL]
+        // Table valued functions can have a primary key, but it is declared in the TVF, so it can be ignored [o.type_desc NOT IN ('SQL_TABLE_VALUED_FUNCTION')]
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
                 SELECT o.object_id, s.name AS "schema", o.name AS "table", i.name AS "index", i.is_primary_key, o.modify_date AS modify_date
                 FROM sys.schemas s
@@ -137,6 +138,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 WHERE o.is_ms_shipped = 0
                   AND s.name NOT IN ('temp')
                   AND i.name IS NOT NULL
+                  AND o.type_desc NOT IN ('SQL_TABLE_VALUED_FUNCTION')
                 ORDER BY s.name, o.name
                 """)) {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
