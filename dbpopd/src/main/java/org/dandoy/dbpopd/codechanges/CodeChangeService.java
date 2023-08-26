@@ -2,9 +2,8 @@ package org.dandoy.dbpopd.codechanges;
 
 import ch.qos.logback.core.encoder.ByteArrayUtil;
 import io.micronaut.context.annotation.Context;
-import io.micronaut.context.event.ApplicationEventListener;
+import io.micronaut.runtime.event.annotation.EventListener;
 import io.micronaut.scheduling.annotation.Scheduled;
-import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +13,7 @@ import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DefaultDatabase;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 import org.dandoy.dbpop.utils.CollectionComparator;
+import org.dandoy.dbpop.utils.ElapsedStopWatch;
 import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.config.ConnectionBuilderChangedEvent;
 import org.dandoy.dbpopd.config.ConnectionType;
@@ -31,7 +31,7 @@ import static java.util.Collections.emptyList;
 @Singleton
 @Slf4j
 @Context
-public class CodeChangeService implements FileChangeDetector.FileChangeListener, ApplicationEventListener<ConnectionBuilderChangedEvent> {
+public class CodeChangeService implements FileChangeDetector.FileChangeListener {
     private final File codeDirectory;
     private final SiteWebSocket siteWebSocket;
     private FileChangeDetector fileChangeDetector;
@@ -49,31 +49,39 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
         this.siteWebSocket = siteWebSocket;
     }
 
-    @PostConstruct
-    void postConstruct() {
-        checkFileChangeDetector();
-    }
-
-    @Override
-    public void onApplicationEvent(ConnectionBuilderChangedEvent event) {
+    @EventListener
+    void receiveConnectionBuilderChangedEvent(ConnectionBuilderChangedEvent event) {
         if (event.type() == ConnectionType.TARGET) {
-            targetConnectionBuilder = event.connectionBuilder();
+            ConnectionBuilder targetConnectionBuilder = event.connectionBuilder();
             if (targetConnectionBuilder == null) {
                 databaseSignatures = null;
                 lastDatabaseCheck = new Date(0);
+                this.targetConnectionBuilder = null;
             } else {
-                // If we have a new database connection, get all the signatures
-                try (DefaultDatabase database = Database.createDefaultDatabase(targetConnectionBuilder)) {
-                    DatabaseChangeDetector.UpdatedSignatures updatedSignatures = DatabaseChangeDetector.getAllSignatures(database);
-                    databaseSignatures = updatedSignatures.signatures();
-                    lastDatabaseCheck = updatedSignatures.lastModifiedDate();
-                }
-                compareSignatures();
+                Thread thread = new Thread(() -> {
+                    // If we have a new database connection, get all the signatures
+                    ElapsedStopWatch stopWatch = new ElapsedStopWatch();
+                    try (DefaultDatabase database = Database.createDefaultDatabase(targetConnectionBuilder)) {
+                        DatabaseChangeDetector.UpdatedSignatures updatedSignatures = DatabaseChangeDetector.getAllSignatures(database);
+                        databaseSignatures = updatedSignatures.signatures();
+                        lastDatabaseCheck = updatedSignatures.lastModifiedDate();
+                        this.targetConnectionBuilder = targetConnectionBuilder;
+                        whenScanComplete();
+                    } finally {
+                        log.info("Scanned the database code in {}", stopWatch);
+                    }
+                }, "TargetScanner");
+                thread.setDaemon(true);
+                thread.start();
             }
         }
     }
 
-    @Scheduled(fixedDelay = "3s", initialDelay = "3s")
+    private void whenScanComplete() {
+        siteWebSocket.setCodeScanComplete(databaseSignatures != null && fileChangeDetector != null);
+    }
+
+    @Scheduled(fixedDelay = "3s")
     void checkChanges() {
         checkFileChangeDetector();
 
@@ -115,7 +123,10 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
     private void checkFileChangeDetector() {
         if (codeDirectory.exists()) {
             if (fileChangeDetector == null) {
+                ElapsedStopWatch stopWatch = new ElapsedStopWatch();
                 fileChangeDetector = FileChangeDetector.createFileChangeDetector(codeDirectory.toPath(), this);
+                log.info("Scanned {} in {}", codeDirectory, stopWatch);
+                whenScanComplete();
             }
         } else {
             if (fileChangeDetector != null) {
@@ -159,14 +170,16 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
     }
 
     private void compareSignatures() {
+        // Take a copy to prevent side effects
+        Map<ObjectIdentifier, ObjectSignature> databaseSignatures = this.databaseSignatures;
+        FileChangeDetector fileChangeDetector = this.fileChangeDetector;
+        Map<ObjectIdentifier, ObjectSignature> fileSignatures = this.fileSignatures;
+
+        // Early exit if both haven't scanned
+        if (databaseSignatures == null || fileChangeDetector == null) return;
+
         // Compare the files and database signatures
-        CollectionComparator<ObjectIdentifier> comparator;
-        synchronized (this) {
-            comparator = CollectionComparator.build(
-                    fileSignatures.keySet(),
-                    databaseSignatures == null ? Collections.emptySet() : databaseSignatures.keySet()
-            );
-        }
+        CollectionComparator<ObjectIdentifier> comparator = CollectionComparator.build(fileSignatures.keySet(), databaseSignatures.keySet());
         Collection<ObjectIdentifier> fileOnly = comparator.leftOnly;
         Collection<ObjectIdentifier> databaseOnly = comparator.rightOnly;
         Collection<ObjectIdentifier> different = comparator.common.stream()
@@ -195,20 +208,12 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener,
                 })
                 .toList();
 
-        // We need to tell the client that there is a difference between the filesystem and the database,
-        // but we only want to tell the client everytime the differences have changed.
-        // The reason is that lightbulb needs to be refreshed if there is a change, but the diff page needs to refresh everytime there is a change.
-        // For example:
-        //   o One sproc is different => Send a message.
-        //   o Same sproc changed again => Do not send a message.
-        //   o A second sproc changes => Send a message.
+        // We only want to tell the client when the differences have changed.
         SignatureDiff signatureDiff = new SignatureDiff(fileOnly, databaseOnly, different);
-        boolean hasChanged = !this.signatureDiff.equals(signatureDiff);
+        boolean isSameDifferences = this.signatureDiff.equals(signatureDiff);
         this.signatureDiff = signatureDiff;
-        if (hasChanged) {
-            siteWebSocket.codeDiffChanged(
-                    fileChangeDetector != null && databaseSignatures != null && signatureDiff.hasChanges()
-            );
+        if (!isSameDifferences) {
+            siteWebSocket.codeDiffChanged(signatureDiff.hasChanges());
         }
     }
 

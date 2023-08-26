@@ -10,6 +10,7 @@ interface StructuredWebSocketMessage {
     sourceConnectionStatus: ConnectionStatus;
     targetConnectionStatus: ConnectionStatus;
     codeChanges: number;
+    codeScanComplete: boolean;
     hasCodeDiffs: boolean;
     codeDiffChanges: number;
 }
@@ -20,6 +21,7 @@ export interface WebSocketState {
     hasTarget: boolean;
     targetErrorMessage?: string;
     codeChanged: number;
+    codeScanComplete: boolean;
     hasCodeDiffs: boolean;
     codeDiffChanges: number;
     connected: boolean;
@@ -30,6 +32,7 @@ export const WebSocketStateContext = React.createContext<WebSocketState>({
     hasTarget: false,
     codeChanged: 0,
     hasCodeDiffs: false,
+    codeScanComplete: false,
     codeDiffChanges: 0,
     connected: false,
 });
@@ -52,6 +55,7 @@ export function useWebSocketState(): WebSocketState {
     const [hasTarget, setHasTarget] = useState(false);
     const [targetErrorMessage, setTargetErrorMessage] = useState<string | undefined>();
     const [codeChanged, setCodeChanged] = useState(0);
+    const [codeScanComplete, setCodeScanComplete] = useState(false);
     const [hasCodeDiffs, setHasCodeDiffs] = useState(false);
     const [codeDiffChanges, setCodeDiffChanges] = useState(0);
     const [connected, setConnected] = useState(false);
@@ -73,11 +77,11 @@ export function useWebSocketState(): WebSocketState {
             setHasTarget(message.targetConnectionStatus.configured);
             setTargetErrorMessage(message.targetConnectionStatus.errorMessage);
             setCodeChanged(message.codeChanges);
+            setCodeScanComplete(message.codeScanComplete)
             setHasCodeDiffs(message.hasCodeDiffs);
             setCodeDiffChanges(message.codeDiffChanges);
         }
     }, [lastJsonMessage]);
-
 
     const connectionStatus = {
         [ReadyState.CONNECTING]: false,
@@ -98,6 +102,7 @@ export function useWebSocketState(): WebSocketState {
         hasTarget,
         targetErrorMessage,
         codeChanged,
+        codeScanComplete,
         hasCodeDiffs,
         codeDiffChanges,
         connected,

@@ -5,6 +5,7 @@ import io.micronaut.context.event.ApplicationEventListener;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.datasets.Datasets;
+import org.dandoy.dbpop.utils.ElapsedStopWatch;
 import org.dandoy.dbpopd.config.ConnectionType;
 import org.dandoy.dbpopd.config.DatabaseCacheChangedEvent;
 import org.dandoy.dbpopd.datasets.DatasetsService;
@@ -38,7 +39,12 @@ public class DatasetLoaderService implements ApplicationEventListener<DatabaseCa
             if (loadDatasets && !hasLoadedDatasets) {
                 try {
                     if (datasetsService.canPopulate(Datasets.BASE)) {
-                        populateService.populate(List.of(Datasets.STATIC, Datasets.BASE));
+                        ElapsedStopWatch stopWatch = new ElapsedStopWatch();
+                        try {
+                            populateService.populate(List.of(Datasets.STATIC, Datasets.BASE));
+                        } finally {
+                            log.info("Populated the target database in {}", stopWatch);
+                        }
                     }
                     hasLoadedDatasets = true;
                 } catch (Exception e) {

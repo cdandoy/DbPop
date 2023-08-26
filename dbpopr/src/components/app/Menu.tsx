@@ -6,6 +6,14 @@ import {WebSocketStateContext} from "../ws/useWebSocketState";
 export default function Menu() {
     const siteStatus = useContext(WebSocketStateContext);
 
+    function statusIcon(title: string, color: string) {
+        return <>
+            <span style={{position: "absolute", right: "20px"}} title={title}>
+                <i className={"fa fa-circle"} style={{color: color}}></i>
+            </span>
+        </>
+    }
+
     return (
         <ul className="menu-links">
             <li className="nav-link">
@@ -24,11 +32,8 @@ export default function Menu() {
                 <li className="nav-link">
                     <NavLink to={"/codechanges"}>
                         <SidebarMenu text="Code Changes" icons="fa fa-code"/>
-                        {(siteStatus.hasCodeDiffs) &&
-                            <span style={{position: "absolute", right: "20px"}} title={"Code Change Detected"}>
-                                <i className={"fa fa-circle"} style={{color: "#ffb000"}}></i>
-                            </span>
-                        }
+                        {(siteStatus.hasCodeDiffs) && statusIcon("Code Change Detected", "#ffb000")}
+                        {(!siteStatus.codeScanComplete) && statusIcon("Code Scanning is still running", "lightgray")}
                     </NavLink>
                 </li>
             }

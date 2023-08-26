@@ -1,8 +1,8 @@
 package org.dandoy.dbpopd.config;
 
 import io.micronaut.context.annotation.Property;
-import io.micronaut.context.event.ApplicationEventListener;
 import io.micronaut.context.event.ApplicationEventPublisher;
+import io.micronaut.runtime.event.annotation.EventListener;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ConnectionBuilder;
@@ -16,7 +16,7 @@ import static org.dandoy.dbpopd.utils.IOUtils.toCanonical;
 
 @Singleton
 @Slf4j
-public class DatabaseCacheService implements ApplicationEventListener<ConnectionBuilderChangedEvent> {
+public class DatabaseCacheService {
     private final ApplicationEventPublisher<DatabaseCacheChangedEvent> databaseCacheChangedPublisher;
     private final ConnectionBuilder[] connectionBuilders = new ConnectionBuilder[2];
     private final DatabaseCache[] databaseCaches = new DatabaseCache[2];
@@ -32,8 +32,8 @@ public class DatabaseCacheService implements ApplicationEventListener<Connection
         virtualFkCache = VirtualFkCache.createVirtualFkCache(vfkFile);
     }
 
-    @Override
-    public void onApplicationEvent(ConnectionBuilderChangedEvent event) {
+    @EventListener
+    void receiveConnectionBuilderChangedEvent(ConnectionBuilderChangedEvent event) {
         ConnectionBuilder connectionBuilder = event.connectionBuilder();
         setConnectionBuilder(event.type(), connectionBuilder);
     }

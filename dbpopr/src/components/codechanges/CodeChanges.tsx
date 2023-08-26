@@ -172,6 +172,12 @@ export default function CodeChanges() {
     }
 
     function Content() {
+        if (!siteStatus.codeScanComplete) return <>
+            <h5 className={"text-center"}>
+                <i className={"fa fa-spinner fa-spin"}/>
+                Scanning
+            </h5>
+        </>
         if (changedObjects.length === 0) return <Message message={"No Changes Detected"}/>;
         return <>
             <div className={"row"}>
