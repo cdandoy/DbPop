@@ -52,8 +52,10 @@ public class SiteWebSocket implements ApplicationEventListener<ConnectionBuilder
     }
 
     public void setCodeScanComplete(boolean codeScanComplete) {
-        siteStatus.setCodeScanComplete(codeScanComplete);
-        sendSiteStatus();
+        if (codeScanComplete!= siteStatus.isCodeScanComplete()) {
+            siteStatus.setCodeScanComplete(codeScanComplete);
+            sendSiteStatus();
+        }
     }
 
     public void codeDiffChanged(boolean hasChanges) {

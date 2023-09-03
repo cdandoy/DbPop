@@ -35,6 +35,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
     private final File codeDirectory;
     private final SiteWebSocket siteWebSocket;
     private FileChangeDetector fileChangeDetector;
+    private Boolean fileScanComplete = null;
     private final Map<ObjectIdentifier, ObjectSignature> fileSignatures = new HashMap<>();
     private Map<ObjectIdentifier, ObjectSignature> databaseSignatures;
     private Date lastDatabaseCheck = new Date(0L);
@@ -78,7 +79,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
     }
 
     private void whenScanComplete() {
-        siteWebSocket.setCodeScanComplete(databaseSignatures != null && fileChangeDetector != null);
+        siteWebSocket.setCodeScanComplete(databaseSignatures != null && Boolean.TRUE.equals(fileScanComplete));
     }
 
     @Scheduled(fixedDelay = "3s")
@@ -102,7 +103,12 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
         } finally {
             paused = false;
             log.debug("unpaused");
-            fileChangeDetector.checkAll();
+            fileScanComplete = false;
+            try {
+                fileChangeDetector.checkAll();
+            } finally {
+                fileScanComplete = true;
+            }
         }
     }
 
@@ -121,18 +127,23 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
      * FileChangeDetector only works if the code directory exists.
      */
     private void checkFileChangeDetector() {
-        if (codeDirectory.exists()) {
-            if (fileChangeDetector == null) {
-                ElapsedStopWatch stopWatch = new ElapsedStopWatch();
-                fileChangeDetector = FileChangeDetector.createFileChangeDetector(codeDirectory.toPath(), this);
-                log.info("Scanned {} in {}", codeDirectory, stopWatch);
-                whenScanComplete();
+        try {
+            if (codeDirectory.exists()) {
+                if (fileChangeDetector == null) {
+                    ElapsedStopWatch stopWatch = new ElapsedStopWatch();
+                    fileScanComplete = false;
+                    fileChangeDetector = FileChangeDetector.createFileChangeDetector(codeDirectory.toPath(), this);
+                    log.info("Scanned {} in {}", codeDirectory, stopWatch);
+                }
+            } else {
+                if (fileChangeDetector != null) {
+                    fileChangeDetector.close();
+                    fileChangeDetector = null;
+                }
             }
-        } else {
-            if (fileChangeDetector != null) {
-                fileChangeDetector.close();
-                fileChangeDetector = null;
-            }
+        } finally {
+            fileScanComplete = true;
+            whenScanComplete();
         }
     }
 
