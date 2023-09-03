@@ -2,6 +2,7 @@ package org.dandoy.dbpop.database.mssql;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.dandoy.dbpop.Settings;
 import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.*;
@@ -33,7 +34,11 @@ public class SqlServerDatabase extends DefaultDatabase {
     @Override
     public String quote(String s) {
         if (QUOTE_WITH_BRACKETS) {
-            return "[" + s + "]";
+            if (!StringUtils.containsAny(s, "[]")) {
+                return "[" + s + "]";
+            } else { // In case someone created a table or schema name with brackets, try to quote the identifier with double quotes
+                return '"' + s + '"';
+            }
         } else {
             return super.quote(s);
         }

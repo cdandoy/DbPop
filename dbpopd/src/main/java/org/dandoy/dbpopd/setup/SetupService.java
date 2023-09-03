@@ -2,7 +2,6 @@ package org.dandoy.dbpopd.setup;
 
 import io.micronaut.context.annotation.Context;
 import io.micronaut.context.event.ApplicationEventListener;
-import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.ConnectionBuilder;
@@ -62,15 +61,6 @@ public class SetupService implements ApplicationEventListener<ConnectionBuilderC
                     log.error("Failed to create the connection", e);
                 }
             }
-        }
-    }
-
-    @PostConstruct
-    public void init() {
-        try {
-            checkDatasetDirectory();
-        } catch (Exception e) {
-            log.error("Failed to setup", e);
         }
     }
 
@@ -157,16 +147,5 @@ public class SetupService implements ApplicationEventListener<ConnectionBuilderC
             File setupDirectory = configurationService.getSetupDirectory();
             executeScript(new File(setupDirectory, "startup.sh"));
         });
-    }
-
-    private void checkDatasetDirectory() {
-        File configurationDir = configurationService.getConfigurationDir();
-        String[] paths = {".", "datasets", "datasets/static", "datasets/base"};
-        for (String path : paths) {
-            File dir = new File(configurationDir, path);
-            if (!dir.mkdirs() && !dir.isDirectory()) {
-                log.error("Failed to create the directory " + dir);
-            }
-        }
     }
 }

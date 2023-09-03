@@ -13,12 +13,16 @@ import org.dandoy.dbpopd.config.ConnectionBuilderChangedEvent;
 import org.dandoy.dbpopd.config.ConnectionType;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Singleton
 @Slf4j
 public class DatabaseService {
     private final ConfigurationService configurationService;
+    private final Object sourceRowCountLock = new Object();
+    private Map<TableName, RowCount> sourceRowCounts = new HashMap<>();
     @Nullable
     private DatabaseCache sourceDatabase;
 
@@ -40,10 +44,33 @@ public class DatabaseService {
                 log.info("Checking the source connection");
                 DefaultDatabase defaultDatabase = Database.createDefaultDatabase(sourceConnectionBuilder);
                 sourceDatabase = new DatabaseCache(defaultDatabase, virtualFkCache);
+                loadSourceTableCount(sourceDatabase);
             } else {
                 sourceDatabase = null;
             }
         }
+    }
+
+    private void loadSourceTableCount(DatabaseCache sourceDatabase) {
+        Thread thread = new Thread(() -> {
+            synchronized (sourceRowCountLock) {
+                Map<TableName, RowCount> rowCounts = new HashMap<>();
+                for (String catalog : sourceDatabase.getCatalogs()) {
+                    for (Table table : sourceDatabase.getTables(catalog)) {
+                        TableName tableName = table.getTableName();
+                        try {
+                            RowCount rowCount = sourceDatabase.getRowCount(tableName);
+                            rowCounts.put(tableName, rowCount);
+                        } catch (Exception e) {
+                            log.error("Failed to count the rows in " + tableName, e);
+                        }
+                    }
+                }
+                sourceRowCounts = rowCounts;
+            }
+        }, "Row Counter");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     public Collection<Table> getSourceTables() {
@@ -58,7 +85,7 @@ public class DatabaseService {
 
     @Deprecated
     public RowCount getSourceRowCount(TableName tableName) {
-        return new RowCount(99, false);
+        return sourceRowCounts.get(tableName);
     }
 
     public List<ForeignKey> getRelatedSourceForeignKeys(TableName pkTableName) {

@@ -5,6 +5,7 @@ import io.micronaut.context.event.ApplicationEventListener;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.exceptions.HttpStatusException;
+import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import lombok.Setter;
@@ -74,6 +75,22 @@ public class ConfigurationService implements ApplicationEventListener<Connection
         if (datasetsDirectory != null) log.info("Datasets directory: {}", toCanonical(this.datasetsDirectory));
         if (setupDirectory != null) log.info("Setup directory: {}", toCanonical(this.setupDirectory));
         if (codeDirectory != null) log.info("Code directory: {}", toCanonical(this.codeDirectory));
+    }
+
+    @PostConstruct
+    public void init() {
+        // Setup the dataset directories.
+        try {
+            String[] paths = {".", "datasets", "datasets/static", "datasets/base"};
+            for (String path : paths) {
+                File dir = new File(configurationDir, path);
+                if (!dir.mkdirs() && !dir.isDirectory()) {
+                    log.error("Failed to create the directory " + dir);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to setup", e);
+        }
     }
 
     @Override
