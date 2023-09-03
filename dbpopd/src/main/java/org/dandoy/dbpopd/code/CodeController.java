@@ -97,7 +97,7 @@ public class CodeController {
     }
 
     private String getDatabaseDefinition(ObjectIdentifier objectIdentifier) {
-        Database targetDatabase = databaseCacheService.getTargetDatabaseCache();
+        Database targetDatabase = databaseCacheService.getTargetDatabaseCacheOrThrow();
         String definition = targetDatabase.getDefinition(objectIdentifier);
         if (definition == null) return "";
         return StringUtils.normalizeEOL(definition);

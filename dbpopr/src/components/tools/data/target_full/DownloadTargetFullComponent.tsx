@@ -28,15 +28,9 @@ export default function DownloadTargetFullComponent() {
     function handleDownload() {
         setLoading(true);
         dowloadTarget(dataset)
-            .then(result => {
-                setDownloadResponse(result.data);
-            })
-            .catch(reason => {
-                setError(reason.response.statusText);
-            })
-            .finally(() => {
-                setLoading(false);
-            })
+            .then(result => setDownloadResponse(result.data))
+            .catch(reason => setError(reason.response.data?.detail || 'Error'))
+            .finally(() => setLoading(false))
     }
 
     function DownloadFullInput({error}: {

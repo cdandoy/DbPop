@@ -57,7 +57,7 @@ public class PopulateService {
         if (datasets.isEmpty()) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "No datasets to download");
         try {
             long t0 = System.currentTimeMillis();
-            DatabaseCache databaseCache = databaseCacheService.getTargetDatabaseCache();
+            DatabaseCache databaseCache = databaseCacheService.getTargetDatabaseCacheOrThrow();
             Populator populator = Populator
                     .createPopulator(databaseCache, configurationService.getDatasetsDirectory())
                     .setPopulatorListener(populatorListener);

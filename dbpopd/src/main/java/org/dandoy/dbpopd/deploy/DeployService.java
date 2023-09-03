@@ -60,7 +60,7 @@ public class DeployService {
 
     public SnapshotSqlScriptGenerator.GenerateSqlScriptsResult generateSqlScripts() {
         return new SnapshotSqlScriptGenerator(
-                databaseCacheService.getTargetDatabaseCache(),
+                databaseCacheService.getTargetDatabaseCacheOrThrow(),
                 configurationService.getSnapshotFile(),
                 configurationService.getCodeDirectory()
         ).generateSqlScripts();
@@ -70,7 +70,7 @@ public class DeployService {
         SnapshotFlywayScriptGenerator.GenerateFlywayScriptsResult ret;
 
         SnapshotFlywayScriptGenerator generator = new SnapshotFlywayScriptGenerator(
-                databaseCacheService.getTargetDatabaseCache(),
+                databaseCacheService.getTargetDatabaseCacheOrThrow(),
                 configurationService.getSnapshotFile(),
                 configurationService.getCodeDirectory(),
                 configurationService.getFlywayDirectory()

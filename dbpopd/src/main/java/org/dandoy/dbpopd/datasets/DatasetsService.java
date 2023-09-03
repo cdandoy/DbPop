@@ -118,7 +118,7 @@ public class DatasetsService {
                 .flatMap(dataset -> dataset.getDataFiles().stream().map(DataFile::getTableName))
                 .toList();
         // If the target database contains all the tables we have downloaded
-        return databaseCacheService.getTargetDatabaseCache()
+        return databaseCacheService.getTargetDatabaseCacheOrThrow()
                 .getTables().stream()
                 .map(Table::getTableName)
                 .collect(Collectors.toSet())

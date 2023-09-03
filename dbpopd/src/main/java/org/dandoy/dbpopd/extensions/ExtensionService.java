@@ -42,7 +42,7 @@ public class ExtensionService {
 
     @SneakyThrows
     private void execute(File file) {
-        Database targetDatabase = databaseCacheService.getTargetDatabaseCache();
+        Database targetDatabase = databaseCacheService.getTargetDatabaseCacheOrThrow();
         Connection connection = targetDatabase.getConnection();
         SqlExecuteUtils.executeSqlFile(connection, file);
     }

@@ -86,7 +86,11 @@ public class ConfigurationService implements ApplicationEventListener<Connection
     }
 
     public void assertSourceConnection() {
-        if (sourceConnectionBuilder == null) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "The source database has not been defined");
+        if (sourceConnectionBuilder == null) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "The source database is not connected");
+    }
+
+    public void assertTargetConnection() {
+        if (targetConnectionBuilder == null) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "The target database is not connected");
     }
 
     public boolean hasSourceConnection() {
@@ -94,6 +98,7 @@ public class ConfigurationService implements ApplicationEventListener<Connection
     }
 
     public Database createSourceDatabase() {
+        assertSourceConnection();
         return Database.createDatabase(sourceConnectionBuilder, virtualFkCache);
     }
 
@@ -106,6 +111,7 @@ public class ConfigurationService implements ApplicationEventListener<Connection
     }
 
     public Database createTargetDatabase() {
+        assertTargetConnection();
         return Database.createDatabase(targetConnectionBuilder);
     }
 }

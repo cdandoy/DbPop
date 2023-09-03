@@ -16,7 +16,7 @@ export default function CodeSourceDownload() {
         setDownloadResult(undefined);
         downloadSourceToFile()
             .then((result) => setDownloadResult(result.data))
-            .catch((error) => setError(error.response.statusText))
+            .catch((reason) => setError(reason.response.data?.detail || 'Error'))
             .finally(() => setLoading(false));
     }, [])
 

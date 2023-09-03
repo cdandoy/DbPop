@@ -106,7 +106,7 @@ public class FullDownloadTest {
         assertEquals(20, populateResult.rows());
 
         // Add some data to target
-        Connection connection = databaseCacheService.getTargetDatabaseCache().getConnection();
+        Connection connection = databaseCacheService.getTargetDatabaseCacheOrThrow().getConnection();
         try (PreparedStatement preparedStatement = connection
                 .prepareStatement("""
                         INSERT INTO dbpop.dbo.products(part_no, part_desc)

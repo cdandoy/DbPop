@@ -61,6 +61,8 @@ export default function StructuredDownloadComponent() {
                 setTableInfos(result.data);
                 setLoadingContent(false);
             })
+            .catch(reason => setError(reason.response.data?.detail || 'Error'))
+            .finally(() => setLoadingContent(false));
     }, []);
 
     // DependenciesComponent Input

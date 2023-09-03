@@ -2,6 +2,8 @@ package org.dandoy.dbpopd.config;
 
 import io.micronaut.context.annotation.Property;
 import io.micronaut.context.event.ApplicationEventPublisher;
+import io.micronaut.http.HttpStatus;
+import io.micronaut.http.exceptions.HttpStatusException;
 import io.micronaut.runtime.event.annotation.EventListener;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -79,8 +81,20 @@ public class DatabaseCacheService {
         return databaseCaches[ConnectionType.SOURCE.ordinal()];
     }
 
+    public DatabaseCache getSourceDatabaseCacheOrThrow() {
+        DatabaseCache ret = getSourceDatabaseCache();
+        if (ret == null) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "Source database is not connected");
+        return ret;
+    }
+
     public DatabaseCache getTargetDatabaseCache() {
         return databaseCaches[ConnectionType.TARGET.ordinal()];
+    }
+
+    public DatabaseCache getTargetDatabaseCacheOrThrow() {
+        DatabaseCache ret = getTargetDatabaseCache();
+        if (ret == null) throw new HttpStatusException(HttpStatus.BAD_REQUEST, "Target database is not connected");
+        return ret;
     }
 
     public void clearTargetDatabaseCache() {
