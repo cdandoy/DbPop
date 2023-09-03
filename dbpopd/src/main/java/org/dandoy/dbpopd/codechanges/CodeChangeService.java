@@ -35,7 +35,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
     private final File codeDirectory;
     private final SiteWebSocket siteWebSocket;
     private FileChangeDetector fileChangeDetector;
-    private Boolean fileScanComplete = null;
+    private boolean fileScanComplete = true;
     private final Map<ObjectIdentifier, ObjectSignature> fileSignatures = new HashMap<>();
     private Map<ObjectIdentifier, ObjectSignature> databaseSignatures;
     private Date lastDatabaseCheck = new Date(0L);
@@ -79,7 +79,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
     }
 
     private void whenScanComplete() {
-        siteWebSocket.setCodeScanComplete(databaseSignatures != null && Boolean.TRUE.equals(fileScanComplete));
+        siteWebSocket.setCodeScanComplete(databaseSignatures != null && fileScanComplete);
     }
 
     @Scheduled(fixedDelay = "3s")
@@ -183,11 +183,10 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
     private void compareSignatures() {
         // Take a copy to prevent side effects
         Map<ObjectIdentifier, ObjectSignature> databaseSignatures = this.databaseSignatures;
-        FileChangeDetector fileChangeDetector = this.fileChangeDetector;
         Map<ObjectIdentifier, ObjectSignature> fileSignatures = this.fileSignatures;
 
         // Early exit if both haven't scanned
-        if (databaseSignatures == null || fileChangeDetector == null) return;
+        if (databaseSignatures == null || !fileScanComplete) return;
 
         // Compare the files and database signatures
         CollectionComparator<ObjectIdentifier> comparator = CollectionComparator.build(fileSignatures.keySet(), databaseSignatures.keySet());
