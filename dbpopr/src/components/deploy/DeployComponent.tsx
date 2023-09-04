@@ -4,15 +4,14 @@ import "./DeployComponent.scss"
 import LoadingOverlay from "../utils/LoadingOverlay";
 import SqlDownloaded from "./SqlDownloaded";
 import {NoChangesContent} from "./NoChangesContent";
-import {NoSnapshotContent} from "./NoSnapshotContent";
 import {WebSocketStateContext} from "../ws/useWebSocketState";
 import {createSnapshot, getDeploy, GetDeployResponse} from "./deployApi";
 import FlywayCreated from "./FlywayCreated";
 import {DeployInput} from "./DeployInput";
+import {NavLink} from "react-router-dom";
 
 export default function DeployComponent() {
     const [loading, setLoading] = useState(false);
-    const [hasSnapshot, setHasSnapshot] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
     const [state, setState] = useState("input")
     const [snapshotFilename, setSnapshotFilename] = useState("");
@@ -28,21 +27,11 @@ export default function DeployComponent() {
     }, [siteStatus.codeChanged]);
 
     function setDeployResult(getDeployResponse: GetDeployResponse) {
-        setHasSnapshot(getDeployResponse.hasSnapshot);
         setHasChanges(getDeployResponse.hasChanges);
         setSnapshotFilename(getDeployResponse.snapshotFilename);
         if (getDeployResponse.deltaType) {
             setDefaultType(getDeployResponse.deltaType)
         }
-    }
-
-    const handleCreateSnapshot = () => {
-        setLoading(true);
-        createSnapshot()
-            .then(() => getDeploy()
-                .then(result => setDeployResult(result.data))
-                .finally(() => setLoading(false))
-            );
     }
 
     function handleSqlSnapshot() {
@@ -52,8 +41,15 @@ export default function DeployComponent() {
             .finally(() => setLoading(false));
     }
 
+    function Tool() {
+        return <div>
+            <NavLink className={"btn btn-sm btn-danger"} to={"/deployment/reset"}>
+                <span title={"Reset the deployments"}><i className={"fa fa-undo"}/> Reset...</span>
+            </NavLink>
+        </div>
+    }
+
     function Content() {
-        if (!hasSnapshot) return <NoSnapshotContent handleCreateSnapshot={handleCreateSnapshot}/>
         if (!hasChanges) return <NoChangesContent/>
         if (state === "input") return <DeployInput setLoading={setLoading}
                                                    setState={setState}
@@ -72,7 +68,7 @@ export default function DeployComponent() {
         <LoadingOverlay active={loading}/>
 
         <div className={"container"}>
-            <PageHeader title={"Deployment"}/>
+            <PageHeader title={"Deployment"} tool={<Tool/>}/>
             {loading || <>
                 <div className={"container"}>
                     <Content/>

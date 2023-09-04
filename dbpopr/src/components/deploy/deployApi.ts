@@ -1,7 +1,6 @@
 import axios from "axios";
 
 export interface GetDeployResponse {
-    hasSnapshot: boolean;
     hasChanges: boolean;
     timestamp: number;
     snapshotFilename: string;

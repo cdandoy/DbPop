@@ -24,9 +24,9 @@ public class DeployController {
         this.deployService = deployService;
     }
 
-    public record GetDeployResponse(boolean hasSnapshot, boolean hasChanges, Long timestamp, String snapshotFilename, DeltaType deltaType) {
+    public record GetDeployResponse(boolean hasChanges, Long timestamp, String snapshotFilename, DeltaType deltaType) {
         public GetDeployResponse(String snapshotFilename) {
-            this(false, false, null, snapshotFilename, null);
+            this(false, null, snapshotFilename, null);
         }
     }
 
@@ -40,12 +40,17 @@ public class DeployController {
         SnapshotInfo snapshotInfo = deployService.getSnapshotInfo();
         if (snapshotInfo != null) {
             boolean hasChanges = deployService.hasChanges();
-            return new GetDeployResponse(true, hasChanges, snapshotInfo.snapshot(), snapshotFilename, snapshotInfo.deltaType());
+            return new GetDeployResponse(hasChanges, snapshotInfo.snapshot(), snapshotFilename, snapshotInfo.deltaType());
         }
         return new GetDeployResponse(snapshotFilename);
     }
 
     public record CreateSnapshotRequest(@Nullable DeltaType deltaType) {}
+
+    @Post("/reset")
+    public void reset() {
+        deployService.reset();
+    }
 
     @Post("/snapshot")
     public void createSnapshot(@Body CreateSnapshotRequest createSnapshotRequest) {

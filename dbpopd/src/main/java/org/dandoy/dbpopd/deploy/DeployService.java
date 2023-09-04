@@ -17,6 +17,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import static org.dandoy.dbpop.utils.FileUtils.deleteRecursively;
+
 @Singleton
 @Slf4j
 public class DeployService {
@@ -31,7 +33,7 @@ public class DeployService {
     }
 
     SnapshotInfo getSnapshotInfo() {
-        if (!configurationService.getSnapshotFile().isFile()) return null;
+        if (!configurationService.getSnapshotFile().isFile()) return new SnapshotInfo(0, DeltaType.FLYWAY);
 
         File snapshotFile = configurationService.getSnapshotFile();
         try (ZipInputStream zipInputStream = new ZipInputStream(new BufferedInputStream(new FileInputStream(snapshotFile)))) {
@@ -138,5 +140,31 @@ public class DeployService {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    public void reset() {
+        DeltaType deltaType = DeltaType.FLYWAY;
+        // Delete snapshot.zip
+        File snapshotFile = configurationService.getSnapshotFile();
+        if (snapshotFile.isFile()) {
+            SnapshotInfo snapshotInfo = getSnapshotInfo();
+            deltaType = snapshotInfo.deltaType();
+
+            if (!snapshotFile.delete()) {
+                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete " + snapshotFile);
+            }
+        }
+
+        // Delete the flyway directory
+        File flywayDirectory = configurationService.getFlywayDirectory();
+        try {
+            deleteRecursively(flywayDirectory);
+        } catch (Exception e) {
+            String message = "Failed to delete " + flywayDirectory;
+            throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, message);
+        }
+
+        // Create a new snapshot.zip with the content of the code directory
+        createSnapshot(deltaType);
     }
 }

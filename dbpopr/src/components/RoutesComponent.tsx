@@ -27,6 +27,7 @@ import SourceDataTools from "./tools/SourceDataTools";
 import SettingsComponent from "./settings/SettingsComponent";
 import EditDatabaseSettingsComponent from "./settings/EditDatabaseSettingsComponent";
 import {WebSocketStateContext} from "./ws/useWebSocketState";
+import DeployResetComponent from "./deploy/reset/DeployResetComponent";
 
 export default function RoutesComponent() {
     const siteStatus = useContext(WebSocketStateContext);
@@ -56,6 +57,7 @@ export default function RoutesComponent() {
                 <Route path="/tools/target/upload" element=<CodeTargetUload/>/>
                 <Route path="/tools/target/download" element=<CodeTargetDownload/>/>
                 <Route path="/codechanges/diff" element=<CodeCompare/>/>
+                <Route path="/deployment/reset" element=<DeployResetComponent/>/>
                 <Route path="/deployment" element=<DeployComponent/>/>
             </>}
 

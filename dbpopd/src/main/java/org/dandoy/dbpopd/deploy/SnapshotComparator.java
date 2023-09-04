@@ -46,32 +46,34 @@ public class SnapshotComparator {
         // Compare it to the code directory
         // call the consumer if the content is different or if has been deleted
         // remove it from pathsByPriority
-        try (ZipInputStream zipInputStream = new ZipInputStream(new BufferedInputStream(new FileInputStream(snapshotFile)))) {
-            while (keepRunning) {
-                ZipEntry zipEntry = zipInputStream.getNextEntry();
-                if (zipEntry == null) break;
-                String entryName = zipEntry.getName();
-                if (entryName.endsWith(".sql")) {
-                    String snapshotSql = IOUtils.toString(zipInputStream, StandardCharsets.UTF_8);
+        if (snapshotFile.exists()) {
+            try (ZipInputStream zipInputStream = new ZipInputStream(new BufferedInputStream(new FileInputStream(snapshotFile)))) {
+                while (keepRunning) {
+                    ZipEntry zipEntry = zipInputStream.getNextEntry();
+                    if (zipEntry == null) break;
+                    String entryName = zipEntry.getName();
+                    if (entryName.endsWith(".sql")) {
+                        String snapshotSql = IOUtils.toString(zipInputStream, StandardCharsets.UTF_8);
 
-                    File file = new File(codeDirectory, entryName);
-                    ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(codeDirectory, file);
-                    if (objectIdentifier != null) {
-                        if (file.exists()) {
-                            // Object CHANGED: it exists in the code directory but is different from the snapshot
-                            pathsByPriority.remove(file.toPath());
-                            String fileSql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
-                            String cleanSnapshotSql = HashCalculator.cleanSql(snapshotSql);
-                            String cleanFileSql = HashCalculator.cleanSql(fileSql);
-                            if (!cleanSnapshotSql.equals(cleanFileSql)) {
-                                keepRunning = changeConsumer.accept(objectIdentifier, snapshotSql, fileSql);
+                        File file = new File(codeDirectory, entryName);
+                        ObjectIdentifier objectIdentifier = DbPopdFileUtils.toObjectIdentifier(codeDirectory, file);
+                        if (objectIdentifier != null) {
+                            if (file.exists()) {
+                                // Object CHANGED: it exists in the code directory but is different from the snapshot
+                                pathsByPriority.remove(file.toPath());
+                                String fileSql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
+                                String cleanSnapshotSql = HashCalculator.cleanSql(snapshotSql);
+                                String cleanFileSql = HashCalculator.cleanSql(fileSql);
+                                if (!cleanSnapshotSql.equals(cleanFileSql)) {
+                                    keepRunning = changeConsumer.accept(objectIdentifier, snapshotSql, fileSql);
+                                }
+                            } else {
+                                // Object DELETED: it exists in snapshot, but not in the code directory
+                                keepRunning = changeConsumer.accept(objectIdentifier, snapshotSql, null);
                             }
                         } else {
-                            // Object DELETED: it exists in snapshot, but not in the code directory
-                            keepRunning = changeConsumer.accept(objectIdentifier, snapshotSql, null);
+                            log.warn("Unexpected file in {}: {}", snapshotFile, entryName);
                         }
-                    } else {
-                        log.warn("Unexpected file in {}: {}", snapshotFile, entryName);
                     }
                 }
             }
