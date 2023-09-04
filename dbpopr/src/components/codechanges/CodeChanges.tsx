@@ -80,8 +80,11 @@ export default function CodeChanges() {
         // If there is only one change, no need for an "Apply All"
         if (changedObjects.length <= 1) return <></>
 
+        const canUploadAllFiles = changedObjects.filter(change => (change.changeType === "UPDATED" || change.changeType === "FILE_ONLY")).length > 0;
+        const canUploadAllDatabase = changedObjects.filter(change => (change.changeType === "UPDATED" || change.changeType === "DATABASE_ONLY")).length > 0;
+
         // We can only apply-all when there are updates, not when the SQL is only in files or only in database
-        if (changedObjects.filter(change => change.changeType !== "UPDATED").length > 0) {
+        if (!(canUploadAllFiles || canUploadAllDatabase)) {
             return <></>
         }
 
@@ -91,22 +94,26 @@ export default function CodeChanges() {
                 <strong>All</strong>
             </td>
             <td style={{minWidth: '20em'}} className={"text-center"}>
-                <Button variant={"primary"}
-                        size={"sm"}
-                        className={"apply-button"}
-                        onClick={() => onApplyAllFileChanges()}
-                >
-                    Upload All <i className={"fa fa-arrow-right"}/>
-                </Button>
+                {canUploadAllFiles &&
+                    <Button variant={"primary"}
+                            size={"sm"}
+                            className={"apply-button"}
+                            onClick={() => onApplyAllFileChanges()}
+                    >
+                        Upload All <i className={"fa fa-arrow-right"}/>
+                    </Button>
+                }
             </td>
             <td style={{minWidth: '20em'}} className={"text-center"}>
-                <Button variant={"primary"}
-                        size={"sm"}
-                        className={"apply-button"}
-                        onClick={() => onApplyAllDbChanges()}
-                >
-                    <i className={"fa fa-arrow-left"}/> Download All
-                </Button>
+                {canUploadAllDatabase &&
+                    <Button variant={"primary"}
+                            size={"sm"}
+                            className={"apply-button"}
+                            onClick={() => onApplyAllDbChanges()}
+                    >
+                        <i className={"fa fa-arrow-left"}/> Download All
+                    </Button>
+                }
             </td>
         </tr>
         </tfoot>
@@ -128,7 +135,7 @@ export default function CodeChanges() {
                             <i className={"fa fa-trash"}/> Delete
                         </Button>
                     }
-                    {(change.changeType === "FILE_ONLY" || change.changeType === "UPDATED") &&
+                    {(change.changeType === "FILE_ONLY" || change.changeType === "FILE_NEWER" || change.changeType === "UPDATED") &&
                         <Button variant={"primary"}
                                 size={"sm"}
                                 className={"apply-button"}
@@ -139,7 +146,7 @@ export default function CodeChanges() {
                     }
                 </td>
                 <td style={{minWidth: '20em'}} className={"text-center"}>
-                    {(change.changeType === "DATABASE_ONLY" || change.changeType === "UPDATED") &&
+                    {(change.changeType === "DATABASE_ONLY" || change.changeType === "DATABASE_NEWER" || change.changeType === "UPDATED") &&
                         <Button variant={"primary"}
                                 size={"sm"}
                                 className={"apply-button"}
@@ -173,7 +180,7 @@ export default function CodeChanges() {
             </tr>
         }
 
-        return <>
+        return <div className={"changes-box"}>
             <table className={"table table-hover"}>
                 <thead>
                 <tr>
@@ -191,7 +198,7 @@ export default function CodeChanges() {
                 </tbody>
                 <Footer/>
             </table>
-        </>
+        </div>
     }
 
     function Scanning() {
@@ -210,8 +217,16 @@ export default function CodeChanges() {
         return <ChangesBox/>
     }
 
+    function Tool() {
+        return (
+            <NavLink className={"btn btn-sm btn-primary"} to={"/deployment"}>
+                <i className={"fa fa-rocket"}/> Deploy...
+            </NavLink>
+        )
+    }
+
     return <div className={"code-changes-component container"}>
-        <PageHeader title={"Code Changes"} subtitle={"Track modified database code"}/>
+        <PageHeader title={"Code Changes"} subtitle={"Track modified database code."} tool={<Tool/>}/>
         <Content/>
     </div>
 }

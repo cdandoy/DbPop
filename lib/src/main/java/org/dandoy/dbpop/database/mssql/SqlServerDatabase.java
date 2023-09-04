@@ -823,6 +823,22 @@ public class SqlServerDatabase extends DefaultDatabase {
     }
 
     @Override
+    public long getEpochTime() {
+        try {
+            Connection connection = getConnection();
+            try (Statement statement = connection.createStatement()) {
+                try (ResultSet resultSet = statement.executeQuery("SELECT GETDATE()")) {
+                    resultSet.next();
+                    Timestamp timestamp = resultSet.getTimestamp(1);
+                    return timestamp.getTime();
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to GETDATE()", e);
+        }
+    }
+
+    @Override
     public void enableForeignKey(ForeignKey foreignKey) {
         StopWatch.record("enableForeignKey", () -> executeSql(
                 "ALTER TABLE %s WITH %s CHECK CONSTRAINT %s",

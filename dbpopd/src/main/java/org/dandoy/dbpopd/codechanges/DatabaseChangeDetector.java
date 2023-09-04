@@ -19,10 +19,11 @@ public class DatabaseChangeDetector {
     public static UpdatedSignatures getAllSignatures(Database database) {
         final Date[] lastModifiedDate = {new Date(0)};
         Map<ObjectIdentifier, ObjectSignature> objectSignatures = new HashMap<>();
+        long timeDelta = HashCalculator.getTimeDelta(database);
         database.createDatabaseIntrospector().visitModuleDefinitions(new DatabaseVisitor() {
             @Override
             public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String sql) {
-                ObjectSignature objectSignature = HashCalculator.getObjectSignature(sql);
+                ObjectSignature objectSignature = HashCalculator.getObjectSignature(modifyDate.getTime() - timeDelta, sql);
                 if (objectIdentifier.equals(debugObjectIdentifier)) {
                     log.info("Database Signature {} | {} | [{}]",
                             objectIdentifier,
@@ -73,11 +74,12 @@ public class DatabaseChangeDetector {
             }
         });
 
+        long timeDelta = HashCalculator.getTimeDelta(database);
         // Recalculate the signatures for the modified objects
         database.createDatabaseIntrospector().visitModuleDefinitions(objectIdentifiers, new DatabaseVisitor() {
             @Override
             public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, @Nullable String sql) {
-                ObjectSignature objectSignature = HashCalculator.getObjectSignature(sql);
+                ObjectSignature objectSignature = HashCalculator.getObjectSignature(modifyDate.getTime() - timeDelta, sql);
                 if (objectIdentifier.equals(debugObjectIdentifier)) {
                     log.info("Database Signature {} | {} | [{}]",
                             objectIdentifier,

@@ -4,4 +4,7 @@
     <file url="file://$PROJECT_DIR$/lib/src/main/java/org/dandoy/dbpop/database/pgsql" dialect="PostgreSQL" />
     <file url="PROJECT" dialect="TSQL" />
   </component>
+  <component name="SqlResolveMappings">
+    <file url="file://$PROJECT_DIR$/lib/src/main/java/org/dandoy/dbpop/database/pgsql/PostgresDatabase.java" scope="{&quot;node&quot;:{  &quot;@negative&quot;:&quot;1&quot;,  &quot;group&quot;:{   &quot;@kind&quot;:&quot;root&quot;,   &quot;node&quot;:{    &quot;name&quot;:{     &quot;@qname&quot;:&quot;3603e8f3-9387-4355-a0c7-c004f6c7a30c&quot;    }   }  } }}" />
+  </component>
 </project>

@@ -38,14 +38,6 @@ export default function Menu() {
                 </li>
             }
 
-            {siteStatus.hasTarget &&
-                <li className="nav-link">
-                    <NavLink to={"/deployment"}>
-                        <SidebarMenu text="Deployment" icons="fa fa-rocket"/>
-                    </NavLink>
-                </li>
-            }
-
             {(siteStatus.hasSource || siteStatus.hasTarget) &&
                 <li className="nav-link">
                     {siteStatus.hasSource && siteStatus.hasTarget && <NavLink to={"/tools"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>}

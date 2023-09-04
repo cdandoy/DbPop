@@ -211,4 +211,9 @@ public class DatabaseProxy extends Database {
     public void dropObject(ObjectIdentifier objectIdentifier) {
         delegate.dropObject(objectIdentifier);
     }
+
+    @Override
+    public long getEpochTime() {
+        return delegate.getEpochTime();
+    }
 }

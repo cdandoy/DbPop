@@ -145,4 +145,6 @@ public abstract class Database implements AutoCloseable {
             return definitions.get(0);
         }
     }
+
+    public abstract long getEpochTime();
 }

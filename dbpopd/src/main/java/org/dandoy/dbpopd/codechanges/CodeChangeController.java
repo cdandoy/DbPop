@@ -36,6 +36,8 @@ public class CodeChangeController {
                 .of(
                         signatureDiff.fileOnly().stream().map(it -> new ChangedObject(it, ChangeType.FILE_ONLY)),
                         signatureDiff.databaseOnly().stream().map(it -> new ChangedObject(it, ChangeType.DATABASE_ONLY)),
+                        signatureDiff.fileNewer().stream().map(it -> new ChangedObject(it, ChangeType.FILE_NEWER)),
+                        signatureDiff.databaseNewer().stream().map(it -> new ChangedObject(it, ChangeType.DATABASE_NEWER)),
                         signatureDiff.different().stream().map(it -> new ChangedObject(it, ChangeType.UPDATED))
                 )
                 .flatMap(identity())
@@ -46,7 +48,7 @@ public class CodeChangeController {
     @Post("apply-db")
     public void applyDbChangeToFile(@Body ObjectIdentifier objectIdentifier) {
         CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
-        if (signatureDiff.isDifferent(objectIdentifier) || signatureDiff.isDatabaseOnly(objectIdentifier)) {
+        if (signatureDiff.isDifferent(objectIdentifier) || signatureDiff.isDatabaseNewer(objectIdentifier) || signatureDiff.isDatabaseOnly(objectIdentifier)) {
             applyChangesService.download(objectIdentifier);
         } else if (signatureDiff.isFileOnly(objectIdentifier)) {
             applyChangesService.deleteFile(objectIdentifier);
@@ -58,6 +60,9 @@ public class CodeChangeController {
         codeChangeService.doWithPause(() -> {
             CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
             for (ObjectIdentifier objectIdentifier : signatureDiff.databaseOnly()) {
+                applyChangesService.download(objectIdentifier);
+            }
+            for (ObjectIdentifier objectIdentifier : signatureDiff.databaseNewer()) {
                 applyChangesService.download(objectIdentifier);
             }
             for (ObjectIdentifier objectIdentifier : signatureDiff.different()) {
@@ -74,7 +79,7 @@ public class CodeChangeController {
     public ExecutionsResult applyToDatabase(@Body ObjectIdentifier objectIdentifier) {
         return codeChangeService.doWithPause(() -> createExecutionsResult(() -> {
             var signatureDiff = codeChangeService.getSignatureDiff();
-            if (signatureDiff.isDifferent(objectIdentifier) || signatureDiff.isFileOnly(objectIdentifier)) {
+            if (signatureDiff.isFileNewer(objectIdentifier) || signatureDiff.isDifferent(objectIdentifier) || signatureDiff.isFileOnly(objectIdentifier)) {
                 return applyChangesService.applyFiles(List.of(objectIdentifier), emptyList());
             } else if (signatureDiff.isDatabaseOnly(objectIdentifier)) {
                 return applyChangesService.applyFiles(emptyList(), List.of(objectIdentifier));
@@ -91,6 +96,7 @@ public class CodeChangeController {
             CodeChangeService.SignatureDiff signatureDiff = codeChangeService.getSignatureDiff();
 
             uploadObjectIdentifiers.addAll(signatureDiff.fileOnly());
+            uploadObjectIdentifiers.addAll(signatureDiff.fileNewer());
             uploadObjectIdentifiers.addAll(signatureDiff.different());
             return applyChangesService.applyFiles(uploadObjectIdentifiers, signatureDiff.databaseOnly());
         }));
@@ -105,6 +111,8 @@ public class CodeChangeController {
     public enum ChangeType {
         FILE_ONLY,
         DATABASE_ONLY,
+        FILE_NEWER,
+        DATABASE_NEWER,
         UPDATED,
     }
 

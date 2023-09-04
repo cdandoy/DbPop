@@ -1,16 +1,14 @@
 package org.dandoy.dbpop.database.pgsql;
 
 import lombok.SneakyThrows;
+import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpop.database.utils.ForeignKeyCollector;
 import org.dandoy.dbpop.database.utils.IndexCollector;
 import org.dandoy.dbpop.database.utils.TableCollector;
 import org.dandoy.dbpop.utils.NotImplementedException;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -659,5 +657,20 @@ public class PostgresDatabase extends DefaultDatabase {
     @Override
     public void disableForeignKey(ForeignKey foreignKey) {
         throw new RuntimeException("Not supported");
+    }
+
+    @Override
+    public long getEpochTime() {
+        try {
+            Connection connection = getConnection();
+            try (Statement statement = connection.createStatement()) {
+                try (ResultSet resultSet = statement.executeQuery("SELECT NOW()")) {
+                    resultSet.next();
+                    return resultSet.getTimestamp(1).getTime();
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get NOW()", e);
+        }
     }
 }

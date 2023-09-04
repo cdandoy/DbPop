@@ -70,18 +70,19 @@ public class HashCalculator {
 
     private static void captureObject(Map<ObjectIdentifier, ObjectSignature> ret, ObjectIdentifier objectIdentifier, File objectFile) {
         try {
+            long ts = objectFile.lastModified();
             String sql = FileUtils.readFileToString(objectFile, StandardCharsets.UTF_8);
             ret.put(
                     objectIdentifier,
-                    getObjectSignature(sql)
+                    getObjectSignature(ts, sql)
             );
         } catch (IOException e) {
             log.error("Failed to read " + objectFile, e);
         }
     }
 
-    static ObjectSignature getObjectSignature(String sql) {
-        return new ObjectSignature(HashCalculator.getHash(sql));
+    static ObjectSignature getObjectSignature(long ts, String sql) {
+        return new ObjectSignature(ts, HashCalculator.getHash(sql));
     }
 
     static byte[] getHash(String sql) {
@@ -92,16 +93,21 @@ public class HashCalculator {
 
     public static Map<ObjectIdentifier, ObjectSignature> captureSignatures(Database database) {
         Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
+        long timeDelta = getTimeDelta(database);
         database.createDatabaseIntrospector().visitModuleDefinitions(new DatabaseVisitor() {
             @Override
             public void moduleDefinition(ObjectIdentifier objectIdentifier, Date modifyDate, String sql) {
                 ret.put(
                         objectIdentifier,
-                        getObjectSignature(sql)
+                        getObjectSignature(modifyDate.getTime() - timeDelta, sql)
                 );
             }
         });
         return ret;
+    }
+
+     static long getTimeDelta(Database database) {
+        return database.getEpochTime() - new Date().getTime();
     }
 
     /**

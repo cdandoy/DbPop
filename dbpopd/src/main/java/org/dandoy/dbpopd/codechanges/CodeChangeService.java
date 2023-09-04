@@ -12,7 +12,6 @@ import org.dandoy.dbpop.database.ConnectionBuilder;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DefaultDatabase;
 import org.dandoy.dbpop.database.ObjectIdentifier;
-import org.dandoy.dbpop.utils.CollectionComparator;
 import org.dandoy.dbpop.utils.ElapsedStopWatch;
 import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.config.ConnectionBuilderChangedEvent;
@@ -40,10 +39,10 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
     private Map<ObjectIdentifier, ObjectSignature> databaseSignatures;
     private Date lastDatabaseCheck = new Date(0L);
     @Getter
-    private SignatureDiff signatureDiff = new SignatureDiff(emptyList(), emptyList(), emptyList());
+    private SignatureDiff signatureDiff = new SignatureDiff(emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
     private ConnectionBuilder targetConnectionBuilder;
     private boolean paused;
-    static ObjectIdentifier debugObjectIdentifier = null;
+    static ObjectIdentifier debugObjectIdentifier = new ObjectIdentifier("SQL_STORED_PROCEDURE", "master", "dbo", "test");
 
     public CodeChangeService(ConfigurationService configurationService, SiteWebSocket siteWebSocket) {
         this.codeDirectory = configurationService.getCodeDirectory();
@@ -134,11 +133,14 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
                     fileScanComplete = false;
                     fileChangeDetector = FileChangeDetector.createFileChangeDetector(codeDirectory.toPath(), this);
                     log.info("Scanned {} in {}", codeDirectory, stopWatch);
+                    compareSignatures();
                 }
             } else {
                 if (fileChangeDetector != null) {
                     fileChangeDetector.close();
                     fileChangeDetector = null;
+                    fileSignatures.clear();
+                    compareSignatures();
                 }
             }
         } finally {
@@ -160,8 +162,9 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
                     fileSignatures.remove(objectIdentifier);
                 } else {
                     try {
+                        long ts = file.lastModified();
                         String sql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
-                        ObjectSignature objectSignature = HashCalculator.getObjectSignature(sql);
+                        ObjectSignature objectSignature = HashCalculator.getObjectSignature(ts, sql);
                         if (objectIdentifier.equals(debugObjectIdentifier)) {
                             log.info("File Signature {} | {} | [{}]",
                                     objectIdentifier,
@@ -180,46 +183,73 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
         compareSignatures();
     }
 
-    private void compareSignatures() {
-        // Take a copy to prevent side effects
-        Map<ObjectIdentifier, ObjectSignature> databaseSignatures = this.databaseSignatures;
-        Map<ObjectIdentifier, ObjectSignature> fileSignatures = this.fileSignatures;
+    private static void logDebugObjectIdentifier(ObjectIdentifier objectIdentifier, ObjectSignature fileSignature, ObjectSignature databaseSignature, String type) {
+        if (objectIdentifier.equals(debugObjectIdentifier)) {
+            log.info("compare Signature: {} - {} - {}",
+                    type,
+                    ByteArrayUtil.toHexString(fileSignature.hash()),
+                    ByteArrayUtil.toHexString(databaseSignature.hash())
+            );
+        }
+    }
 
+    private void compareSignatures() {
         // Early exit if both haven't scanned
         if (databaseSignatures == null || !fileScanComplete) return;
 
-        // Compare the files and database signatures
-        CollectionComparator<ObjectIdentifier> comparator = CollectionComparator.build(fileSignatures.keySet(), databaseSignatures.keySet());
-        Collection<ObjectIdentifier> fileOnly = comparator.leftOnly;
-        Collection<ObjectIdentifier> databaseOnly = comparator.rightOnly;
-        Collection<ObjectIdentifier> different = comparator.common.stream()
-                .filter(objectIdentifier -> {
-                    ObjectSignature fileSignature = fileSignatures.get(objectIdentifier);
-                    ObjectSignature databaseSignature = databaseSignatures.get(objectIdentifier);
-                    if (fileSignature == null) {
-                        log.warn("File Signature disappeared - {}", objectIdentifier);
-                        return false;
+        // Take a copy
+        Map<ObjectIdentifier, ObjectSignature> databaseSignatures = new HashMap<>(this.databaseSignatures);
+        Map<ObjectIdentifier, ObjectSignature> fileSignatures = new HashMap<>(this.fileSignatures);
+
+        Collection<ObjectIdentifier> fileOnly;
+        Collection<ObjectIdentifier> databaseOnly = new HashSet<>();
+        Collection<ObjectIdentifier> fileNewer = new HashSet<>();
+        Collection<ObjectIdentifier> databaseNewer = new HashSet<>();
+        Collection<ObjectIdentifier> different = new HashSet<>();
+
+        // Go through every database object, and compare it to its file equivalent
+        for (Map.Entry<ObjectIdentifier, ObjectSignature> databaseEntry : databaseSignatures.entrySet()) {
+            ObjectIdentifier objectIdentifier = databaseEntry.getKey();
+            ObjectSignature databaseSignature = databaseEntry.getValue();
+            ObjectSignature fileSignature = fileSignatures.remove(objectIdentifier);
+
+            if (fileSignature != null) {
+                byte[] fileHash = fileSignature.hash();
+                byte[] databaseHash = databaseSignature.hash();
+
+                if (Arrays.equals(fileHash, databaseHash)) {
+                    // Hash codes are identical, nothing to do except maybe to log
+                    logDebugObjectIdentifier(objectIdentifier, fileSignature, databaseSignature, "identical");
+                } else {
+                    // The hash codes are different. Compare the timestamps
+                    long tsDelta = databaseSignature.ts() - fileSignature.ts();
+                    if (-10 <= tsDelta && tsDelta <= 10) {    // If the timestamp delta is within 10ms, we can't tell which one is which
+                        logDebugObjectIdentifier(objectIdentifier, fileSignature, databaseSignature, "different");
+                        different.add(objectIdentifier);
+                    } else if (tsDelta > 0) {
+                        logDebugObjectIdentifier(objectIdentifier, fileSignature, databaseSignature, "databaseNewer");
+                        databaseNewer.add(objectIdentifier);
+                    } else {
+                        logDebugObjectIdentifier(objectIdentifier, fileSignature, databaseSignature, "fileNewer");
+                        fileNewer.add(objectIdentifier);
                     }
-                    if (databaseSignature == null) {
-                        log.warn("Database Signature disappeared - {}", objectIdentifier);
-                        return false;
-                    }
-                    byte[] fileHash = fileSignature.hash();
-                    byte[] databaseHash = databaseSignature.hash();
-                    boolean ret = !Arrays.equals(fileHash, databaseHash);
                     if (objectIdentifier.equals(debugObjectIdentifier)) {
-                        log.info("compare Signature: {} - {} - {}",
-                                ret ? "different" : "identical",
+                        log.info("compare Signature: different - {} - {}",
                                 ByteArrayUtil.toHexString(fileHash),
                                 ByteArrayUtil.toHexString(databaseHash)
                         );
                     }
-                    return ret;
-                })
-                .toList();
+                }
+            } else {
+                databaseOnly.add(objectIdentifier);
+            }
+        }
+
+        // What's left in fileSignature is FILE_ONLY
+        fileOnly = new HashSet<>(fileSignatures.keySet());
 
         // We only want to tell the client when the differences have changed.
-        SignatureDiff signatureDiff = new SignatureDiff(fileOnly, databaseOnly, different);
+        SignatureDiff signatureDiff = new SignatureDiff(fileOnly, databaseOnly, fileNewer, databaseNewer, different);
         boolean isSameDifferences = this.signatureDiff.equals(signatureDiff);
         this.signatureDiff = signatureDiff;
         if (!isSameDifferences) {
@@ -227,9 +257,15 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
         }
     }
 
-    record SignatureDiff(Collection<ObjectIdentifier> fileOnly, Collection<ObjectIdentifier> databaseOnly, Collection<ObjectIdentifier> different) {
+    record SignatureDiff(
+            Collection<ObjectIdentifier> fileOnly,
+            Collection<ObjectIdentifier> databaseOnly,
+            Collection<ObjectIdentifier> fileNewer,
+            Collection<ObjectIdentifier> databaseNewer,
+            Collection<ObjectIdentifier> different
+    ) {
         boolean hasChanges() {
-            return !(fileOnly.isEmpty() && databaseOnly.isEmpty() && different.isEmpty());
+            return !(fileOnly.isEmpty() && databaseOnly.isEmpty() && fileNewer.isEmpty() && databaseNewer.isEmpty() && different.isEmpty());
         }
 
         boolean isFileOnly(ObjectIdentifier objectIdentifier) {
@@ -239,6 +275,12 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
         boolean isDatabaseOnly(ObjectIdentifier objectIdentifier) {
             return databaseOnly.contains(objectIdentifier);
         }
+
+        boolean isFileNewer(ObjectIdentifier objectIdentifier) {
+            return fileNewer.contains(objectIdentifier);
+        }
+
+        boolean isDatabaseNewer(ObjectIdentifier objectIdentifier) {return databaseNewer.contains(objectIdentifier);}
 
         boolean isDifferent(ObjectIdentifier objectIdentifier) {
             return different.contains(objectIdentifier);
