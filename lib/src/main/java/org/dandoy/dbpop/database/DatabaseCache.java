@@ -8,6 +8,8 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.*;
 
+import static org.dandoy.dbpop.utils.CollectionUtils.concat;
+
 @Slf4j
 public class DatabaseCache extends Database {
     private final Database delegate;
@@ -47,12 +49,6 @@ public class DatabaseCache extends Database {
     @Override
     public Collection<String> getCatalogs() {
         return delegate.getCatalogs();
-    }
-
-    private static <T> List<T> concat(Collection<T> t1, Collection<T> t2) {
-        ArrayList<T> ret = new ArrayList<>(t1);
-        ret.addAll(t2);
-        return ret;
     }
 
     private Table addVFKs(Table table) {

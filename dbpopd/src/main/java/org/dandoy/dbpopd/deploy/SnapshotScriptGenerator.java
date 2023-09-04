@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.dandoy.dbpop.utils.CollectionUtils.concat;
+
 public class SnapshotScriptGenerator {
     protected final Database database;
     protected final File snapshotFile;
@@ -53,18 +55,20 @@ public class SnapshotScriptGenerator {
         }
     }
 
+    /**
+     * Filters out unnecessary drops, for example dropping a PK if the table is dropped.
+     */
     protected List<ChangeWithSource> filterChangeWithSources(List<ChangeWithSource> in) {
-        // First the drops: Do not try to drop primary keys for example if the table is dropped
-        List<ChangeWithSource> drops = in.stream().filter(ChangeWithSource::isDrop).toList();
+        // Separate the drops from the not-drops
+        List<ChangeWithSource> drops = in.stream().filter(changeWithSource -> changeWithSource.fileSql() == null).toList();
+        List<ChangeWithSource> notDrops = in.stream().filter(changeWithSource -> changeWithSource.fileSql() != null).toList();
+
+        // Do not try to drop primary keys for example if the table is dropped
         Set<ObjectIdentifier> rootDrops = drops.stream().map(ChangeWithSource::objectIdentifier).filter(objectIdentifier -> objectIdentifier.getParent() == null).collect(Collectors.toSet());
         List<ChangeWithSource> remainingDrops = drops.stream().filter(it -> !rootDrops.contains(it.objectIdentifier().getParent())).toList();
 
-        // Isolate the creates
-        List<ChangeWithSource> creates = in.stream().filter(ChangeWithSource::isCreate).toList();
-
-        List<ChangeWithSource> out = new ArrayList<>(remainingDrops);
-        out.addAll(creates);
-        return out;
+        // Put them back together
+        return concat(remainingDrops, notDrops);
     }
 
     protected void writeChanges(File deployFile, List<ChangeWithSource> changeWithSources, Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier) throws IOException {
@@ -91,9 +95,5 @@ public class SnapshotScriptGenerator {
         return sqls;
     }
 
-    protected record ChangeWithSource(ObjectIdentifier objectIdentifier, String snapshotSql, String fileSql) {
-        boolean isCreate() {return snapshotSql() == null;}
-
-        boolean isDrop() {return fileSql() == null;}
-    }
+    protected record ChangeWithSource(ObjectIdentifier objectIdentifier, String snapshotSql, String fileSql) {}
 }

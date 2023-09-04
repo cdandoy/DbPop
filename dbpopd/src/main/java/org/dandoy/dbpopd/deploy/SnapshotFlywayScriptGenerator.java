@@ -69,6 +69,4 @@ public class SnapshotFlywayScriptGenerator extends SnapshotScriptGenerator {
         }
         return 0;
     }
-
-    public record GenerateFlywayScriptsResult(String filename, Map<ObjectIdentifier, Boolean> transitionedObjectIdentifier) {}
 }

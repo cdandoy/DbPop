@@ -74,7 +74,7 @@ public class DeployController {
 
     @Post("/script/flyway")
     public ScriptFlywayResponse scriptFlyway(@Body ScriptFlywayRequest request) {
-        SnapshotFlywayScriptGenerator.GenerateFlywayScriptsResult result = deployService.generateFlywayScripts(StringUtils.isBlank(request.name()) ? "generated" : request.name());
+        GenerateFlywayScriptsResult result = deployService.generateFlywayScripts(StringUtils.isBlank(request.name()) ? "generated" : request.name());
         return new ScriptFlywayResponse(result.filename());
     }
 }

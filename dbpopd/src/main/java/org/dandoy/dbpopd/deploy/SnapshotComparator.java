@@ -36,9 +36,16 @@ public class SnapshotComparator {
     }
 
     @SneakyThrows
-     void consumeChanges(ChangeConsumer changeConsumer) {
+    void consumeChanges(ChangeConsumer changeConsumer) {
         boolean keepRunning = true;
+
+        // Get all the files in the code directory
         Set<Path> pathsByPriority = new LinkedHashSet<>(getPathsByPriority());
+
+        // Go through each file in snapshot.zip
+        // Compare it to the code directory
+        // call the consumer if the content is different or if has been deleted
+        // remove it from pathsByPriority
         try (ZipInputStream zipInputStream = new ZipInputStream(new BufferedInputStream(new FileInputStream(snapshotFile)))) {
             while (keepRunning) {
                 ZipEntry zipEntry = zipInputStream.getNextEntry();
@@ -70,6 +77,7 @@ public class SnapshotComparator {
             }
         }
 
+        // Call the consumer for each file in the code directory that wasn't in snapshot.zip
         DbPopdFileUtils.FileToObjectIdentifierResolver resolver = DbPopdFileUtils.createFileToObjectIdentifierResolver(codeDirectory);
         Iterator<Path> iterator = pathsByPriority.iterator();
         while (keepRunning && iterator.hasNext()) {

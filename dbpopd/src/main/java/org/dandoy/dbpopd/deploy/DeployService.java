@@ -66,8 +66,8 @@ public class DeployService {
         ).generateSqlScripts();
     }
 
-    public SnapshotFlywayScriptGenerator.GenerateFlywayScriptsResult generateFlywayScripts(String name) {
-        SnapshotFlywayScriptGenerator.GenerateFlywayScriptsResult ret;
+    public GenerateFlywayScriptsResult generateFlywayScripts(String name) {
+        GenerateFlywayScriptsResult ret;
 
         SnapshotFlywayScriptGenerator generator = new SnapshotFlywayScriptGenerator(
                 databaseCacheService.getTargetDatabaseCacheOrThrow(),
