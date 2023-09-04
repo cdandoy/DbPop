@@ -77,8 +77,8 @@ export default function CodeChanges() {
     }
 
     function Footer() {
-        // If there are more than 100 changes, we can't apply all
-        if (changedObjects.length >= 100) return <></>
+        // If there is only one change, no need for an "Apply All"
+        if (changedObjects.length <= 1) return <></>
 
         // We can only apply-all when there are updates, not when the SQL is only in files or only in database
         if (changedObjects.filter(change => change.changeType !== "UPDATED").length > 0) {
@@ -86,29 +86,29 @@ export default function CodeChanges() {
         }
 
         return <tfoot>
-            <tr>
-                <td style={{width: "100%"}} className={"object-name"}>
-                    <strong>All</strong>
-                </td>
-                <td style={{minWidth: '20em'}} className={"text-center"}>
-                    <Button variant={"primary"}
-                            size={"sm"}
-                            className={"apply-button"}
-                            onClick={() => onApplyAllFileChanges()}
-                    >
-                        Upload All <i className={"fa fa-arrow-right"}/>
-                    </Button>
-                </td>
-                <td style={{minWidth: '20em'}} className={"text-center"}>
-                    <Button variant={"primary"}
-                            size={"sm"}
-                            className={"apply-button"}
-                            onClick={() => onApplyAllDbChanges()}
-                    >
-                        <i className={"fa fa-arrow-left"}/> Download All
-                    </Button>
-                </td>
-            </tr>
+        <tr>
+            <td style={{width: "100%"}} className={"object-name"}>
+                <strong>All</strong>
+            </td>
+            <td style={{minWidth: '20em'}} className={"text-center"}>
+                <Button variant={"primary"}
+                        size={"sm"}
+                        className={"apply-button"}
+                        onClick={() => onApplyAllFileChanges()}
+                >
+                    Upload All <i className={"fa fa-arrow-right"}/>
+                </Button>
+            </td>
+            <td style={{minWidth: '20em'}} className={"text-center"}>
+                <Button variant={"primary"}
+                        size={"sm"}
+                        className={"apply-button"}
+                        onClick={() => onApplyAllDbChanges()}
+                >
+                    <i className={"fa fa-arrow-left"}/> Download All
+                </Button>
+            </td>
+        </tr>
         </tfoot>
     }
 
