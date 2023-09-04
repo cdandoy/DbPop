@@ -3,6 +3,7 @@ package org.dandoy.dbpopd.codechanges;
 import ch.qos.logback.core.encoder.ByteArrayUtil;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DatabaseVisitor;
@@ -13,7 +14,16 @@ import java.util.*;
 import static org.dandoy.dbpopd.codechanges.CodeChangeService.debugObjectIdentifier;
 
 @Slf4j
+@Getter
 public class DatabaseChangeDetector {
+    private final UpdatedSignatures updatedSignatures;
+    private final boolean updated;
+
+    private DatabaseChangeDetector(UpdatedSignatures updatedSignatures, boolean updated) {
+        this.updatedSignatures = updatedSignatures;
+        this.updated = updated;
+    }
+
     public record UpdatedSignatures(Map<ObjectIdentifier, ObjectSignature> signatures, Date lastModifiedDate) {}
 
     public static UpdatedSignatures getAllSignatures(Database database) {
@@ -43,8 +53,9 @@ public class DatabaseChangeDetector {
         return new UpdatedSignatures(objectSignatures, lastModifiedDate[0]);
     }
 
-    public static UpdatedSignatures getUpdatedSignatures(Database database, @Nonnull Date modifiedSince, Map<ObjectIdentifier, ObjectSignature> oldSignatures) {
-        Map<ObjectIdentifier, ObjectSignature> ret = new HashMap<>();
+    public static DatabaseChangeDetector getUpdatedSignatures(Database database, @Nonnull Date modifiedSince, Map<ObjectIdentifier, ObjectSignature> oldSignatures) {
+        Map<ObjectIdentifier, ObjectSignature> signatures = new HashMap<>();
+        final boolean[] hasChanges = {false};
         List<ObjectIdentifier> objectIdentifiers = new ArrayList<>();
         final Date[] lastModifiedDate = {modifiedSince};
 
@@ -56,17 +67,18 @@ public class DatabaseChangeDetector {
             public void moduleMeta(ObjectIdentifier objectIdentifier, Date modifyDate) {
                 ObjectSignature oldSignature = oldSignatures.get(objectIdentifier);
                 if (oldSignature == null) {
-                    objectIdentifiers.add(objectIdentifier);    // We will need to fetch the SQL to get the new signature
+                    objectIdentifiers.add(objectIdentifier);        // We will need to fetch the SQL to get the new signature
                 } else if (modifyDate.after(modifiedSince)) {
-                    objectIdentifiers.add(objectIdentifier);    // We will need to fetch the SQL to get the new signature
+                    objectIdentifiers.add(objectIdentifier);        // We will need to fetch the SQL to get the new signature
                 } else {
-                    ret.put(objectIdentifier, oldSignature);    // Preserve the old signature
+                    signatures.put(objectIdentifier, oldSignature); // Preserve the old signature
                 }
 
+                // TODO: Does this make sense?
                 if (oldSignature != null && modifyDate.after(modifiedSince)) {
                     objectIdentifiers.add(objectIdentifier);
                 } else {
-                    ret.put(objectIdentifier, oldSignature);
+                    signatures.put(objectIdentifier, oldSignature);
                 }
                 if (modifyDate.after(lastModifiedDate[0])) {
                     lastModifiedDate[0] = modifyDate;
@@ -87,9 +99,18 @@ public class DatabaseChangeDetector {
                             sql
                     );
                 }
-                ret.put(objectIdentifier, objectSignature);
+                signatures.put(objectIdentifier, objectSignature);
+                ObjectSignature oldSignature = oldSignatures.get(objectIdentifier);
+                if (oldSignature != null) {
+                    if (!Arrays.equals(oldSignature.hash(), objectSignature.hash())) {
+                        hasChanges[0] = true;
+                    }
+                }
             }
         });
-        return new UpdatedSignatures(ret, lastModifiedDate[0]);
+        return new DatabaseChangeDetector(
+                new UpdatedSignatures(signatures, lastModifiedDate[0]),
+                hasChanges[0]
+        );
     }
 }

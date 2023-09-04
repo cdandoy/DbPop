@@ -9,6 +9,7 @@ import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.DatabaseVisitor;
 import org.dandoy.dbpop.database.ObjectIdentifier;
 
+import javax.validation.constraints.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -81,10 +82,12 @@ public class HashCalculator {
         }
     }
 
+    @NotNull
     static ObjectSignature getObjectSignature(long ts, String sql) {
         return new ObjectSignature(ts, HashCalculator.getHash(sql));
     }
 
+    @NotNull
     static byte[] getHash(String sql) {
         String cleanSql = cleanSql(sql);
         byte[] bytes = cleanSql.getBytes(StandardCharsets.UTF_8);

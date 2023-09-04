@@ -35,6 +35,11 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
     private final SiteWebSocket siteWebSocket;
     private FileChangeDetector fileChangeDetector;
     private boolean fileScanComplete = true;
+    /**
+     * We only send the comparison of files and database signatures when we have them both,
+     * but we don't want to ignore any changes that were detected in the database while the files were scanned
+     */
+    private boolean compareSent = false;
     private final Map<ObjectIdentifier, ObjectSignature> fileSignatures = new HashMap<>();
     private Map<ObjectIdentifier, ObjectSignature> databaseSignatures;
     private Date lastDatabaseCheck = new Date(0L);
@@ -113,12 +118,17 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
 
     private void updateDatabaseSignatures() {
         if (!paused && targetConnectionBuilder != null) {
+            boolean updated;
             try (DefaultDatabase database = Database.createDefaultDatabase(targetConnectionBuilder)) {
-                DatabaseChangeDetector.UpdatedSignatures updatedSignatures = DatabaseChangeDetector.getUpdatedSignatures(database, lastDatabaseCheck, databaseSignatures);
+                DatabaseChangeDetector databaseChangeDetector = DatabaseChangeDetector.getUpdatedSignatures(database, lastDatabaseCheck, databaseSignatures);
+                DatabaseChangeDetector.UpdatedSignatures updatedSignatures = databaseChangeDetector.getUpdatedSignatures();
+                updated = databaseChangeDetector.isUpdated();
                 databaseSignatures = updatedSignatures.signatures();
                 lastDatabaseCheck = updatedSignatures.lastModifiedDate();
             }
-            compareSignatures();
+            if (updated || !compareSent) {
+                compareSignatures();
+            }
         }
     }
 
@@ -126,26 +136,24 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
      * FileChangeDetector only works if the code directory exists.
      */
     private void checkFileChangeDetector() {
-        try {
-            if (codeDirectory.exists()) {
-                if (fileChangeDetector == null) {
-                    ElapsedStopWatch stopWatch = new ElapsedStopWatch();
-                    fileScanComplete = false;
-                    fileChangeDetector = FileChangeDetector.createFileChangeDetector(codeDirectory.toPath(), this);
-                    log.info("Scanned {} in {}", codeDirectory, stopWatch);
-                    compareSignatures();
-                }
-            } else {
-                if (fileChangeDetector != null) {
-                    fileChangeDetector.close();
-                    fileChangeDetector = null;
-                    fileSignatures.clear();
-                    compareSignatures();
-                }
+        if (codeDirectory.exists()) {
+            if (fileChangeDetector == null) {
+                ElapsedStopWatch stopWatch = new ElapsedStopWatch();
+                fileScanComplete = true;
+                compareSent = false;
+                fileChangeDetector = FileChangeDetector.createFileChangeDetector(codeDirectory.toPath(), this);
+                log.info("Scanned {} in {}", codeDirectory, stopWatch);
+                whenScanComplete();
             }
-        } finally {
-            fileScanComplete = true;
-            whenScanComplete();
+        } else {
+            if (fileChangeDetector != null) {
+                fileChangeDetector.close();
+                fileChangeDetector = null;
+                fileSignatures.clear();
+                compareSent = false;
+                fileScanComplete = true;
+                whenScanComplete();
+            }
         }
     }
 
@@ -252,6 +260,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
         SignatureDiff signatureDiff = new SignatureDiff(fileOnly, databaseOnly, fileNewer, databaseNewer, different);
         boolean isSameDifferences = this.signatureDiff.equals(signatureDiff);
         this.signatureDiff = signatureDiff;
+        compareSent = true;
         if (!isSameDifferences) {
             siteWebSocket.codeDiffChanged(signatureDiff.hasChanges());
         }
