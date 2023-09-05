@@ -47,7 +47,7 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
     private SignatureDiff signatureDiff = new SignatureDiff(emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
     private ConnectionBuilder targetConnectionBuilder;
     private boolean paused;
-    static ObjectIdentifier debugObjectIdentifier = new ObjectIdentifier("SQL_STORED_PROCEDURE", "master", "dbo", "test");
+    static ObjectIdentifier debugObjectIdentifier = null;
 
     public CodeChangeService(ConfigurationService configurationService, SiteWebSocket siteWebSocket) {
         this.codeDirectory = configurationService.getCodeDirectory();

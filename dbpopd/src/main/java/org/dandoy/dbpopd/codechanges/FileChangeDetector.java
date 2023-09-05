@@ -137,7 +137,6 @@ public class FileChangeDetector implements AutoCloseable {
                                     watchPathAndSubPaths(path);
                                 } else {
                                     addKnownFile(path);
-                                    handlePathChanged(path);
                                 }
                             } else if (pollEvent.kind() == ENTRY_DELETE) {
                                 if (removeKnownFile(path)) {
@@ -175,6 +174,7 @@ public class FileChangeDetector implements AutoCloseable {
     private void addKnownFile(Path path) {
         log.debug("addKnownFile: {}", path);
         knownFiles.add(path);
+        handlePathChanged(path);
     }
 
     private boolean removeKnownFile(Path path) {
