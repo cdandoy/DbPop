@@ -144,12 +144,13 @@ public class CodeService {
             for (Map.Entry<String, Integer> entry : typeCounts1.entrySet()) {
                 String codeType = entry.getKey();
                 String text = switch (codeType) {
-                    case "FOREIGN_KEY_CONSTRAINT" -> "Foreign Keys";
-                    case "INDEX" -> "Indexes";
-                    case "PRIMARY_KEY" -> "Primary Keys";
-                    case "SQL_INLINE_TABLE_VALUED_FUNCTION", "SQL_SCALAR_FUNCTION", "SQL_STORED_PROCEDURE", "SQL_TABLE_VALUED_FUNCTION", "SQL_TRIGGER" -> "Stored Procedures";
-                    case "USER_TABLE" -> "Tables";
-                    case "VIEW" -> "Views";
+                    case FOREIGN_KEY_CONSTRAINT -> "Foreign Keys";
+                    case INDEX -> "Indexes";
+                    case PRIMARY_KEY -> "Primary Keys";
+                    case SQL_INLINE_TABLE_VALUED_FUNCTION, SQL_SCALAR_FUNCTION, SQL_STORED_PROCEDURE, SQL_TABLE_VALUED_FUNCTION, SQL_TRIGGER -> "Stored Procedures";
+                    case USER_TABLE -> "Tables";
+                    case VIEW -> "Views";
+                    case TYPE_TABLE -> "Type Table";
                     default -> codeType;
                 };
                 Integer i = typeCounts2.computeIfAbsent(text, s -> 0);

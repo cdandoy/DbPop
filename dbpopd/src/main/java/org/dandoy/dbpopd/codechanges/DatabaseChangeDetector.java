@@ -74,12 +74,6 @@ public class DatabaseChangeDetector {
                     signatures.put(objectIdentifier, oldSignature); // Preserve the old signature
                 }
 
-                // TODO: Does this make sense?
-                if (oldSignature != null && modifyDate.after(modifiedSince)) {
-                    objectIdentifiers.add(objectIdentifier);
-                } else {
-                    signatures.put(objectIdentifier, oldSignature);
-                }
                 if (modifyDate.after(lastModifiedDate[0])) {
                     lastModifiedDate[0] = modifyDate;
                 }
@@ -101,10 +95,8 @@ public class DatabaseChangeDetector {
                 }
                 signatures.put(objectIdentifier, objectSignature);
                 ObjectSignature oldSignature = oldSignatures.get(objectIdentifier);
-                if (oldSignature != null) {
-                    if (!Arrays.equals(oldSignature.hash(), objectSignature.hash())) {
-                        hasChanges[0] = true;
-                    }
+                if (oldSignature == null || !Arrays.equals(oldSignature.hash(), objectSignature.hash())) {
+                    hasChanges[0] = true;
                 }
             }
         });
