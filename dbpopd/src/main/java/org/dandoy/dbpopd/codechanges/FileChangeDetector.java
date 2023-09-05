@@ -41,9 +41,6 @@ public class FileChangeDetector implements AutoCloseable {
             if (Files.isDirectory(codePath)) {
                 detector.watchPathAndSubPaths(codePath);
             }
-            for (Path path = codePath.getParent(); path != null; path = path.getParent()) {
-                detector.watch(path);
-            }
             return detector;
         } catch (IOException e) {
             log.error("Cannot watch the directory " + codePath, e);

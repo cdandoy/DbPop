@@ -109,7 +109,9 @@ public class CodeChangeService implements FileChangeDetector.FileChangeListener 
             log.debug("unpaused");
             fileScanComplete = false;
             try {
-                fileChangeDetector.checkAll();
+                if (fileChangeDetector != null) {
+                    fileChangeDetector.checkAll();
+                }
             } finally {
                 fileScanComplete = true;
             }
