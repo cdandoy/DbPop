@@ -14,10 +14,15 @@ import java.util.*;
 public abstract class Database implements AutoCloseable {
 
     public static final int ROW_COUNT_MAX = 1000;
-    private final TransitionGenerator INVALID_TRANSITION_GENERATOR;
+    public final TransitionGenerator INVALID_TRANSITION_GENERATOR;
 
     protected Database() {
         INVALID_TRANSITION_GENERATOR = new TransitionGenerator(this) {
+            @Override
+            public boolean isValid() {
+                return false;
+            }
+
             @Override
             protected void generateTransition(ObjectIdentifier objectIdentifier, String fromSql, String toSql, Transition transition) {
                 transition.setError("%s Cannot generate the transition of %s", Database.this.getClass().getSimpleName(), objectIdentifier.toQualifiedName());

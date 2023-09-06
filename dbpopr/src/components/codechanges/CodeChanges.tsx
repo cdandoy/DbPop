@@ -46,7 +46,9 @@ export default function CodeChanges() {
         setLoading(true);
         axios.post(`/codechanges/target/apply-file`, objectIdentifier)
             .then((response) => {
-                const errors = response.data?.fileExecutions?.map((it: any) => it.error) || ['Internal Error'];
+                const errors = response.data.fileExecutions
+                        .map((it: any) => it.error)
+                        .filter((it: any) => !!it);
                 setErrors(errors);
                 refresh();
             })
@@ -213,7 +215,7 @@ export default function CodeChanges() {
         }
 
         return <div className={"changes-box"}>
-            {errors.map((error, i)=><div key={`error-${i}`} className="alert alert-danger" role="alert">{error}</div>)}
+            {errors.map((error, i) => <div key={`error-${i}`} className="alert alert-danger" role="alert">{error}</div>)}
             <table className={"table table-hover"}>
                 <thead>
                 <tr>

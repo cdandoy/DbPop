@@ -2,9 +2,7 @@ package org.dandoy.dbpopd.codechanges;
 
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
-import org.dandoy.dbpop.database.Database;
-import org.dandoy.dbpop.database.DatabaseVisitor;
-import org.dandoy.dbpop.database.ObjectIdentifier;
+import org.dandoy.dbpop.database.*;
 import org.dandoy.dbpopd.code.CodeService;
 import org.dandoy.dbpopd.config.ConfigurationService;
 import org.dandoy.dbpopd.config.DatabaseCacheService;
@@ -102,14 +100,14 @@ public class ApplyChangesService {
             identifiers.stream()
                     .sorted(Comparator.comparing(it -> CodeService.CODE_TYPES.indexOf(it.getType())))       // Create the tables first, ...
                     .forEach(objectIdentifier -> {
-                        ExecutionsResult.Execution execution = uploadFileToTarget(statement, objectIdentifier);
+                        ExecutionsResult.Execution execution = uploadFileToTarget(targetDatabase, statement, objectIdentifier);
                         ret.add(execution);
                     });
         }
         return ret;
     }
 
-    private ExecutionsResult.Execution uploadFileToTarget(Statement statement, ObjectIdentifier objectIdentifier) {
+    private ExecutionsResult.Execution uploadFileToTarget(Database database, Statement statement, ObjectIdentifier objectIdentifier) {
         log.debug("Executing {}", objectIdentifier);
         File codeDirectory = configurationService.getCodeDirectory();
         File file = DbPopdFileUtils.toFile(codeDirectory, objectIdentifier);
@@ -119,13 +117,21 @@ public class ApplyChangesService {
             }
 
             String sql = IOUtils.toString(file);
-            sql = HashCalculator.cleanSql(sql);
-
             String type = objectIdentifier.getType();
 
             if (type.equals(USER_TABLE) || type.equals(TYPE_TABLE) || type.equals(FOREIGN_KEY_CONSTRAINT) || type.equals(INDEX) || type.equals(PRIMARY_KEY)) {
-                statement.execute(sql);
+                String dbSql = SqlFetcher.fetchSql(database, objectIdentifier);
+                TransitionGenerator transitionGenerator = database.getTransitionGenerator(type);
+                if (transitionGenerator.isValid()) {
+                    Transition transition = transitionGenerator.generateTransition(objectIdentifier, dbSql, sql);
+                    for (String transitionSql : transition.getSqls()) {
+                        statement.execute(transitionSql);
+                    }
+                } else {
+                    statement.execute(sql);
+                }
             } else {
+                sql = HashCalculator.cleanSql(sql);
                 Matcher matcher = SPROC_PATTERN.matcher(sql);
                 if (matcher.matches()) {
                     String pre = matcher.group("pre");

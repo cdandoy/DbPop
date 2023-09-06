@@ -7,6 +7,13 @@ public abstract class TransitionGenerator {
 
     protected TransitionGenerator(Database database) {this.database = database;}
 
+    /**
+     * Database.INVALID_TRANSITION_GENERATOR is not valid
+     */
+    public boolean isValid() {
+        return true;
+    }
+
     public Transition generateTransition(ObjectIdentifier objectIdentifier, String fromSql, String toSql) {
         Transition transition = new Transition(objectIdentifier);
         generateTransition(
