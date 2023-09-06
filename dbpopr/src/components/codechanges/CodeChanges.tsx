@@ -123,6 +123,7 @@ export default function CodeChanges() {
 
         function Changes({change}: { change: ChangedObject }) {
             const objectIdentifier = change.objectIdentifier;
+            let applyOptions = 2;
 
             return <>
                 <td style={{minWidth: '20em'}} className={"text-center"}>
@@ -135,14 +136,35 @@ export default function CodeChanges() {
                             <i className={"fa fa-trash"}/> Delete
                         </Button>
                     }
-                    {(change.changeType === "FILE_ONLY" || change.changeType === "FILE_NEWER" || change.changeType === "UPDATED") &&
-                        <Button variant={"primary"}
-                                size={"sm"}
-                                className={"apply-button"}
-                                onClick={() => onApplyFileChange(objectIdentifier)}
-                        >
-                            Upload <i className={"fa fa-arrow-right"}/>
-                        </Button>
+
+                    {/*
+                        If we consider that the database is the reference, the only operations should be:
+                            * download the database code if it is different
+                            * Delete the local file if the database code is missing.
+                        But then we don't have a good option when the file is newer
+                    */}
+                    {applyOptions === 1 ? <>
+                            {(change.changeType === "FILE_ONLY" || change.changeType === "FILE_NEWER" || change.changeType === "UPDATED") &&
+                                <Button variant={"primary"}
+                                        size={"sm"}
+                                        className={"apply-button"}
+                                        onClick={() => onApplyFileChange(objectIdentifier)}
+                                >
+                                    Upload <i className={"fa fa-arrow-right"}/>
+                                </Button>
+                            }
+                        </> :
+                        <>
+                            {(change.changeType === "FILE_NEWER" || change.changeType === "UPDATED") &&
+                                <Button variant={"primary"}
+                                        size={"sm"}
+                                        className={"apply-button"}
+                                        onClick={() => onApplyFileChange(objectIdentifier)}
+                                >
+                                    Upload <i className={"fa fa-arrow-right"}/>
+                                </Button>
+                            }
+                        </>
                     }
                 </td>
                 <td style={{minWidth: '20em'}} className={"text-center"}>
@@ -153,15 +175,6 @@ export default function CodeChanges() {
                                 onClick={() => onApplyDbChange(objectIdentifier)}
                         >
                             <i className={"fa fa-arrow-left"}/> Download
-                        </Button>
-                    }
-                    {change.changeType === "DATABASE_ONLY" &&
-                        <Button variant={"danger"}
-                                size={"sm"}
-                                className={"apply-button"}
-                                onClick={() => onApplyFileChange(objectIdentifier)}
-                        >
-                            <i className={"fa fa-trash"}/> Drop
                         </Button>
                     }
                 </td>

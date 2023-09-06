@@ -54,6 +54,7 @@ public class DatabaseChangeDetector {
     }
 
     public static DatabaseChangeDetector getUpdatedSignatures(Database database, @Nonnull Date modifiedSince, Map<ObjectIdentifier, ObjectSignature> oldSignatures) {
+        Set<ObjectIdentifier> seen = new HashSet<>(oldSignatures.keySet());
         Map<ObjectIdentifier, ObjectSignature> signatures = new HashMap<>();
         final boolean[] hasChanges = {false};
         List<ObjectIdentifier> objectIdentifiers = new ArrayList<>();
@@ -72,6 +73,7 @@ public class DatabaseChangeDetector {
                     objectIdentifiers.add(objectIdentifier);        // We will need to fetch the SQL to get the new signature
                 } else {
                     signatures.put(objectIdentifier, oldSignature); // Preserve the old signature
+                    seen.remove(objectIdentifier);
                 }
 
                 if (modifyDate.after(lastModifiedDate[0])) {
@@ -94,6 +96,7 @@ public class DatabaseChangeDetector {
                     );
                 }
                 signatures.put(objectIdentifier, objectSignature);
+                seen.remove(objectIdentifier);
                 ObjectSignature oldSignature = oldSignatures.get(objectIdentifier);
                 if (oldSignature == null || !Arrays.equals(oldSignature.hash(), objectSignature.hash())) {
                     hasChanges[0] = true;
@@ -102,7 +105,7 @@ public class DatabaseChangeDetector {
         });
         return new DatabaseChangeDetector(
                 new UpdatedSignatures(signatures, lastModifiedDate[0]),
-                hasChanges[0]
+                hasChanges[0] || !seen.isEmpty()
         );
     }
 }
