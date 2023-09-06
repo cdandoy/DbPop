@@ -16,7 +16,7 @@ import java.util.Properties;
 @OpenAPIDefinition(
         info = @Info(
                 title = "dbpopd",
-                version = "0.4.5"
+                version = "0.4.6"
         )
 )
 @Slf4j
