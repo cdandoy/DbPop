@@ -144,7 +144,7 @@ export default function CodeChanges() {
 
         function Changes({change}: { change: ChangedObject }) {
             const objectIdentifier = change.objectIdentifier;
-            let applyOptions = 2;
+            let applyOptions = 1;
 
             return <>
                 <td style={{minWidth: '20em'}} className={"text-center"}>

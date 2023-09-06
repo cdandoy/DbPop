@@ -120,14 +120,8 @@ public class ApplyChangesService {
             String type = objectIdentifier.getType();
 
             if (type.equals(USER_TABLE) || type.equals(TYPE_TABLE) || type.equals(FOREIGN_KEY_CONSTRAINT) || type.equals(INDEX) || type.equals(PRIMARY_KEY)) {
-                String dbSql = SqlFetcher.fetchSql(database, objectIdentifier);
-                TransitionGenerator transitionGenerator = database.getTransitionGenerator(type);
-                if (transitionGenerator.isValid()) {
-                    Transition transition = transitionGenerator.generateTransition(objectIdentifier, dbSql, sql);
-                    for (String transitionSql : transition.getSqls()) {
-                        statement.execute(transitionSql);
-                    }
-                } else {
+                // Attempt to transition the change, but if that is not possible (new object, cannot transition), just try to execute the statement.
+                if (!transitionFileToTarget(database, statement, objectIdentifier, sql)) {
                     statement.execute(sql);
                 }
             } else {
@@ -150,6 +144,19 @@ public class ApplyChangesService {
             log.error("     {}", e.getMessage());
             return new ExecutionsResult.Execution(objectIdentifier, e.getMessage());
         }
+    }
+
+    boolean transitionFileToTarget(Database database, Statement statement, ObjectIdentifier objectIdentifier, String fileSql) throws SQLException {
+        String dbSql = SqlFetcher.fetchSql(database, objectIdentifier);
+        if (dbSql == null) return false;
+        TransitionGenerator transitionGenerator = database.getTransitionGenerator(objectIdentifier.getType());
+        if (!transitionGenerator.isValid()) return false;
+
+        Transition transition = transitionGenerator.generateTransition(objectIdentifier, dbSql, fileSql);
+        for (String transitionSql : transition.getSqls()) {
+            statement.execute(transitionSql);
+        }
+        return true;
     }
 
     private List<ExecutionsResult.Execution> drop(Database targetDatabase, Collection<ObjectIdentifier> objectIdentifiers) {
