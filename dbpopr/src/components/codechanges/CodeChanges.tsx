@@ -6,6 +6,7 @@ import {ObjectIdentifier} from "../../models/ObjectIdentifier";
 import {WebSocketStateContext} from "../ws/useWebSocketState";
 import {NavLink} from "react-router-dom";
 import axios from "axios";
+import LoadingOverlay from "../utils/LoadingOverlay";
 
 function Message({message}: { message: string }) {
     return <>
@@ -25,7 +26,9 @@ export interface ChangedObject {
 export default function CodeChanges() {
     const siteStatus = useContext(WebSocketStateContext);
     const [changedObjects, setChangedObjects] = useState<ChangedObject[]>([]);
-    const [refreshCount, setRefreshCount] = useState(0)
+    const [refreshCount, setRefreshCount] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<string[]>([]);
 
     useEffect(() => {
         axios.get<ChangedObject[]>(`/codechanges/target`)
@@ -39,23 +42,39 @@ export default function CodeChanges() {
     }
 
     function onApplyFileChange(objectIdentifier: ObjectIdentifier) {
+        setErrors([]);
+        setLoading(true);
         axios.post(`/codechanges/target/apply-file`, objectIdentifier)
-            .then(refresh);
+            .then((response) => {
+                const errors = response.data?.fileExecutions?.map((it: any) => it.error) || ['Internal Error'];
+                setErrors(errors);
+                refresh();
+            })
+            .finally(() => setLoading(false));
     }
 
     function onApplyDbChange(objectIdentifier: ObjectIdentifier) {
+        setErrors([]);
+        setLoading(true);
         axios.post(`/codechanges/target/apply-db`, objectIdentifier)
-            .then(refresh);
+            .then(refresh)
+            .finally(() => setLoading(false));
     }
 
     function onApplyAllFileChanges() {
+        setErrors([]);
+        setLoading(true);
         axios.post(`/codechanges/target/apply-all-files`)
-            .then(refresh);
+            .then(refresh)
+            .finally(() => setLoading(false));
     }
 
     function onApplyAllDbChanges() {
+        setErrors([]);
+        setLoading(true);
         axios.post(`/codechanges/target/apply-all-db`)
-            .then(refresh);
+            .then(refresh)
+            .finally(() => setLoading(false));
     }
 
     function ObjectIdentifierIcon({objectIdentifier}: { objectIdentifier: ObjectIdentifier }) {
@@ -194,6 +213,7 @@ export default function CodeChanges() {
         }
 
         return <div className={"changes-box"}>
+            {errors.map((error, i)=><div key={`error-${i}`} className="alert alert-danger" role="alert">{error}</div>)}
             <table className={"table table-hover"}>
                 <thead>
                 <tr>
@@ -233,12 +253,13 @@ export default function CodeChanges() {
     function Tool() {
         return (
             <NavLink className={"btn btn-sm btn-primary"} to={"/deployment"}>
-                <i className={"fa fa-rocket"}/> Deploy...
+                <i className={"fa fa-rocket"}/> Deployment...
             </NavLink>
         )
     }
 
     return <div className={"code-changes-component container"}>
+        <LoadingOverlay active={loading}/>
         <PageHeader title={"Code Changes"} subtitle={"Track modified database code."} tool={<Tool/>}/>
         <Content/>
     </div>
