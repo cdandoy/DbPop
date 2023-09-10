@@ -162,6 +162,40 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 }
             }
         }
+
+        // Types
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                SELECT t.user_type_id,
+                       s.name  AS schema_name,
+                       t.name  AS type_name,
+                       t.is_nullable,
+                       t.max_length,
+                       t.precision,
+                       t.scale,
+                       st.name AS system_type_name
+                FROM sys.schemas s
+                         JOIN sys.types t ON t.schema_id = s.schema_id
+                         JOIN sys.types st ON st.system_type_id = t.system_type_id AND st.is_user_defined = 0
+                WHERE t.is_user_defined = 1
+                  AND t.is_table_type = 0
+                  AND st.system_type_id = st.user_type_id
+                ORDER BY t.name
+                """)) {
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    databaseVisitor.moduleMeta(
+                            new SqlServerObjectIdentifier(
+                                    resultSet.getInt("user_type_id"),
+                                    TYPE,
+                                    catalog,
+                                    resultSet.getString("schema_name"),
+                                    resultSet.getString("type_name")
+                            ),
+                            null
+                    );
+                }
+            }
+        }
     }
 
     private static boolean areValidNames(String... names) {
@@ -208,6 +242,8 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                        c.is_nullable      AS is_nullable,
                        ic.seed_value      AS seed_value,
                        ic.increment_value AS increment_value,
+                       ty.is_user_defined AS is_user_defined,
+                       ts.name            AS type_schema,
                        ty.name            AS type_name,
                        c.max_length       AS type_max_length,
                        c.precision        AS type_precision,
@@ -218,6 +254,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.tables t ON t.schema_id = s.schema_id
                          JOIN sys.columns c ON c.object_id = t.object_id
                          LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                         LEFT JOIN sys.schemas ts ON ts.schema_id = ty.schema_id
                          LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
                          LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                 WHERE t.is_ms_shipped = 0
@@ -799,24 +836,27 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     @SneakyThrows
     private void visitTableDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<SqlServerObjectIdentifier> identifiers, int bindCount) {
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT t.object_id        AS table_id,
-                       s.name             AS schema_name,
-                       t.name             AS table_name,
-                       t.modify_date      AS modify_date,
-                       c.name             AS column_name,
-                       c.is_nullable      AS is_nullable,
-                       ic.seed_value      AS seed_value,
-                       ic.increment_value AS increment_value,
-                       ty.name            AS type_name,
-                       c.max_length       AS type_max_length,
-                       c.precision        AS type_precision,
-                       c.scale            AS type_scale,
-                       dc.name            AS default_constraint_name,
-                       dc.definition      AS default_value
+                SELECT t.object_id          AS table_id,
+                       s.name               AS schema_name,
+                       t.name               AS table_name,
+                       t.modify_date        AS modify_date,
+                       c.name               AS column_name,
+                       c.is_nullable        AS is_nullable,
+                       ic.seed_value        AS seed_value,
+                       ic.increment_value   AS increment_value,
+                       ty.is_user_defined   AS is_user_defined,
+                       ts.name              AS type_schema,
+                       ty.name              AS type_name,
+                       c.max_length         AS type_max_length,
+                       c.precision          AS type_precision,
+                       c.scale              AS type_scale,
+                       dc.name              AS default_constraint_name,
+                       dc.definition        AS default_value
                 FROM sys.schemas s
                          JOIN sys.tables t ON t.schema_id = s.schema_id
                          JOIN sys.columns c ON c.object_id = t.object_id
                          LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                         LEFT JOIN sys.schemas ts ON ts.schema_id = ty.schema_id
                          LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
                          LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                 WHERE t.is_ms_shipped = 0
@@ -881,6 +921,8 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 String tableName = resultSet.getString("table_name");
                 String columnName = resultSet.getString("column_name");
                 if (areValidNames(schemaName, tableName, columnName)) {
+                    boolean isUserDefined = resultSet.getInt("is_user_defined") > 0;
+                    String typeSchema = resultSet.getString("type_schema");
                     closer.setTableId(resultSet.getInt("table_id"))
                             .setSchemaName(schemaName)
                             .setTableName(tableName)
@@ -893,6 +935,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                                                     resultSet.getInt("type_precision")
                                             ),
                                             resultSet.getInt("is_nullable") > 0,
+                                            isUserDefined ? typeSchema : null,
                                             resultSet.getString("type_name"),
                                             resultSet.getInt("type_precision"),
                                             resultSet.getInt("type_max_length"),
@@ -915,25 +958,28 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     @SneakyThrows
     private void visitTypeTableDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<SqlServerObjectIdentifier> identifiers, int bindCount) {
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT tt.type_table_object_id AS table_id,
-                       s.name                  AS schema_name,
-                       tt.name                 AS table_name,
-                       o.modify_date           AS modify_date,
-                       c.name                  AS column_name,
-                       c.is_nullable           AS is_nullable,
-                       ic.seed_value           AS seed_value,
-                       ic.increment_value      AS increment_value,
-                       ty.name                 AS type_name,
-                       c.max_length            AS type_max_length,
-                       c.precision             AS type_precision,
-                       c.scale                 AS type_scale,
-                       dc.name                 AS default_constraint_name,
-                       dc.definition           AS default_value
+                SELECT tt.type_table_object_id  AS table_id,
+                       s.name                   AS schema_name,
+                       tt.name                  AS table_name,
+                       o.modify_date            AS modify_date,
+                       c.name                   AS column_name,
+                       c.is_nullable            AS is_nullable,
+                       ic.seed_value            AS seed_value,
+                       ic.increment_value       AS increment_value,
+                       ty.is_user_defined       AS is_user_defined,
+                       ts.name                  AS type_schema,
+                       ty.name                  AS type_name,
+                       c.max_length             AS type_max_length,
+                       c.precision              AS type_precision,
+                       c.scale                  AS type_scale,
+                       dc.name                  AS default_constraint_name,
+                       dc.definition            AS default_value
                 FROM sys.schemas s
                          JOIN sys.table_types tt ON tt.schema_id = s.schema_id
                          JOIN sys.objects o ON o.object_id = tt.type_table_object_id
                          JOIN sys.columns c ON c.object_id = tt.type_table_object_id
                          LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                         LEFT JOIN sys.schemas ts ON ts.schema_id = ty.schema_id
                          LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
                          LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                 WHERE o.object_id IN (%s)
@@ -997,6 +1043,8 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 String tableName = resultSet.getString("table_name");
                 String columnName = resultSet.getString("column_name");
                 if (areValidNames(schemaName, tableName, columnName)) {
+                    boolean isUserDefined = resultSet.getInt("is_user_defined") > 0;
+                    String typeSchema = resultSet.getString("type_schema");
                     closer.setTableId(resultSet.getInt("table_id"))
                             .setSchemaName(schemaName)
                             .setTableName(tableName)
@@ -1009,6 +1057,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                                                     resultSet.getInt("type_precision")
                                             ),
                                             resultSet.getInt("is_nullable") > 0,
+                                            isUserDefined ? typeSchema : null,
                                             resultSet.getString("type_name"),
                                             resultSet.getInt("type_precision"),
                                             resultSet.getInt("type_max_length"),

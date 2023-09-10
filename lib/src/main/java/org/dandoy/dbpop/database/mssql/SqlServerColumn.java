@@ -9,6 +9,7 @@ import org.dandoy.dbpop.database.Database;
 @Getter
 @Slf4j
 public class SqlServerColumn extends Column {
+    private final String typeSchema;
     private final String typeName;
     private final Integer typePrecision;
     private final Integer typeMaxLength;
@@ -19,10 +20,11 @@ public class SqlServerColumn extends Column {
     private final String defaultValue;
 
     public SqlServerColumn(String column, ColumnType columnType, boolean nullable,
-                           String typeName, Integer typePrecision, Integer typeMaxLength, Integer typeScale,
+                           String typeSchema, String typeName, Integer typePrecision, Integer typeMaxLength, Integer typeScale,
                            String seedValue, String incrementValue,
                            String defaultConstraintName, String defaultValue) {
         super(column, columnType, nullable, seedValue != null);
+        this.typeSchema = typeSchema;
         this.typeName = typeName;
         this.typePrecision = typePrecision;
         this.typeMaxLength = typeMaxLength;
@@ -34,11 +36,11 @@ public class SqlServerColumn extends Column {
     }
 
     public String toDDL(Database database) {
-        return "%s %s%s%s%s".formatted(
+        return "%s %s%s %s%s".formatted(
                 database.quote(getName()),
                 getTypeDDL(database),
                 getIdentityDDL(),
-                isNullable() ? "" : " NOT NULL",
+                isNullable() ? "NULL" : "NOT NULL",
                 getDefaultConstraint(database)
         );
     }
@@ -52,7 +54,11 @@ public class SqlServerColumn extends Column {
     }
 
     private String getTypeDDL(Database database) {
-        return getTypeDDL(database, typeName, typePrecision, typeMaxLength, typeScale);
+        if (typeSchema != null) {
+            return database.quote(typeSchema) + "." + database.quote(typeName);
+        } else {
+            return getTypeDDL(database, typeName, typePrecision, typeMaxLength, typeScale);
+        }
     }
 
     static String getTypeDDL(Database database, String typeName, Integer typePrecision, Integer typeMaxLength, Integer typeScale) {

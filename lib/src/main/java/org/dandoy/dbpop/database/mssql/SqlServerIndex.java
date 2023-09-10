@@ -31,11 +31,12 @@ public class SqlServerIndex extends Index {
                 .filter(SqlServerIndexColumn::included)
                 .map(it -> database.quote(it.name))
                 .toList();
+        String indexType = "XML".equals(typeDesc) ? " PRIMARY XML" : " " + typeDesc;
         if (!isPrimaryKey()) {
-            return "CREATE%s %s INDEX %s ON %s (%s)%s"
+            return "CREATE%s%s INDEX %s ON %s (%s)%s"
                     .formatted(
                             isUnique() ? " UNIQUE" : "",
-                            typeDesc,
+                            indexType,
                             database.quote(getName()),
                             database.quote(getTableName()),
                             super.getColumns().stream().map(database::quote).collect(Collectors.joining(", ")),
@@ -45,7 +46,7 @@ public class SqlServerIndex extends Index {
             return "ALTER TABLE %s ADD CONSTRAINT %s PRIMARY KEY %s (%s)".formatted(
                     database.quote(getTableName()),
                     database.quote(getName()),
-                    typeDesc,
+                    indexType,
                     super.getColumns().stream().map(database::quote).collect(Collectors.joining(", "))
             );
         }

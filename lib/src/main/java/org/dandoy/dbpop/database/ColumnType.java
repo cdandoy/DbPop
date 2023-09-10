@@ -184,15 +184,12 @@ public abstract class ColumnType {
     };
 
     public static ColumnType getColumnType(String typeName, Integer typePrecision) {
-        if ("varchar".equals(typeName)) return VARCHAR;
-        if ("nvarchar".equals(typeName)) return VARCHAR;
         if ("int".equals(typeName)) return INTEGER;
         if ("smallint".equals(typeName)) return INTEGER;
         if ("tinyint".equals(typeName)) return INTEGER;
         if ("bigint".equals(typeName)) return BIG_DECIMAL;
         if ("money".equals(typeName)) return BIG_DECIMAL;
         if ("smallmoney".equals(typeName)) return BIG_DECIMAL;
-        if ("text".equals(typeName)) return VARCHAR;
         if ("decimal".equals(typeName)) return (typePrecision != null && typePrecision > 0) ? BIG_DECIMAL : INTEGER;
         if ("float".equals(typeName)) return (typePrecision != null && typePrecision > 0) ? BIG_DECIMAL : INTEGER;
         if ("numeric".equals(typeName)) return (typePrecision != null && typePrecision > 0) ? BIG_DECIMAL : INTEGER;
@@ -204,19 +201,11 @@ public abstract class ColumnType {
         if ("time".equals(typeName)) return TIME;
         if ("binary".equals(typeName)) return BINARY;
         if ("bit".equals(typeName)) return INTEGER;
-        if ("char".equals(typeName)) return VARCHAR;
-        if ("nchar".equals(typeName)) return VARCHAR;
-        if ("sysname".equals(typeName)) return VARCHAR;
         if ("image".equals(typeName)) return BINARY;
         if ("varbinary".equals(typeName)) return BINARY;
         if ("geometry".equals(typeName)) return INVALID;
         if ("geography".equals(typeName)) return INVALID;
         if ("hierarchyid".equals(typeName)) return INVALID;
-        if ("uniqueidentifier".equals(typeName)) return VARCHAR;
-        if ("ntext".equals(typeName)) return VARCHAR;
-        if ("datetimeoffset".equals(typeName)) return VARCHAR;
-        if ("xml".equals(typeName)) return VARCHAR;
-        log.warn("Unknown data type {}", typeName);
         return VARCHAR;
     }
 
