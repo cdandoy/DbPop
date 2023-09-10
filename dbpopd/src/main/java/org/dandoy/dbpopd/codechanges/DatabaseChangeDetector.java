@@ -64,20 +64,21 @@ public class DatabaseChangeDetector {
         // Visit all the definitions.
         // If the last modified date is newer than the last visit, add the identifier to objectIdentifiers
         // If it is older, copy the signature to the output
+        // Note: modifyDate will be null for some objects, (SQL Server's Type for example). Assume the object has not changed
         database.createDatabaseIntrospector().visitModuleMetas(new DatabaseVisitor() {
             @Override
             public void moduleMeta(ObjectIdentifier objectIdentifier, Date modifyDate) {
                 ObjectSignature oldSignature = oldSignatures.get(objectIdentifier);
                 if (oldSignature == null) {
                     objectIdentifiers.add(objectIdentifier);        // We will need to fetch the SQL to get the new signature
-                } else if (modifyDate.after(modifiedSince)) {
+                } else if (modifyDate != null && modifyDate.after(modifiedSince)) {
                     objectIdentifiers.add(objectIdentifier);        // We will need to fetch the SQL to get the new signature
                 } else {
                     signatures.put(objectIdentifier, oldSignature); // Preserve the old signature
                     seen.remove(objectIdentifier);
                 }
 
-                if (modifyDate.after(lastModifiedDate[0])) {
+                if (modifyDate != null && modifyDate.after(lastModifiedDate[0])) {
                     lastModifiedDate[0] = modifyDate;
                 }
             }
