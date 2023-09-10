@@ -1,5 +1,7 @@
 package org.dandoy.dbpop.database;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.math.BigDecimal;
 import java.sql.*;
 import java.text.ParseException;
@@ -13,6 +15,7 @@ import java.time.temporal.TemporalAccessor;
 import java.util.Base64;
 import java.util.Date;
 
+@Slf4j
 public abstract class ColumnType {
     public static final ColumnType VARCHAR = new ColumnType() {
         @Override
@@ -188,6 +191,7 @@ public abstract class ColumnType {
         if ("tinyint".equals(typeName)) return INTEGER;
         if ("bigint".equals(typeName)) return BIG_DECIMAL;
         if ("money".equals(typeName)) return BIG_DECIMAL;
+        if ("smallmoney".equals(typeName)) return BIG_DECIMAL;
         if ("text".equals(typeName)) return VARCHAR;
         if ("decimal".equals(typeName)) return (typePrecision != null && typePrecision > 0) ? BIG_DECIMAL : INTEGER;
         if ("float".equals(typeName)) return (typePrecision != null && typePrecision > 0) ? BIG_DECIMAL : INTEGER;
@@ -211,7 +215,9 @@ public abstract class ColumnType {
         if ("uniqueidentifier".equals(typeName)) return VARCHAR;
         if ("ntext".equals(typeName)) return VARCHAR;
         if ("datetimeoffset".equals(typeName)) return VARCHAR;
-        throw new RuntimeException("Unexpected type: " + typeName);
+        if ("xml".equals(typeName)) return VARCHAR;
+        log.warn("Unknown data type {}", typeName);
+        return VARCHAR;
     }
 
     public void bind(PreparedStatement preparedStatement, int jdbcPos, String input) throws SQLException {

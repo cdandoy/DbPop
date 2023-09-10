@@ -174,7 +174,8 @@ public class SqlServerDatabase extends DefaultDatabase {
                          LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
                          LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                 WHERE t.is_ms_shipped = 0
-                ORDER BY s.name, t.name, c.column_id""")) {
+                ORDER BY s.name, t.name, c.column_id
+                """)) {
             try (TableCollector tableCollector = new TableCollector((schema, table, columns) -> {
                 TableName tableName = new TableName(catalog, schema, table);
                 tableColumns.put(tableName, columns);

@@ -39,11 +39,12 @@ import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.SQL_TRIGGER;
 @Slf4j
 public class CodeService {
     public static final List<String> CODE_TYPES = List.of(
+            TYPE,
+            TYPE_TABLE,
             USER_TABLE,
             PRIMARY_KEY,
             INDEX,
             FOREIGN_KEY_CONSTRAINT,
-            TYPE_TABLE,
             SQL_INLINE_TABLE_VALUED_FUNCTION,
             SQL_SCALAR_FUNCTION,
             SQL_STORED_PROCEDURE,
@@ -150,7 +151,8 @@ public class CodeService {
                     case SQL_INLINE_TABLE_VALUED_FUNCTION, SQL_SCALAR_FUNCTION, SQL_STORED_PROCEDURE, SQL_TABLE_VALUED_FUNCTION, SQL_TRIGGER -> "Stored Procedures";
                     case USER_TABLE -> "Tables";
                     case VIEW -> "Views";
-                    case TYPE_TABLE -> "Type Table";
+                    case TYPE_TABLE -> "Table Types";
+                    case TYPE -> "Types";
                     default -> codeType;
                 };
                 Integer i = typeCounts2.computeIfAbsent(text, s -> 0);

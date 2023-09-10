@@ -24,6 +24,7 @@
   table > * > tr {
     td.object-name {
       text-align: start;
+      white-space: nowrap;
     }
 
     td {

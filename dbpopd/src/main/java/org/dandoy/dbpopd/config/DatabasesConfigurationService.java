@@ -17,8 +17,6 @@ import java.nio.file.Files;
 import java.sql.Connection;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.dandoy.dbpopd.utils.IOUtils.toCanonical;
 
@@ -26,7 +24,6 @@ import static org.dandoy.dbpopd.utils.IOUtils.toCanonical;
 @Context
 @Slf4j
 public class DatabasesConfigurationService {
-    private static final Pattern JDBC_URL_PARSER = Pattern.compile("jdbc:sqlserver://(\\w+)(:(\\d+))?(;.*)");
     private final ApplicationEventPublisher<DatabaseConfigurationChangedEvent> databaseConfigurationChangedPublisher;
     private final File configurationFile;
     private final ApplicationEventPublisher<ConnectionBuilderChangedEvent> connectionBuilderChangedPublisher;
@@ -45,21 +42,39 @@ public class DatabasesConfigurationService {
         this.databaseConfigurationChangedPublisher = databaseConfigurationChangedPublisher;
     }
 
+    public record JdbcUrlComponents(String host, int port) {}
+
+    static JdbcUrlComponents parseJdbcUrl(String url) {
+        if (!url.startsWith("jdbc:sqlserver://")) {
+            return null;
+        }
+        url = url.substring("jdbc:sqlserver://".length());
+        int i = url.indexOf(';');
+        if (i >= 0) {
+            url = url.substring(0, i);
+        }
+        i = url.indexOf(':');
+        if (i < 0) {
+            return new JdbcUrlComponents(url, 1433);
+        }
+
+        String host = url.substring(0, i);
+        try {
+            int port = Integer.parseInt(url.substring(i + 1));
+            return new JdbcUrlComponents(host, port);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     public static boolean canTcpConnect(String url) {
-        Matcher matcher = JDBC_URL_PARSER.matcher(url);
-        if (!matcher.matches()) {
+        JdbcUrlComponents jdbcUrlComponents = parseJdbcUrl(url);
+        if (jdbcUrlComponents == null) {
             log.warn("Could not parse the connection string '{}'", url);
             return true; // Assume we can
         }
-
-        String host = matcher.group(1);
-        String portGroup = matcher.group(3);
-        int port = 1433;
-        if (portGroup != null) {
-            port = Integer.parseInt(portGroup);
-        }
-        log.debug("Attempting a socket connection to {}:{}", host, port);
-        try (Socket socket = new Socket(host, port)) {
+        log.debug("Attempting a socket connection to {}:{}", jdbcUrlComponents.host(), jdbcUrlComponents.port());
+        try (Socket socket = new Socket(jdbcUrlComponents.host(), jdbcUrlComponents.port())) {
             try (InputStream ignored = socket.getInputStream()) {
                 return true;
             }

@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyList;
 import static org.dandoy.dbpop.database.ObjectTypes.*;
+import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.TYPE;
 import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.TYPE_TABLE;
 
 @SuppressWarnings("DuplicatedCode")
@@ -306,6 +307,27 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 """)) {
             visitTableTypeDefinitions(databaseVisitor, catalog, preparedStatement);
         }
+
+        // Types
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                SELECT t.user_type_id,
+                       s.name  AS schema_name,
+                       t.name  AS type_name,
+                       t.is_nullable,
+                       t.max_length,
+                       t.precision,
+                       t.scale,
+                       st.name AS system_type_name
+                FROM sys.schemas s
+                         JOIN sys.types t ON t.schema_id = s.schema_id
+                         JOIN sys.types st ON st.system_type_id = t.system_type_id AND st.is_user_defined = 0
+                WHERE t.is_user_defined = 1
+                  AND t.is_table_type = 0
+                  AND st.system_type_id = st.user_type_id
+                ORDER BY t.name
+                """)) {
+            visitTypeDefinitions(databaseVisitor, catalog, preparedStatement);
+        }
     }
 
     @SneakyThrows
@@ -457,8 +479,9 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         objectIdentifiers.stream()
                 .collect(Collectors.groupingBy(ObjectIdentifier::getCatalog))
                 .forEach((catalog, catalogObjectIdentifier) -> {
-                    use(catalog);
-                    visitModuleDefinitions(databaseVisitor, catalog, catalogObjectIdentifier);
+                    if (use(catalog)) {
+                        visitModuleDefinitions(databaseVisitor, catalog, catalogObjectIdentifier);
+                    }
                 });
     }
 
@@ -469,12 +492,14 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         List<SqlServerObjectIdentifier> fkIdentifiers = new ArrayList<>();
         List<SqlServerObjectIdentifier> indexIdentifiers = new ArrayList<>();
         List<SqlServerObjectIdentifier> typeTableIdentifiers = new ArrayList<>();
+        List<SqlServerObjectIdentifier> typeIdentifiers = new ArrayList<>();
         for (SqlServerObjectIdentifier sqlServerObjectIdentifier : sqlServerObjectIdentifiers) {
             switch (sqlServerObjectIdentifier.getType()) {
                 case USER_TABLE -> tableIdentifiers.add(sqlServerObjectIdentifier);
                 case FOREIGN_KEY_CONSTRAINT -> fkIdentifiers.add(sqlServerObjectIdentifier);
                 case PRIMARY_KEY, INDEX -> indexIdentifiers.add(sqlServerObjectIdentifier);
                 case TYPE_TABLE -> typeTableIdentifiers.add(sqlServerObjectIdentifier);
+                case TYPE -> typeIdentifiers.add(sqlServerObjectIdentifier);
                 default -> regularIdentifiers.add(sqlServerObjectIdentifier);
             }
         }
@@ -486,6 +511,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         CollectionUtils.partition(fkIdentifiers, bindCount, identifiers -> visitForeignKeyDefinitions(databaseVisitor, catalog, identifiers, bindCount));
         CollectionUtils.partition(indexIdentifiers, indexBindCount, identifiers -> visitIndexDefinitions(databaseVisitor, catalog, identifiers, indexBindCount));
         CollectionUtils.partition(typeTableIdentifiers, indexBindCount, identifiers -> visitTypeTableDefinitions(databaseVisitor, catalog, identifiers, indexBindCount));
+        CollectionUtils.partition(typeIdentifiers, indexBindCount, identifiers -> visitTypeDefinitions(databaseVisitor, catalog, identifiers, indexBindCount));
     }
 
     private List<SqlServerObjectIdentifier> toSqlServerObjectIdentifier(Collection<ObjectIdentifier> objectIdentifiers) {
@@ -525,6 +551,29 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
 
     private List<SqlServerObjectIdentifier> toSqlServerObjectIdentifiers(Collection<ObjectIdentifier> objectIdentifiers) {
         List<SqlServerObjectIdentifier> ret = new ArrayList<>();
+        List<ObjectIdentifier> types = new ArrayList<>();
+        List<ObjectIdentifier> objects = new ArrayList<>();
+
+        for (ObjectIdentifier objectIdentifier : objectIdentifiers) {
+            if (objectIdentifier.getType().equals(TYPE)) {
+                types.add(objectIdentifier);
+            } else {
+                objects.add(objectIdentifier);
+            }
+        }
+
+        if (!types.isEmpty()) {
+            ret.addAll(toSqlServerObjectIdentifiers_Types(types));
+        }
+        if (!objects.isEmpty()) {
+            ret.addAll(toSqlServerObjectIdentifiers_Objects(objects));
+        }
+
+        return ret;
+    }
+
+    private List<SqlServerObjectIdentifier> toSqlServerObjectIdentifiers_Objects(Collection<ObjectIdentifier> objectIdentifiers) {
+        List<SqlServerObjectIdentifier> ret = new ArrayList<>();
 
         try {
             try (PreparedStatement preparedStatement = connection.prepareStatement("""
@@ -563,6 +612,45 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+        return ret;
+    }
+
+    @SneakyThrows
+    private List<SqlServerObjectIdentifier> toSqlServerObjectIdentifiers_Types(Collection<ObjectIdentifier> objectIdentifiers) {
+        List<SqlServerObjectIdentifier> ret = new ArrayList<>();
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                SELECT t.user_type_id,
+                       s.name  AS schema_name,
+                       t.name  AS type_name,
+                       t.is_nullable,
+                       t.max_length,
+                       t.precision,
+                       t.scale,
+                       st.name AS system_type_name
+                FROM sys.schemas s
+                         JOIN sys.types t ON t.schema_id = s.schema_id
+                         JOIN sys.types st ON st.system_type_id = t.system_type_id AND st.is_user_defined = 0
+                WHERE t.is_user_defined = 1
+                  AND t.is_table_type = 0
+                  AND st.system_type_id = st.user_type_id
+                ORDER BY t.name
+                """)) {
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    for (ObjectIdentifier objectIdentifier : objectIdentifiers) {
+                        int userTypeId = resultSet.getInt("user_type_id");
+                        String schemaName = resultSet.getString("schema_name");
+                        String typeName = resultSet.getString("type_name");
+                        if (objectIdentifier.getSchema().equals(schemaName) && objectIdentifier.getName().equals(typeName)) {
+                            ret.add(new SqlServerObjectIdentifier(
+                                    userTypeId, objectIdentifier.getType(), objectIdentifier.getCatalog(), objectIdentifier.getSchema(), objectIdentifier.getName()
+                            ));
+                        }
+                    }
+                }
+            }
         }
         return ret;
     }
@@ -858,7 +946,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             for (; i < bindCount; i++) {
                 preparedStatement.setNull(i + 1, Types.INTEGER);
             }
-            visitTableDefinitions(databaseVisitor, catalog, preparedStatement);
+            visitTableTypeDefinitions(databaseVisitor, catalog, preparedStatement);
         }
     }
 
@@ -934,6 +1022,62 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 }
             }
             closer.flush();
+        }
+    }
+
+    /**
+     * visitModuleDefinitions for types
+     */
+    @SneakyThrows
+    private void visitTypeDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<SqlServerObjectIdentifier> identifiers, int bindCount) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("""
+                 SELECT t.user_type_id,
+                        s.name  AS schema_name,
+                        t.name  AS type_name,
+                        t.is_nullable,
+                        t.max_length,
+                        t.precision,
+                        t.scale,
+                        st.name AS system_type_name
+                 FROM sys.schemas s
+                          JOIN sys.types t ON t.schema_id = s.schema_id
+                          JOIN sys.types st ON st.system_type_id = t.system_type_id AND st.is_user_defined = 0
+                 WHERE t.is_user_defined = 1
+                   AND t.is_table_type = 0
+                   AND st.system_type_id = st.user_type_id
+                   AND t.user_type_id IN (%s)
+                """.formatted(StringUtils.repeat("?", ",", bindCount)))) {
+            int i;
+            for (i = 0; i < bindCount && i < identifiers.size(); i++) {
+                preparedStatement.setInt(i + 1, identifiers.get(i).getObjectId());
+            }
+            for (; i < bindCount; i++) {
+                preparedStatement.setNull(i + 1, Types.INTEGER);
+            }
+            visitTypeDefinitions(databaseVisitor, catalog, preparedStatement);
+        }
+    }
+
+    @SneakyThrows
+    private void visitTypeDefinitions(DatabaseVisitor databaseVisitor, String catalog, PreparedStatement preparedStatement) {
+        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            while (resultSet.next()) {
+                int userTypeId = resultSet.getInt("user_type_id");
+                String schema = resultSet.getString("schema_name");
+                String typeName = resultSet.getString("type_name");
+                boolean isNullable = resultSet.getInt("is_nullable") > 0;
+                int maxLength = resultSet.getInt("max_length");
+                int precision = resultSet.getInt("precision");
+                int scale = resultSet.getInt("scale");
+                String systemTypeName = resultSet.getString("system_type_name");
+                String definition = new SqlServerType(schema, typeName, systemTypeName, precision, maxLength, scale, isNullable)
+                        .toDDL(database);
+                databaseVisitor.moduleDefinition(
+                        new SqlServerObjectIdentifier(userTypeId, TYPE, catalog, schema, typeName),
+                        null,
+                        definition
+                );
+            }
         }
     }
 
@@ -1032,10 +1176,12 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
         }
     }
 
-    private void use(String catalog) {
+    private boolean use(String catalog) {
         try (Statement statement = connection.createStatement()) {
             statement.execute("USE " + catalog);
+            return true;
         } catch (SQLException e) {
+            if (e.getSQLState().equals("S0001")) return false; // catalog doesn't exist
             throw new RuntimeException(e);
         }
     }

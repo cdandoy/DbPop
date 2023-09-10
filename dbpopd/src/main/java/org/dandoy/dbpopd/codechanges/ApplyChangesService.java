@@ -18,6 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.dandoy.dbpop.database.ObjectTypes.*;
+import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.TYPE;
 import static org.dandoy.dbpop.database.mssql.SqlServerObjectTypes.TYPE_TABLE;
 
 @Singleton
@@ -119,7 +120,7 @@ public class ApplyChangesService {
             String sql = IOUtils.toString(file);
             String type = objectIdentifier.getType();
 
-            if (type.equals(USER_TABLE) || type.equals(TYPE_TABLE) || type.equals(FOREIGN_KEY_CONSTRAINT) || type.equals(INDEX) || type.equals(PRIMARY_KEY)) {
+            if (type.equals(USER_TABLE) || type.equals(TYPE) || type.equals(TYPE_TABLE) || type.equals(FOREIGN_KEY_CONSTRAINT) || type.equals(INDEX) || type.equals(PRIMARY_KEY)) {
                 // Attempt to transition the change, but if that is not possible (new object, cannot transition), just try to execute the statement.
                 if (!transitionFileToTarget(database, statement, objectIdentifier, sql)) {
                     statement.execute(sql);
