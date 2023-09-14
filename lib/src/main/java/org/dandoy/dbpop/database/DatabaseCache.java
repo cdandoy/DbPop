@@ -17,6 +17,7 @@ public class DatabaseCache extends Database {
     private Map<TableName, Table> cache = null;
 
     public DatabaseCache(Database delegate, VirtualFkCache virtualFkCache) {
+        super(delegate.getDatabaseVersion());
         this.delegate = delegate;
         this.virtualFkCache = virtualFkCache;
     }

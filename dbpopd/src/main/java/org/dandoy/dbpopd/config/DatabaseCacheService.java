@@ -20,15 +20,17 @@ import static org.dandoy.dbpopd.utils.IOUtils.toCanonical;
 @Slf4j
 public class DatabaseCacheService {
     private final ApplicationEventPublisher<DatabaseCacheChangedEvent> databaseCacheChangedPublisher;
+    private final ApplicationEventPublisher<DatabaseVersionChangedEvent> databaseVersionChangedPublisher;
     private final ConnectionBuilder[] connectionBuilders = new ConnectionBuilder[2];
     private final DatabaseCache[] databaseCaches = new DatabaseCache[2];
     private final VirtualFkCache virtualFkCache;
 
     public DatabaseCacheService(
             @SuppressWarnings("MnInjectionPoints") @Property(name = "dbpopd.configuration.path") String configurationPath,
-            ApplicationEventPublisher<DatabaseCacheChangedEvent> databaseCacheChangedPublisher
-    ) {
+            ApplicationEventPublisher<DatabaseCacheChangedEvent> databaseCacheChangedPublisher,
+            ApplicationEventPublisher<DatabaseVersionChangedEvent> databaseVersionChangedPublisher) {
         this.databaseCacheChangedPublisher = databaseCacheChangedPublisher;
+        this.databaseVersionChangedPublisher = databaseVersionChangedPublisher;
         File configurationDir = toCanonical(new File(configurationPath));
         File vfkFile = new File(configurationDir, "vfk.json");
         virtualFkCache = VirtualFkCache.createVirtualFkCache(vfkFile);
@@ -55,6 +57,13 @@ public class DatabaseCacheService {
                 new DatabaseCacheChangedEvent(
                         type,
                         databaseCache
+                )
+        );
+
+        databaseVersionChangedPublisher.publishEvent(
+                new DatabaseVersionChangedEvent(
+                        type,
+                        databaseCache == null ? null : databaseCache.getDatabaseVersion()
                 )
         );
     }

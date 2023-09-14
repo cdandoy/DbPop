@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public class PostgresDatabase extends DefaultDatabase {
 
     public PostgresDatabase(ConnectionBuilder connection) {
-        super(connection);
+        super(connection, PostgresDatabaseVersion.BASE_VERSION);
     }
 
     @Override

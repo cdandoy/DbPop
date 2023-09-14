@@ -1,5 +1,6 @@
 package org.dandoy.dbpop.database;
 
+import lombok.Getter;
 import org.dandoy.dbpop.database.mssql.SqlServerDatabase;
 import org.dandoy.dbpop.database.pgsql.PostgresDatabase;
 import org.dandoy.dbpop.upload.DataFileHeader;
@@ -15,8 +16,11 @@ public abstract class Database implements AutoCloseable {
 
     public static final int ROW_COUNT_MAX = 1000;
     public final TransitionGenerator INVALID_TRANSITION_GENERATOR;
+    @Getter
+    private final DatabaseVersion databaseVersion;
 
-    protected Database() {
+    protected Database(DatabaseVersion databaseVersion) {
+        this.databaseVersion = databaseVersion;
         INVALID_TRANSITION_GENERATOR = new TransitionGenerator(this) {
             @Override
             public boolean isValid() {

@@ -23,7 +23,8 @@ public abstract class DefaultDatabase extends Database {
     protected final SafeConnection safeConnection;
     private final String identifierQuoteString;
 
-    protected DefaultDatabase(ConnectionBuilder connectionBuilder) {
+    protected DefaultDatabase(ConnectionBuilder connectionBuilder, DatabaseVersion databaseVersion) {
+        super(databaseVersion);
         try {
             safeConnection = new SafeConnection(connectionBuilder, ConnectionVerifier.DEFAULT_CONNECTION_VERIFIER);
             DatabaseMetaData metaData = getConnection().getMetaData();

@@ -23,7 +23,7 @@ public class SqlServerDatabase extends DefaultDatabase {
     private final Transitions transitions = new Transitions(this);
 
     public SqlServerDatabase(ConnectionBuilder connectionBuilder) {
-        super(connectionBuilder);
+        super(connectionBuilder, SqlServerDatabaseVersion.BASE_VERSION);
     }
 
     @Override

@@ -16,6 +16,7 @@ public class DatabaseProxy extends Database {
     private final VirtualFkCache virtualFkCache;
 
     public DatabaseProxy(Database delegate, VirtualFkCache virtualFkCache) {
+        super(delegate.getDatabaseVersion());
         this.delegate = delegate;
         this.virtualFkCache = virtualFkCache;
     }
