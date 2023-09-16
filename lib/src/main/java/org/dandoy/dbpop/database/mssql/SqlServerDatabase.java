@@ -200,26 +200,42 @@ public class SqlServerDatabase extends DefaultDatabase {
         }
         // Collects the indexes
         try (PreparedStatement preparedStatement = getConnection().prepareStatement("""
-                SELECT s.name AS s,
-                       t.name AS t,
-                       i.name AS i,
+                SELECT s.name                 AS s,
+                       t.name                 AS t,
+                       i.name                 AS i,
                        i.is_unique,
                        i.is_primary_key,
                        i.type_desc,
-                       c.name AS c,
+                       xi.xml_index_type_description,
+                       xi.secondary_type_desc AS using_xml_index_for_type,
+                       ui.name                AS using_xml_index_name,
+                       c.name                 AS c,
                        ic.is_included_column
                 FROM sys.schemas s
                          JOIN sys.tables t ON t.schema_id = s.schema_id
                          LEFT JOIN sys.indexes i ON i.object_id = t.object_id
                          LEFT JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
                          LEFT JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
+                         LEFT JOIN sys.xml_indexes xi ON i.object_id = xi.object_id AND xi.index_id = i.index_id
+                         LEFT JOIN sys.indexes ui ON ui.index_id = xi.using_xml_index_id AND ui.object_id = xi.object_id
                 WHERE i.name IS NOT NULL
                   AND c.name IS NOT NULL
                   AND t.is_ms_shipped = 0
-                ORDER BY s.name, t.name, i.index_id, ic.key_ordinal""")) {
+                ORDER BY s.name, t.name, i.index_id, ic.key_ordinal
+                """)) {
             try (SqlServerIndexCollector indexCollector = new SqlServerIndexCollector(collector -> {
                 TableName tableName = new TableName(catalog, collector.getSchema(), collector.getTable());
-                SqlServerIndex index = new SqlServerIndex(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getTypeDesc(), collector.getSqlServerIndexColumns());
+                SqlServerIndex index = new SqlServerIndex(
+                        collector.getName(),
+                        tableName,
+                        collector.isUnique(),
+                        collector.isPrimaryKey(),
+                        collector.getTypeDesc(),
+                        collector.getXmlTypeDesc(),
+                        collector.getUsingXmlIndexName(),
+                        collector.getUsingXmlIndexForType(),
+                        collector.getSqlServerIndexColumns()
+                );
                 indexes.computeIfAbsent(tableName, it2 -> new ArrayList<>()).add(index);
                 if (collector.isPrimaryKey()) {
                     primaryKeyMap.put(
@@ -240,6 +256,9 @@ public class SqlServerDatabase extends DefaultDatabase {
                                 resultSet.getBoolean("is_unique"),
                                 resultSet.getBoolean("is_primary_key"),
                                 resultSet.getString("type_desc"),
+                                resultSet.getString("xml_index_type_description"),
+                                resultSet.getString("using_xml_index_for_type"),
+                                resultSet.getString("using_xml_index_name"),
                                 resultSet.getString("c"),
                                 resultSet.getBoolean("is_included_column")
                         );
@@ -375,26 +394,43 @@ public class SqlServerDatabase extends DefaultDatabase {
                             // Collects the indexes
                             try (PreparedStatement preparedStatement = connection.prepareStatement("""
 
-                                    SELECT s.name AS s,
-                                           t.name AS t,
-                                           i.name AS i,
+                                  
+
+                                    SELECT s.name                 AS s,
+                                           t.name                 AS t,
+                                           i.name                 AS i,
                                            i.is_unique,
                                            i.is_primary_key,
                                            i.type_desc,
-                                           c.name AS c,
+                                           xi.xml_index_type_description,
+                                           xi.secondary_type_desc AS using_xml_index_for_type,
+                                           ui.name                AS using_xml_index_name,
+                                           c.name                 AS c,
                                            ic.is_included_column
                                     FROM sys.schemas s
                                              JOIN sys.tables t ON t.schema_id = s.schema_id
                                              LEFT JOIN sys.indexes i ON i.object_id = t.object_id
                                              LEFT JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
                                              LEFT JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
+                                             LEFT JOIN sys.xml_indexes xi ON i.object_id = xi.object_id AND xi.index_id = i.index_id
+                                             LEFT JOIN sys.indexes ui ON ui.index_id = xi.using_xml_index_id AND ui.object_id = xi.object_id
                                     WHERE i.name IS NOT NULL
                                       AND c.name IS NOT NULL
                                     ORDER BY s.name, t.name, i.index_id, ic.key_ordinal""")) {
                                 try (SqlServerIndexCollector indexCollector = new SqlServerIndexCollector(collector -> {
                                     TableName tableName = new TableName(catalog, collector.getSchema(), collector.getTable());
                                     if (datasetTableNames.contains(tableName)) {
-                                        SqlServerIndex index = new SqlServerIndex(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getTypeDesc(), collector.getSqlServerIndexColumns());
+                                        SqlServerIndex index = new SqlServerIndex(
+                                                collector.getName(),
+                                                tableName,
+                                                collector.isUnique(),
+                                                collector.isPrimaryKey(),
+                                                collector.getTypeDesc(),
+                                                collector.getXmlTypeDesc(),
+                                                collector.getUsingXmlIndexName(),
+                                                collector.getUsingXmlIndexForType(),
+                                                collector.getSqlServerIndexColumns()
+                                        );
                                         indexes.computeIfAbsent(tableName, it2 -> new ArrayList<>()).add(index);
                                         if (collector.isPrimaryKey()) {
                                             primaryKeyMap.put(
@@ -417,6 +453,9 @@ public class SqlServerDatabase extends DefaultDatabase {
                                                     resultSet.getBoolean("is_unique"),
                                                     resultSet.getBoolean("is_primary_key"),
                                                     resultSet.getString("type_desc"),
+                                                    resultSet.getString("xml_index_type_description"),
+                                                    resultSet.getString("using_xml_index_for_type"),
+                                                    resultSet.getString("using_xml_index_name"),
                                                     resultSet.getString("c"),
                                                     resultSet.getBoolean("is_included_column")
                                             );
@@ -515,6 +554,8 @@ public class SqlServerDatabase extends DefaultDatabase {
                            c.is_nullable      AS is_nullable,
                            ic.seed_value      AS seed_value,
                            ic.increment_value AS increment_value,
+                           ty.is_user_defined AS is_user_defined,
+                           ts.name            AS type_schema,
                            ty.name            AS type_name,
                            c.max_length       AS type_max_length,
                            c.precision        AS type_precision,
@@ -525,11 +566,13 @@ public class SqlServerDatabase extends DefaultDatabase {
                              JOIN sys.tables t ON t.schema_id = s.schema_id
                              JOIN sys.columns c ON c.object_id = t.object_id
                              LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                             LEFT JOIN sys.schemas ts ON ts.schema_id = ty.schema_id
                              LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
                              LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                     WHERE s.name = ?
                       AND t.name = ?
-                    ORDER BY s.name, t.name, c.column_id""")) {
+                    ORDER BY s.name, t.name, c.column_id
+                    """)) {
                 tablesStatement.setString(1, tableName.getSchema());
                 tablesStatement.setString(2, tableName.getTable());
                 try (ResultSet tablesResultSet = tablesStatement.executeQuery()) {
@@ -543,17 +586,22 @@ public class SqlServerDatabase extends DefaultDatabase {
             }
             // Collects the indexes
             try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                    SELECT i.name AS i,
+                    SELECT i.name                 AS i,
                            i.is_unique,
                            i.is_primary_key,
                            i.type_desc,
-                           c.name AS c,
+                           xi.xml_index_type_description,
+                           xi.secondary_type_desc AS using_xml_index_for_type,
+                           ui.name                AS using_xml_index_name,
+                           c.name                 AS c,
                            ic.is_included_column
                     FROM sys.schemas s
                              JOIN sys.tables t ON t.schema_id = s.schema_id
                              LEFT JOIN sys.indexes i ON i.object_id = t.object_id
                              LEFT JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
                              LEFT JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
+                             LEFT JOIN sys.xml_indexes xi ON i.object_id = xi.object_id AND xi.index_id = i.index_id
+                             LEFT JOIN sys.indexes ui ON ui.index_id = xi.using_xml_index_id AND ui.object_id = xi.object_id
                     WHERE i.name IS NOT NULL
                       AND c.name IS NOT NULL
                       AND s.name = ?
@@ -562,7 +610,17 @@ public class SqlServerDatabase extends DefaultDatabase {
                 preparedStatement.setString(1, tableName.getSchema());
                 preparedStatement.setString(2, tableName.getTable());
                 try (SqlServerIndexCollector indexCollector = new SqlServerIndexCollector(collector -> {
-                    SqlServerIndex index = new SqlServerIndex(collector.getName(), tableName, collector.isUnique(), collector.isPrimaryKey(), collector.getTypeDesc(), collector.getSqlServerIndexColumns());
+                    SqlServerIndex index = new SqlServerIndex(
+                            collector.getName(),
+                            tableName,
+                            collector.isUnique(),
+                            collector.isPrimaryKey(),
+                            collector.getTypeDesc(),
+                            collector.getXmlTypeDesc(),
+                            collector.getUsingXmlIndexName(),
+                            collector.getUsingXmlIndexForType(),
+                            collector.getSqlServerIndexColumns()
+                    );
                     indexes.add(index);
                     if (collector.isPrimaryKey()) {
                         primaryKeys.add(
@@ -583,6 +641,9 @@ public class SqlServerDatabase extends DefaultDatabase {
                                     resultSet.getBoolean("is_unique"),
                                     resultSet.getBoolean("is_primary_key"),
                                     resultSet.getString("type_desc"),
+                                    resultSet.getString("xml_index_type_description"),
+                                    resultSet.getString("using_xml_index_for_type"),
+                                    resultSet.getString("using_xml_index_name"),
                                     resultSet.getString("c"),
                                     resultSet.getBoolean("is_included_column")
                             );

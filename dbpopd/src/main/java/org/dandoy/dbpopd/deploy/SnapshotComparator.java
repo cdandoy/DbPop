@@ -62,8 +62,8 @@ public class SnapshotComparator {
                                 // Object CHANGED: it exists in the code directory but is different from the snapshot
                                 pathsByPriority.remove(file.toPath());
                                 String fileSql = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
-                                String cleanSnapshotSql = HashCalculator.cleanSql(snapshotSql);
-                                String cleanFileSql = HashCalculator.cleanSql(fileSql);
+                                String cleanSnapshotSql = HashCalculator.cleanSqlForHash(snapshotSql);
+                                String cleanFileSql = HashCalculator.cleanSqlForHash(fileSql);
                                 if (!cleanSnapshotSql.equals(cleanFileSql)) {
                                     keepRunning = changeConsumer.accept(objectIdentifier, snapshotSql, fileSql);
                                 }

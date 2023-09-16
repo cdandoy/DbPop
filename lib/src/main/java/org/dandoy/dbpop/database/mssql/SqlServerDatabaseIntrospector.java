@@ -293,22 +293,27 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
 
         // Indexes
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT t.object_id   AS table_id,
-                       i.index_id    AS index_id,
-                       s.name        AS schema_name,
-                       t.name        AS table_name,
-                       t.modify_date AS modify_date,
-                       i.name        AS index_name,
+                SELECT t.object_id            AS table_id,
+                       i.index_id             AS index_id,
+                       s.name                 AS schema_name,
+                       t.name                 AS table_name,
+                       t.modify_date          AS modify_date,
+                       i.name                 AS index_name,
                        i.is_unique,
                        i.is_primary_key,
                        i.type_desc,
-                       c.name        AS column_name,
+                       xi.xml_index_type_description,
+                       xi.secondary_type_desc AS using_xml_index_for_type,
+                       ui.name                AS using_xml_index_name,
+                       c.name                 AS column_name,
                        ic.is_included_column
                 FROM sys.schemas s
                          JOIN sys.tables t ON t.schema_id = s.schema_id
                          JOIN sys.indexes i ON i.object_id = t.object_id
                          JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
                          JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
+                         LEFT JOIN sys.xml_indexes xi ON i.object_id = xi.object_id AND xi.index_id = i.index_id
+                         LEFT JOIN sys.indexes ui ON ui.index_id = xi.using_xml_index_id AND ui.object_id = xi.object_id
                 WHERE t.is_ms_shipped = 0
                   AND s.name NOT IN ('temp')
                 ORDER BY s.name, t.name, i.index_id, ic.key_ordinal
@@ -321,11 +326,13 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                 SELECT tt.type_table_object_id AS table_id,
                        s.name                  AS schema_name,
                        tt.name                 AS table_name,
-                       o.modify_date          AS modify_date,
+                       o.modify_date           AS modify_date,
                        c.name                  AS column_name,
                        c.is_nullable           AS is_nullable,
                        ic.seed_value           AS seed_value,
                        ic.increment_value      AS increment_value,
+                       ty.is_user_defined      AS is_user_defined,
+                       ts.name                 AS type_schema,
                        ty.name                 AS type_name,
                        c.max_length            AS type_max_length,
                        c.precision             AS type_precision,
@@ -337,6 +344,7 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                          JOIN sys.objects o ON o.object_id = tt.type_table_object_id
                          JOIN sys.columns c ON c.object_id = tt.type_table_object_id
                          LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                         LEFT JOIN sys.schemas ts ON ts.schema_id = ty.schema_id
                          LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
                          LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                 WHERE s.name NOT IN ('sys', 'temp')
@@ -452,6 +460,9 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             boolean isUnique;
             boolean isPrimaryKey;
             String typeDesc = null;
+            String xmlTypeDesc;
+            SqlServerIndex.UsingXmlIndexForType usingXmlIndexForType;
+            String usingXmlIndexName;
             List<SqlServerIndex.SqlServerIndexColumn> columns = new ArrayList<>();
 
             public Closer setIds(int tableId, int indexId) {
@@ -470,7 +481,15 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
             void flush() {
                 if (this.tableId != null && this.indexId != null) {
                     SqlServerIndex sqlServerIndex = new SqlServerIndex(
-                            indexName, new TableName(catalog, schemaName, tableName), isUnique, isPrimaryKey, typeDesc, new ArrayList<>(columns)
+                            indexName,
+                            new TableName(catalog, schemaName, tableName),
+                            isUnique,
+                            isPrimaryKey,
+                            typeDesc,
+                            xmlTypeDesc,
+                            usingXmlIndexName,
+                            usingXmlIndexForType,
+                            new ArrayList<>(columns)
                     );
 
                     String definition = sqlServerIndex.toDDL(database);
@@ -481,6 +500,11 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                     databaseVisitor.moduleDefinition(indexIdentifier, modifyDate, definition);
                     columns.clear();
                 }
+            }
+
+            public Closer setUsingXmlIndexForType(String usingXmlIndexForType) {
+                this.usingXmlIndexForType = usingXmlIndexForType == null ? null : SqlServerIndex.UsingXmlIndexForType.valueOf(usingXmlIndexForType);
+                return this;
             }
         }
 
@@ -502,6 +526,9 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                             .setUnique(resultSet.getInt("is_unique") > 0)
                             .setPrimaryKey(resultSet.getInt("is_primary_key") > 0)
                             .setTypeDesc(resultSet.getString("type_desc"))
+                            .setXmlTypeDesc(resultSet.getString("xml_index_type_description"))
+                            .setUsingXmlIndexForType(resultSet.getString("using_xml_index_for_type"))
+                            .setUsingXmlIndexName(resultSet.getString("using_xml_index_name"))
                             .addColumn(new SqlServerIndex.SqlServerIndexColumn(
                                     resultSet.getString("column_name"),
                                     resultSet.getInt("is_included_column") > 0
@@ -640,8 +667,6 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                                                 objectIdentifier.getName()
                                         )
                                 );
-                            } else {
-                                log.error("Object not found: " + objectIdentifier);
                             }
                         }
                     }
@@ -738,8 +763,6 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                                                 )
                                         )
                                 );
-                            } else {
-                                log.error("Object not found: " + objectIdentifier);
                             }
                         }
                     }
@@ -793,8 +816,6 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
                                                 )
                                         )
                                 );
-                            } else {
-                                log.error("Object not found: " + objectIdentifier);
                             }
                         }
                     }
@@ -1175,22 +1196,27 @@ public class SqlServerDatabaseIntrospector implements DatabaseIntrospector {
     @SneakyThrows
     private void visitIndexDefinitions(DatabaseVisitor databaseVisitor, String catalog, List<SqlServerObjectIdentifier> identifiers, int bindCount) {
         try (PreparedStatement preparedStatement = connection.prepareStatement("""
-                SELECT t.object_id   AS table_id,
-                       i.index_id    AS index_id,
-                       s.name        AS schema_name,
-                       t.name        AS table_name,
-                       t.modify_date AS modify_date,
-                       i.name        AS index_name,
+                SELECT t.object_id                      AS table_id,
+                       i.index_id                       AS index_id,
+                       s.name                           AS schema_name,
+                       t.name                           AS table_name,
+                       t.modify_date                    AS modify_date,
+                       i.name                           AS index_name,
                        i.is_unique,
                        i.is_primary_key,
                        i.type_desc,
-                       c.name        AS column_name,
+                       xi.xml_index_type_description,
+                       xi.secondary_type_desc           AS using_xml_index_for_type,
+                       ui.name                          AS using_xml_index_name,
+                       c.name                           AS column_name,
                        ic.is_included_column
                 FROM sys.schemas s
                          JOIN sys.tables t ON t.schema_id = s.schema_id
                          JOIN sys.indexes i ON i.object_id = t.object_id
                          JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.index_id = i.index_id
                          JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = ic.column_id
+                         LEFT JOIN sys.xml_indexes xi ON i.object_id = xi.object_id AND xi.index_id = i.index_id
+                         LEFT JOIN sys.indexes ui ON ui.index_id = xi.using_xml_index_id AND ui.object_id = xi.object_id
                          JOIN (VALUES %s) AS x(t, i) ON x.t = i.object_id AND x.i = i.name
                 ORDER BY s.name, t.name, i.index_id, ic.key_ordinal
                 """.formatted(StringUtils.repeat("(?, ?)", ",", bindCount)))) {

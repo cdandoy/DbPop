@@ -9,12 +9,22 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class SqlServerIndex extends Index {
+    public enum UsingXmlIndexForType {PATH, PROPERTY, VALUE}
+
     private final String typeDesc;
+    private final String xmlTypeDesc;
+    private final String usingXmlIndexName;
+    private final UsingXmlIndexForType usingXmlIndexForType;
     private final List<SqlServerIndexColumn> columns;
 
-    public SqlServerIndex(String name, TableName tableName, boolean unique, boolean primaryKey, String typeDesc, List<SqlServerIndexColumn> columns) {
+    public SqlServerIndex(String name, TableName tableName, boolean unique, boolean primaryKey, String typeDesc,
+                          String xmlTypeDesc, String usingXmlIndexName, UsingXmlIndexForType usingXmlIndexForType,
+                          List<SqlServerIndexColumn> columns) {
         super(name, tableName, unique, primaryKey, getIndexedColumns(columns));
         this.typeDesc = typeDesc;
+        this.xmlTypeDesc = xmlTypeDesc;
+        this.usingXmlIndexName = usingXmlIndexName;
+        this.usingXmlIndexForType = usingXmlIndexForType;
         this.columns = columns;
     }
 
@@ -31,24 +41,41 @@ public class SqlServerIndex extends Index {
                 .filter(SqlServerIndexColumn::included)
                 .map(it -> database.quote(it.name))
                 .toList();
-        String indexType = "XML".equals(typeDesc) ? " PRIMARY XML" : " " + typeDesc;
         if (!isPrimaryKey()) {
-            return "CREATE%s%s INDEX %s ON %s (%s)%s"
+            return "CREATE%s%s INDEX %s ON %s (%s)%s%s"
                     .formatted(
                             isUnique() ? " UNIQUE" : "",
-                            indexType,
+                            getIndexType(),
                             database.quote(getName()),
                             database.quote(getTableName()),
                             super.getColumns().stream().map(database::quote).collect(Collectors.joining(", ")),
-                            includedColumnNames.isEmpty() ? "" : " INCLUDE (" + String.join(", ", includedColumnNames) + ")"
+                            includedColumnNames.isEmpty() ? "" : " INCLUDE (" + String.join(", ", includedColumnNames) + ")",
+                            getUsingXml(database)
                     );
         } else {
             return "ALTER TABLE %s ADD CONSTRAINT %s PRIMARY KEY %s (%s)".formatted(
                     database.quote(getTableName()),
                     database.quote(getName()),
-                    indexType,
+                    getIndexType(),
                     super.getColumns().stream().map(database::quote).collect(Collectors.joining(", "))
             );
+        }
+    }
+
+    private String getUsingXml(Database database) {
+        if (usingXmlIndexName == null) return "";
+        return " USING XML INDEX %s FOR %s".formatted(database.quote(usingXmlIndexName), usingXmlIndexForType);
+    }
+
+    private String getIndexType() {
+        if ("XML".equals(typeDesc)) {
+            if ("PRIMARY_XML".equals(xmlTypeDesc)) {
+                return " PRIMARY XML";
+            } else {
+                return " XML";
+            }
+        } else {
+            return " " + typeDesc;
         }
     }
 
