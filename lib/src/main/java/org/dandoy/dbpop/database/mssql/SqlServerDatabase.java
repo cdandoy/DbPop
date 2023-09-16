@@ -357,6 +357,8 @@ public class SqlServerDatabase extends DefaultDatabase {
                                            c.is_nullable      AS is_nullable,
                                            ic.seed_value      AS seed_value,
                                            ic.increment_value AS increment_value,
+                                           ty.is_user_defined AS is_user_defined,
+                                           ts.name            AS type_schema,
                                            ty.name            AS type_name,
                                            c.max_length       AS type_max_length,
                                            c.precision        AS type_precision,
@@ -367,9 +369,11 @@ public class SqlServerDatabase extends DefaultDatabase {
                                              JOIN sys.tables t ON t.schema_id = s.schema_id
                                              JOIN sys.columns c ON c.object_id = t.object_id
                                              LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                                             LEFT JOIN sys.schemas ts ON ts.schema_id = ty.schema_id
                                              LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.name = c.name
                                              LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
-                                    ORDER BY s.name, t.name, c.column_id""")) {
+                                    ORDER BY s.name, t.name, c.column_id
+                                    """)) {
                                 try (TableCollector tableCollector = new TableCollector((schema, table, columns) -> {
                                     TableName tableName = new TableName(catalog, schema, table);
                                     if (datasetTableNames.contains(tableName)) {
