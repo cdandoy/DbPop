@@ -1,7 +1,6 @@
 rootProject.name = 'dbpop'
 
 include 'lib'
-include 'diff'
 include 'dbpopd'
 include 'dbpopr'
 include 'test-resources'

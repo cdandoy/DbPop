@@ -126,6 +126,7 @@ export default function StructuredDownloadComponent() {
                     setLoadingDataFilter(false);
                 })
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, dataset, selectedDependency, rowLimit, dataFilterChangeNumber])
 
     function refreshDataFilter() {

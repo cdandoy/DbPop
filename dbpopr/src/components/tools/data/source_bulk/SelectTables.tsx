@@ -60,6 +60,7 @@ export default function SelectTables({
                 }
                 setLoading(false);
             })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [changeNumber])
 
     function filterTableInfo(tableInfo: TableInfo) {

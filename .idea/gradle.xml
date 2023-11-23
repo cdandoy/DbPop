@@ -12,7 +12,6 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/dbpopd" />
             <option value="$PROJECT_DIR$/dbpopr" />
-            <option value="$PROJECT_DIR$/diff" />
             <option value="$PROJECT_DIR$/lib" />
             <option value="$PROJECT_DIR$/test-resources" />
           </set>
