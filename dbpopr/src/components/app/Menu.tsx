@@ -22,9 +22,7 @@ export default function Menu() {
 
             {(siteStatus.hasSource || siteStatus.hasTarget) &&
                 <li className="nav-link">
-                    {siteStatus.hasSource && siteStatus.hasTarget && <NavLink to={"/tools"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>}
-                    {siteStatus.hasSource && !siteStatus.hasTarget && <NavLink to={"/tools/source"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>}
-                    {!siteStatus.hasSource && siteStatus.hasTarget && <NavLink to={"/tools/target"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>}
+                    <NavLink to={"/tools"}><SidebarMenu text="Tools" icons="fa fa-hammer"/></NavLink>
                 </li>
             }
 

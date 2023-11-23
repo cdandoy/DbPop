@@ -1,5 +1,7 @@
 package org.dandoy.dbpopd.content;
 
+import io.micronaut.serde.annotation.Serdeable;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import org.dandoy.dbpop.database.RowCount;
 import org.dandoy.dbpop.database.TableName;
@@ -7,11 +9,13 @@ import org.dandoy.dbpop.database.TableName;
 import java.util.List;
 
 @Getter
+@Serdeable
 public class TableInfo implements Comparable<TableInfo> {
     private final TableName tableName;
     private final RowCount sourceRowCount;
     private final RowCount staticRowCount;
     private final RowCount baseRowCount;
+    @NotNull
     private final List<TableName> dependencies;
 
     public TableInfo(TableName tableName, RowCount sourceRowCount, RowCount staticRowCount, RowCount baseRowCount, List<TableName> dependencies) {

@@ -1,10 +1,7 @@
 package org.dandoy.dbpopd;
 
 import io.micronaut.http.HttpStatus;
-import io.micronaut.http.annotation.Controller;
-import io.micronaut.http.annotation.Delete;
-import io.micronaut.http.annotation.Get;
-import io.micronaut.http.annotation.Post;
+import io.micronaut.http.annotation.*;
 import io.micronaut.problem.HttpStatusType;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dandoy.dbpop.database.*;
@@ -56,7 +53,7 @@ public class DatabaseVfksController {
     }
 
     @Post("/vfks")
-    public void postVirtualForeignKey(ForeignKey foreignKey) {
+    public void postVirtualForeignKey(@Body ForeignKey foreignKey) {
         DatabaseCache sourceDatabaseCache = databaseCacheService.getSourceDatabaseCacheOrThrow();
         Table fkTable = sourceDatabaseCache.getTable(foreignKey.getFkTableName());
         List<ForeignKey> dbForeignKeys = fkTable.getForeignKeys();
@@ -96,7 +93,7 @@ public class DatabaseVfksController {
     }
 
     @Delete("/vfks")
-    public void deleteVirtualForeignKey(ForeignKey foreignKey) {
+    public void deleteVirtualForeignKey(@Body ForeignKey foreignKey) {
         configurationService
                 .getVirtualFkCache()
                 .removeFK(foreignKey);

@@ -4,6 +4,7 @@ import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
+import io.micronaut.serde.annotation.Serdeable;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dandoy.dbpop.database.Column;
 import org.dandoy.dbpop.database.Dependency;
@@ -53,7 +54,9 @@ public class DatabaseController {
         return DependencyCalculator.calculateDependencies(databaseService, dependency);
     }
 
+    @Serdeable
     public record SearchTableSearchByResponse(String displayName, List<String> columns) {}
 
+    @Serdeable
     public record SearchTableResponse(String displayName, TableName tableName, List<String> columns, List<SearchTableSearchByResponse> searches) {}
 }

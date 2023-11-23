@@ -21,7 +21,7 @@ public class ForeignKey {
     public ForeignKey(
             @JsonProperty("name") String name,
             @JsonProperty("constraintDef") String constraintDef,
-            @JsonProperty("kTableName") TableName pkTableName,
+            @JsonProperty("pkTableName") TableName pkTableName,
             @JsonProperty("pkColumns") List<String> pkColumns,
             @JsonProperty("fkTableName") TableName fkTableName,
             @JsonProperty("fkColumns") List<String> fkColumns) {

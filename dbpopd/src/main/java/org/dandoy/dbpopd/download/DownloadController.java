@@ -3,6 +3,7 @@ package org.dandoy.dbpopd.download;
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
+import io.micronaut.serde.annotation.Serdeable;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dandoy.dbpop.database.Database;
 import org.dandoy.dbpop.database.Dependency;
@@ -114,6 +115,7 @@ public class DownloadController {
         );
     }
 
+    @Serdeable
     public record FullDownloadRequest(String dataset) {}
 
     @Post("/source")
@@ -218,7 +220,9 @@ public class DownloadController {
         );
     }
 
+    @Serdeable
     public record DownloadBulkBody(String dataset, List<TableName> tableNames) {}
 
+    @Serdeable
     public record DownloadTargetBody(String dataset) {}
 }

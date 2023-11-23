@@ -13,6 +13,9 @@ micronaut:
       swagger-ui:
         paths: classpath:META-INF/swagger/views/swagger-ui
         mapping: /swagger-ui/**
+  serde:
+    serialization:
+      inclusion: non_null
 netty:
   default:
     allocator:

@@ -1,10 +1,7 @@
 plugins {
-    id 'com.github.johnrengelman.shadow' version '7.1.2'
     id 'java'
     id 'java-library'
     id 'application'
-    id 'signing'
-    id 'maven-publish'
 }
 
 group 'io.github.cdandoy'
@@ -43,11 +40,6 @@ dependencies {
     testImplementation "org.testcontainers:postgresql:1.18.3"
 
     testImplementation project(":test-resources")
-
-    shadowJar {
-        implementation 'com.microsoft.sqlserver:mssql-jdbc:11.2.1.jre17'
-//        implementation 'org.postgresql:postgresql:42.5.1'
-    }
 }
 
 java {
@@ -57,94 +49,4 @@ java {
 
 test {
     useJUnitPlatform()
-}
-
-application {
-    mainClass = 'org.dandoy.dbpop.DbPop'
-}
-
-javadoc.options.addStringOption('Xdoclint:none', '-quiet')
-
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-}
-
-artifacts {
-    archives jar, sourcesJar, javadocJar
-}
-
-// TODO: Try the gradle-nexus.publish-plugin next time I publish
-// https://madhead.me/posts/no-bullshit-maven-publish/
-// To publish:
-// * Update the version
-// * gradlew clean build publishToSonatype closeAndReleaseSonatypeStagingRepository
-// * After a ~10 minutes: https://repo1.maven.org/maven2/io/github/cdandoy/dbpop/
-//                        https://central.sonatype.dev/namespace/io.github.cdandoy
-// * Change the version to -SNAPSHOT
-
-nexusPublishing {
-    repositories {
-        sonatype {
-            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-            username = project.findProperty('ossrhUsername') ?: System.getenv("OSSRH_USERNAME")
-            password = project.findProperty('ossrhPassword') ?: System.getenv("OSSRH_TOKEN")
-        }
-    }
-}
-
-publishing {
-    repositories {
-        maven {
-            def releasesRepoUrl = 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2'
-            def snapshotsRepoUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots'
-            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
-            credentials {
-                username = project.findProperty('ossrhUsername') ?: System.getenv("OSSRH_USERNAME")
-                password = project.findProperty('ossrhPassword') ?: System.getenv("OSSRH_TOKEN")
-            }
-        }
-    }
-
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-            artifact sourcesJar
-            artifact javadocJar
-
-            pom {
-                name = 'dbpop'
-                description = 'A utility to load a database from CSV files'
-                url = 'https://github.com/cdandoy/DbPop'
-                licenses {
-                    license {
-                        name = 'The Apache License, Version 2.0'
-                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-                    }
-                }
-                developers {
-                    developer {
-                        id = 'cdandoy'
-                        name = 'Cedric Dandoy'
-                        email = 'cedric@dandoy.org'
-                    }
-                }
-                scm {
-                    connection = 'scm:git:git@github.com:cdandoy/DbPop.git'
-                    developerConnection = 'scm:git:ssh://github.com:cdandoy/DbPop.git'
-                    url = 'https://github.com/cdandoy/DbPop'
-                }
-            }
-        }
-    }
-}
-
-signing {
-    sign publishing.publications.mavenJava
 }

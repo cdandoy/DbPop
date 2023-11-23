@@ -1,11 +1,14 @@
 package org.dandoy.dbpopd;
 
 import io.micronaut.runtime.Micronaut;
+import io.micronaut.serde.annotation.SerdeImport;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Info;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.dandoy.dbpop.database.*;
+import org.dandoy.dbpop.database.mssql.SqlServerTable;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -16,11 +19,21 @@ import java.util.Properties;
 @OpenAPIDefinition(
         info = @Info(
                 title = "dbpopd",
-                version = "0.5.0"
+                version = "0.5.1"
         )
 )
 @Slf4j
 @Getter
+@SerdeImport(TableName.class)
+@SerdeImport(RowCount.class)
+@SerdeImport(Dependency.class)
+@SerdeImport(Query.class)
+@SerdeImport(SqlServerTable.class)
+@SerdeImport(Table.class)
+@SerdeImport(Column.class)
+@SerdeImport(Index.class)
+@SerdeImport(PrimaryKey.class)
+@SerdeImport(ForeignKey.class)
 public class Application {
 
     private static long startTimeMilis;
@@ -40,10 +53,6 @@ public class Application {
         if (version != null) {
             System.out.printf(" DbPop (v%s)\n%n", version);
         }
-//        log.error("ERROR");
-//        log.warn("WARN");
-//        log.info("INFO");
-//        log.debug("DEBUG");
         Micronaut.build(args)
                 .banner(false)
                 .deduceEnvironment(false)

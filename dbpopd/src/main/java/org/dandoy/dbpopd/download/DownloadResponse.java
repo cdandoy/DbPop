@@ -1,5 +1,6 @@
 package org.dandoy.dbpopd.download;
 
+import io.micronaut.serde.annotation.Serdeable;
 import lombok.Getter;
 import org.dandoy.dbpop.database.TableName;
 
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 @Getter
+@Serdeable
 public final class DownloadResponse {
     private final List<TableRowCount> tableRowCounts;
     private final boolean maxRowsReached;
@@ -33,6 +35,7 @@ public final class DownloadResponse {
     }
 
     @Getter
+    @Serdeable
     public static class TableRowCount {
         private final String displayName;
         private final TableName tableName;

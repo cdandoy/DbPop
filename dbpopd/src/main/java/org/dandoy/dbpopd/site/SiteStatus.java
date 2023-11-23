@@ -1,11 +1,13 @@
 package org.dandoy.dbpopd.site;
 
+import io.micronaut.serde.annotation.Serdeable;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @EqualsAndHashCode
+@Serdeable
 public final class SiteStatus {
     /**
      * Status of the source connection.
@@ -17,27 +19,10 @@ public final class SiteStatus {
      */
     @Setter
     private ConnectionStatus targetConnectionStatus;
-    /**
-     * True when the code on the file system and in the database has been scanned.
-     */
-    @Setter
-    private boolean codeScanComplete;
-    /**
-     * True if there are differences between the code on the file system and in the database
-     */
-    private boolean hasCodeDiffs;
-    /**
-     * Changed every time hasCodeDiffs is modified so that the Code Changes page can refresh
-     */
-    private int codeDiffChanges;
 
     public SiteStatus() {
     }
 
-    public void codeDiffChanged(boolean hasCodeDiffs) {
-        this.hasCodeDiffs = hasCodeDiffs;
-        this.codeDiffChanges++;
-    }
-
+    @Serdeable
     public record ConnectionStatus(boolean configured, String errorMessage) {}
 }

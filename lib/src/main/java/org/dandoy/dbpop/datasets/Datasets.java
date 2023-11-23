@@ -33,12 +33,12 @@ public class Datasets {
             File[] datasetFiles = directory.listFiles();
             if (datasetFiles == null) {
                 if (directory.exists()) throw new RuntimeException("Invalid path " + directory);
-                else return Collections.emptyList();
-            }
-            for (File datasetFile : datasetFiles) {
-                Dataset dataset = getDataset(datasetFile);
-                if (dataset != null) {
-                    datasets.add(dataset);
+            } else {
+                for (File datasetFile : datasetFiles) {
+                    Dataset dataset = getDataset(datasetFile);
+                    if (dataset != null) {
+                        datasets.add(dataset);
+                    }
                 }
             }
             return datasets;

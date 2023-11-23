@@ -20,6 +20,7 @@ dependencies {
     implementation "org.testcontainers:junit-jupiter:1.18.3"
     implementation "org.testcontainers:mssqlserver:1.18.3"
 //    implementation "org.testcontainers:postgresql:1.18.3"
+    implementation 'com.microsoft.sqlserver:mssql-jdbc:12.4.2.jre11'
 }
 
 test {

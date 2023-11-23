@@ -21,7 +21,7 @@ public class ExpressionParser {
     private static final Pattern PATTERN = Pattern.compile("\\{\\{(now|today|tomorrow|yesterday)( *([+-]) *(\\d) *(minute|minutes|hour|hours|day|days|month|months|year|years))?}}");
 
     public Object evaluate(String s) {
-        if (!s.startsWith("{{") || !s.endsWith("}}")) return s;
+        if (s == null || !s.startsWith("{{") || !s.endsWith("}}")) return s;
 
         Matcher matcher = PATTERN.matcher(s);
         if (!matcher.matches()) return s;

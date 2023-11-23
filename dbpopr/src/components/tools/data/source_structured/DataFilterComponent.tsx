@@ -71,6 +71,7 @@ export default function DataFilterComponent({
         if (previewResponse) {
             setDirty(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [previewResponse]);
 
     useEffect(() => {
@@ -106,6 +107,7 @@ export default function DataFilterComponent({
         }
         // Eon
         setDataFilterRows(dataFilterRows);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dependency, dependencyQueries, previewResponse])
 
     return <div id={"data-filter"}>
